@@ -1,5 +1,7 @@
 # Attribution and license scope
 
+The **Pico-compatible DNS/HTTP behavior is based on [favas0/CivSwitch-Pico2W-SerialBridge](https://github.com/favas0/CivSwitch-Pico2W-SerialBridge)**. Credit goes to favas0 for the Pico 2 W port and its wildcard DNS/local Nintendo HTTP connectivity-check behavior, which this project adapts for Steam Deck using dnsmasq and Python.
+
 The connectivity-check implementation retains the behavior and provenance from
 the working v7/v7.1 Steam Deck installer, originating in the Pico 2 W bridge.
 The full upstream notice embedded by the installer is reproduced unchanged in
