@@ -1,5 +1,7 @@
 # SteamDeck-Switch2-Offline-Hotspot
 
+![Steam Deck showing the v7.1 offline hotspot installer menu](docs/images/installer-v7.1-menu.jpeg)
+
 Local Wi-Fi between a Steam Deck running SteamOS and a Nintendo Switch 2, with Pico-compatible Nintendo connectivity-check responses, optional WPA2-Personal security and a separate KDE Plasma taskbar toggle.
 
 **Review snapshot: v7.1.** The user confirmed the v7 open hotspot, Plasma 6.7.3 widget, Sunshine/Moonlight streaming and Steam Input mouse controls on their Steam Deck/Switch 2 setup. The newer v7.1 password feature has local syntax and mocked tests; WPA2 activation still needs hardware confirmation. This repository is being prepared for private review before any public release.
