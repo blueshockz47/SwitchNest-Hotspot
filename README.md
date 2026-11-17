@@ -116,9 +116,21 @@ The two installer scripts are copied unchanged from the latest project files. Ha
 
 ## Credits
 
-The **Pico-compatible DNS/HTTP behavior is based on [CivSwitch-Pico2W-SerialBridge](https://github.com/favas0/CivSwitch-Pico2W-SerialBridge) by favas0**. Its wildcard DNS and local Nintendo HTTP connectivity-check responses provided the basis for this Steam Deck adaptation.
+The **Pico-compatible DNS/HTTP behavior is based on [CivSwitch-Pico2W-SerialBridge](https://github.com/favas0/CivSwitch-Pico2W-SerialBridge) by favas0**. Thanks to the upstream authors and projects:
 
-The Pico project is a port of [CivSwitch-SerialBridge by Jack Spence (@jackspence7)](https://github.com/jackspence7/CivSwitch-SerialBridge). Original copyright, MIT notices and the connectivity-response GPL provenance are retained in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the included license files.
+| Author / project | Contribution and relationship |
+|---|---|
+| [favas0 — CivSwitch-Pico2W-SerialBridge](https://github.com/favas0/CivSwitch-Pico2W-SerialBridge) | Pico 2 W port; direct reference for this project’s wildcard DNS and local Nintendo HTTP connectivity-check behavior. |
+| [Jack Spence (@jackspence7) — CivSwitch-SerialBridge](https://github.com/jackspence7/CivSwitch-SerialBridge) | Original serial bridge from which the Pico project was ported. |
+| [fernando-granco — switch2-homebrew](https://github.com/fernando-granco/switch2-homebrew/tree/main/tools/esp-bridge) | Intermediate connectivity-response source credited by the serial/Pico bridges; its current ESP bridge identifies the responses as adapted from 90DNS. |
+| [Ave — 90DNS](https://gitlab.com/a/90dns) | Earlier connectivity-response source, credited by Fernando’s current bridge as Copyright (C) 2018 Ave, GPL-2.0-or-later. |
+| [Gezine — CivSwitch](https://github.com/Gezine/CivSwitch) | Console loader/project used by the upstream bridge ecosystem; acknowledged for context, with no loader code bundled in this hotspot installer. |
+
+The upstream Pico build and serial sender also use [Earle Philhower’s Arduino-Pico](https://github.com/earlephilhower/arduino-pico) and [pySerial](https://github.com/pyserial/pyserial). These are upstream Pico dependencies, not requirements of this Steam Deck installer.
+
+Thanks also to the NetworkManager, dnsmasq, Podman/Debian, systemd, nftables, Python, KDE Plasma/polkit, Sunshine and Moonlight projects used by the Steam Deck setup and optional streaming workflow.
+
+Original copyright and license notices are retained. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the verified source links, current versus historical license descriptions, and dependency scope.
 
 ## License
 
