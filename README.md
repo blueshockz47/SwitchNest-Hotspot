@@ -114,6 +114,12 @@ python3 -m unittest discover -s tests -v
 
 The two installer scripts are copied unchanged from the latest project files. Hardware behavior varies across SteamOS versions, Wi-Fi drivers and client firmware. Public release remains pending the owner's review and hardware checks.
 
+## Credits
+
+The **Pico-compatible DNS/HTTP behavior is based on [CivSwitch-Pico2W-SerialBridge](https://github.com/favas0/CivSwitch-Pico2W-SerialBridge) by favas0**. Its wildcard DNS and local Nintendo HTTP connectivity-check responses provided the basis for this Steam Deck adaptation.
+
+The Pico project is a port of [CivSwitch-SerialBridge by Jack Spence (@jackspence7)](https://github.com/jackspence7/CivSwitch-SerialBridge). Original copyright, MIT notices and the connectivity-response GPL provenance are retained in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the included license files.
+
 ## License
 
 Project additions and the combined connectivity implementation are provided under GPL-2.0-or-later; see [LICENSE](LICENSE). The panel widget's metadata declares MIT; its component notice is in [licenses/panel-toggle-MIT.txt](licenses/panel-toggle-MIT.txt). Existing Pico/bridge MIT notices and GPL response provenance are retained separately. This project is not affiliated with Valve, Nintendo, KDE, Sunshine or Moonlight.
