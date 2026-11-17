@@ -70,6 +70,10 @@ DHCP leases use `10.42.60.20`–`10.42.60.100`. Give additional manually configu
 
 ## Add the taskbar toggle
 
+![Steam Deck taskbar showing the Switch 2 Offline Hotspot toggle in the ON state](docs/images/taskbar-hotspot-on.jpeg)
+
+*The taskbar toggle in use: ON — click to turn OFF and restore home Wi-Fi.*
+
 After the hotspot is installed, run as your normal desktop user through sudo:
 
 ```bash
