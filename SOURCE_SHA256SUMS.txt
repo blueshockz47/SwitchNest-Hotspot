@@ -1,0 +1,2 @@
+b1a25761f6f6b012eab7dbd07b7add51a63352f193cd422cdf336b319f244a90  install-steamdeck-switch2-pico-connectivity-v7.1-password.sh
+d027f75f70af13bfd72023ebb8e48015d587d0f012cf1217e964a696b2121e1c  install-steamdeck-switch2-plasma67-panel-toggle.sh
