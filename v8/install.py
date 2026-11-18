@@ -6,7 +6,6 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
-import tempfile
 import uuid
 
 VERSION = "8.0-beta.2"
@@ -39,18 +38,22 @@ def install():
     try:
         release.mkdir()
         shutil.copytree(SOURCE/"v8",release/"v8",ignore=shutil.ignore_patterns("__pycache__","*.pyc"))
+        for name in ("LICENSE","THIRD_PARTY_NOTICES.md"):
+            if (SOURCE/name).is_file(): shutil.copy2(SOURCE/name,release/name)
+        if (SOURCE/"licenses").is_dir(): shutil.copytree(SOURCE/"licenses",release/"licenses")
         run(sys.executable,"-m","venv",release/"venv")
         python=release/"venv/bin/python"
         run(python,"-m","pip","install","PySide6>=6.7,<7")
         run(python,"-m","compileall","-q",release/"v8")
         subprocess.run([str(python),"-m","unittest","-v","v8.test_ftp_tree"],cwd=release,check=True)
         old=current("current")
+        launcher()
         if old: point("previous",old)
         point("current",release)
     except BaseException:
-        if current("current")!=release: shutil.rmtree(release,ignore_errors=True)
+        if not (ROOT/"current").is_symlink() or (ROOT/"current").resolve()!=release: shutil.rmtree(release,ignore_errors=True)
         raise
-    launcher()
+    print("Installed release:",release.name)
 
 def launcher():
     from v8.install_launcher import desktop_quote
@@ -69,6 +72,7 @@ def main():
     parser.add_argument("action",choices=["install","rollback","status"],default="install",nargs="?")
     action=parser.parse_args().action
     ROOT.mkdir(parents=True,exist_ok=True)
+    if ROOT.is_symlink() or ROOT.stat().st_uid!=os.getuid(): raise SystemExit("Invalid installation directory")
     with (ROOT/"install.lock").open("a") as lock:
         fcntl.flock(lock,fcntl.LOCK_EX)
         if action=="install": install()
