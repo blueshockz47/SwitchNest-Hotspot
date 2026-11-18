@@ -94,7 +94,8 @@ ColumnLayout {
                         else page.localSelected=page.toggle(page.localSelected, modelData.name)
                     }
                     onPressAndHold: { page.activeSide="local"; page.entryName=modelData.name; entryMenu.popup() }
-                    Drag.active: dragHandler.active
+                    Drag.active: dragHandler.active || dragFinishing
+                    property bool dragFinishing: false
                     Drag.keys: ["local"]
                     Drag.hotSpot.x: width / 2
                     Drag.hotSpot.y: height / 2
@@ -102,7 +103,10 @@ ColumnLayout {
                         id: dragHandler
                         enabled: !modelData.directory && !page.dataState.busy
                         target: null
-                        onActiveChanged: if (!active) parent.Drag.drop()
+                        onActiveChanged: {
+                            if (active) parent.dragFinishing = true
+                            else { parent.Drag.drop(); parent.dragFinishing = false }
+                        }
                         onCentroidChanged: if (active) {
                             parent.Drag.hotSpot.x = centroid.position.x
                             parent.Drag.hotSpot.y = centroid.position.y
@@ -155,7 +159,8 @@ ColumnLayout {
                         else page.remoteSelected=page.toggle(page.remoteSelected, modelData.name)
                     }
                     onPressAndHold: { page.activeSide="remote"; page.entryName=modelData.name; entryMenu.popup() }
-                    Drag.active: dragHandler.active
+                    Drag.active: dragHandler.active || dragFinishing
+                    property bool dragFinishing: false
                     Drag.keys: ["remote"]
                     Drag.hotSpot.x: width / 2
                     Drag.hotSpot.y: height / 2
@@ -163,7 +168,10 @@ ColumnLayout {
                         id: dragHandler
                         enabled: !modelData.directory && !page.dataState.busy
                         target: null
-                        onActiveChanged: if (!active) parent.Drag.drop()
+                        onActiveChanged: {
+                            if (active) parent.dragFinishing = true
+                            else { parent.Drag.drop(); parent.dragFinishing = false }
+                        }
                         onCentroidChanged: if (active) {
                             parent.Drag.hotSpot.x = centroid.position.x
                             parent.Drag.hotSpot.y = centroid.position.y
