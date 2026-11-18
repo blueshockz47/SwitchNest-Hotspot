@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Steam Deck offline hotspot installer + ON/OFF manager, v7.1 (optional WPA2-Personal).
+# SwitchNest Hotspot installer + ON/OFF manager, v7.1 (optional WPA2-Personal).
 # OPEN mode allows nearby devices to join without authentication; WPA2 is recommended.
 # This installer blocks IP forwarding but does not isolate connected devices from the host.
 # Host dependencies: nmcli, nft, systemd, flock, ss, python3, and dnsmasq or Podman.
@@ -891,7 +891,7 @@ validate_dns_config(){
 write_service_files(){
   cat > "/etc/systemd/system/$DNS_UNIT" <<SERVICE
 [Unit]
-Description=Local DHCP and DNS for Steam Deck Switch 2 offline hotspot
+Description=Local DHCP and DNS for SwitchNest Hotspot
 After=NetworkManager.service
 PartOf=$UNIT
 [Service]
@@ -904,7 +904,7 @@ RestartSec=3
 SERVICE
   cat > "/etc/systemd/system/$UNIT" <<SERVICE
 [Unit]
-Description=Steam Deck Switch 2 offline hotspot
+Description=SwitchNest Hotspot
 Wants=NetworkManager.service
 After=NetworkManager.service
 [Service]
@@ -1229,9 +1229,9 @@ turn_on(){
     return 0
   fi
   if [[ $(wifi_security_mode "$AP_UUID") == wpa2 ]]; then
-    log "WPA2-Personal hotspot ON: $CON (password protected). Steam Deck IP / DNS: $AP_IP."
+    log "WPA2-Personal hotspot ON: $CON (password protected). Host IP / DNS: $AP_IP."
   else
-    log "OPEN hotspot ON: $CON (NO PASSWORD). Steam Deck IP / DNS: $AP_IP."
+    log "OPEN hotspot ON: $CON (NO PASSWORD). Host IP / DNS: $AP_IP."
     log 'WARNING: anyone nearby can join. Switch it OFF when finished.'
   fi
   log 'Switch 2: automatic IP and DNS. Manual alternative: 10.42.60.2 / 255.255.255.0; gateway and DNS 10.42.60.1.'
@@ -1289,7 +1289,7 @@ main(){
   while true; do
     cat <<'MENU'
 
-Steam Deck Switch 2 Offline Hotspot v7.1 (optional WPA2 password)
+SwitchNest Hotspot v7.1 (optional WPA2 password)
 1) Install/update hotspot + Pico DNS/HTTP
 2) Hotspot ON
 3) Hotspot OFF + restore home Wi-Fi

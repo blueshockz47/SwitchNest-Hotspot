@@ -1,7 +1,7 @@
 # Validation and private-review status
 
 Prepared 2026-11-17 from the latest saved v7.1 password installer and the working
-Plasma 6.7 panel add-on. Both installers are byte-for-byte unchanged. Their source
+Plasma 6.7 panel add-on. The installers have since received branding-only edits. Their current source
 checksums are in `SOURCE_SHA256SUMS.txt`.
 
 ## Local checks

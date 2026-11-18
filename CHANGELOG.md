@@ -1,5 +1,12 @@
 # Changelog
 
+## v7.1 — SwitchNest branding update (private review)
+
+- Rename project, installer filenames, menu, widget display name and documentation.
+- Retain existing SSID, service identifiers, configuration paths and widget ID for upgrade compatibility.
+- Preserve upstream notices and historical screenshots; refresh source checksums.
+
+
 ## v7.1 — private review snapshot, 2026-11-17
 
 - Optional WPA2-Personal or OPEN Wi-Fi security at installation.

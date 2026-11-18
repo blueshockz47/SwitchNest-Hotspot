@@ -1,8 +1,12 @@
-# SteamDeck-Switch2-Offline-Hotspot
+# SwitchNest Hotspot
 
-![Steam Deck showing the v7.1 offline hotspot installer menu](docs/images/installer-v7.1-menu.jpeg)
+*Connect locally. Play freely.*
 
-Local Wi-Fi between a Steam Deck running SteamOS and a Nintendo Switch 2, with Pico-compatible Nintendo connectivity-check responses, optional WPA2-Personal security and a separate KDE Plasma taskbar toggle.
+![Historical Steam Deck v7.1 installer menu before rebranding](docs/images/installer-v7.1-menu.jpeg)
+
+*Historical screenshot: the current menu is named SwitchNest Hotspot.*
+
+Local Wi-Fi between a Linux host and a Nintendo Switch 2 (currently tested on SteamOS), with Pico-compatible Nintendo connectivity-check responses, optional WPA2-Personal security and a separate KDE Plasma taskbar toggle.
 
 **Review snapshot: v7.1.** The user confirmed the v7 open hotspot, Plasma 6.7.3 widget, Sunshine/Moonlight streaming and Steam Input mouse controls on their Steam Deck/Switch 2 setup. The newer v7.1 password feature has local syntax and mocked tests; WPA2 activation still needs hardware confirmation. This repository is being prepared for private review before any public release.
 
@@ -19,6 +23,12 @@ Local Wi-Fi between a Steam Deck running SteamOS and a Nintendo Switch 2, with P
 
 The connectivity checks receive local responses. This network does not provide internet access or Nintendo online services. The forwarding block does not isolate clients from other clients or from services running on the Steam Deck.
 
+## Compatibility
+
+SteamOS is the tested platform. Bazzite, CachyOS, Arch Linux and other distributions are prospective targets, not confirmed supported platforms.
+
+For compatibility with existing installations, the original SSID `SteamDeck-Switch2`, service names, configuration paths, firewall identifiers and Plasma widget ID are intentionally retained. The new display name does not require a new network profile.
+
 ## Requirements
 
 A SteamOS Desktop Mode session, administrator access through `sudo`, NetworkManager with an AP-capable Wi-Fi adapter, and `nmcli`, `nft`, `systemctl`, `flock`, `ss`, `python3`, plus either `dnsmasq` or `podman`. If firewalld is running, the installer uses the dedicated `steamdeck-switch2` zone.
@@ -30,7 +40,7 @@ The Podman fallback needs at least 2 GiB free under `/home` and an internet conn
 Download or clone this repository, open Konsole in its folder, and run:
 
 ```bash
-sudo bash ./install-steamdeck-switch2-pico-connectivity-v7.1-password.sh
+sudo bash ./install-switchnest-pico-connectivity-v7.1-password.sh
 ```
 
 Choose **1**, select WPA2-Personal or OPEN, and follow the prompts. Choose **2** to start the hotspot if you did not start it during installation.
@@ -72,17 +82,17 @@ DHCP leases use `10.42.60.20`–`10.42.60.100`. Give additional manually configu
 
 ## Add the taskbar toggle
 
-![Steam Deck taskbar showing the Switch 2 Offline Hotspot toggle in the ON state](docs/images/taskbar-hotspot-on.jpeg)
+![Steam Deck taskbar showing the SwitchNest Hotspot toggle in the ON state](docs/images/taskbar-hotspot-on.jpeg)
 
-*The taskbar toggle in use: ON — click to turn OFF and restore home Wi-Fi.*
+*Historical screenshot (before rebranding). The taskbar toggle in use: ON — click to turn OFF and restore home Wi-Fi.*
 
 After the hotspot is installed, run as your normal desktop user through sudo:
 
 ```bash
-sudo bash ./install-steamdeck-switch2-plasma67-panel-toggle.sh
+sudo bash ./install-switchnest-plasma67-panel-toggle.sh
 ```
 
-Right-click the taskbar, choose **Enter Edit Mode → Add Widgets**, find **Switch 2 Offline Hotspot Toggle**, and drag it onto the panel. If it does not appear, sign out and back into Desktop Mode.
+Right-click the taskbar, choose **Enter Edit Mode → Add Widgets**, find **SwitchNest Hotspot Toggle**, and drag it onto the panel. If it does not appear, sign out and back into Desktop Mode.
 
 - OFF → click: starts the hotspot using the same ON operation as menu Option 2.
 - ON → click: stops it and attempts to restore the previous Wi-Fi, matching Option 3 with its prompts accepted.
@@ -92,7 +102,7 @@ This is a separate widget. It does not replace the compiled KDE network applet. 
 To remove the widget, remove it from the panel and run:
 
 ```bash
-sudo bash ./install-steamdeck-switch2-plasma67-panel-toggle.sh --remove
+sudo bash ./install-switchnest-plasma67-panel-toggle.sh --remove
 ```
 
 The hotspot remains installed. To stop the hotspot and disable boot startup, choose Option 3 in the manager.
@@ -112,7 +122,7 @@ Run local tests without changing Wi-Fi, firewall rules or system services:
 python3 -m unittest discover -s tests -v
 ```
 
-The two installer scripts are copied unchanged from the latest project files. Hardware behavior varies across SteamOS versions, Wi-Fi drivers and client firmware. Public release remains pending the owner's review and hardware checks.
+The installers have been rebranded without changing their network operations. Hardware behavior varies across SteamOS versions, Wi-Fi drivers and client firmware. Public release remains pending the owner's review and hardware checks.
 
 ## Credits
 

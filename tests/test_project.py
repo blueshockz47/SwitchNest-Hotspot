@@ -12,8 +12,8 @@ import types
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-INSTALLER = ROOT / 'install-steamdeck-switch2-pico-connectivity-v7.1-password.sh'
-PANEL = ROOT / 'install-steamdeck-switch2-plasma67-panel-toggle.sh'
+INSTALLER = ROOT / 'install-switchnest-pico-connectivity-v7.1-password.sh'
+PANEL = ROOT / 'install-switchnest-plasma67-panel-toggle.sh'
 
 
 def heredoc(source, tag):

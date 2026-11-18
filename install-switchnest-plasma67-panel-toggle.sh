@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Steam Deck Switch 2 offline hotspot: Plasma 6.7 panel toggle add-on.
+# SwitchNest Hotspot: Plasma 6.7 panel toggle add-on.
 # Installs a SEPARATE panel widget; does not patch KDE's compiled network applet.
 # Leaves the working v7 hotspot, DNS/HTTP services, and NetworkManager profile untouched.
 # Install: sudo bash this-file.sh
@@ -80,9 +80,9 @@ HELPER = '/etc/steamdeck-switch2-panel-toggle'
 def notify(message, error=False):
     binary = shutil.which('notify-send')
     if binary:
-        subprocess.run([binary, '-a', 'Switch 2 Offline Hotspot',
+        subprocess.run([binary, '-a', 'SwitchNest Hotspot',
                         '-u', 'critical' if error else 'normal',
-                        'Switch 2 Offline Hotspot', message], check=False, timeout=10)
+                        'SwitchNest Hotspot', message], check=False, timeout=10)
 
 def main():
     if len(sys.argv) != 1:
@@ -141,7 +141,7 @@ STATUS_CODE
   "X-Plasma-API-Minimum-Version": "6.0",
   "KPlugin": {
     "Id": "local.steamdeck.switch2.offlinehotspot",
-    "Name": "Switch 2 Offline Hotspot Toggle",
+    "Name": "SwitchNest Hotspot Toggle",
     "Description": "One-click v7 offline hotspot ON/OFF with home Wi-Fi restoration",
     "Icon": "network-wireless-hotspot",
     "Category": "System Information",
@@ -169,10 +169,10 @@ PlasmoidItem {
     readonly property string statusCommand: STATUS_COMMAND_PLACEHOLDER
     readonly property string actionCommand: ACTION_COMMAND_PLACEHOLDER
 
-    Plasmoid.title: "Switch 2 Offline Hotspot"
+    Plasmoid.title: "SwitchNest Hotspot"
     Plasmoid.icon: "network-wireless-hotspot"
     preferredRepresentation: compactRepresentation
-    toolTipMainText: "Switch 2 Offline Hotspot"
+    toolTipMainText: "SwitchNest Hotspot"
     toolTipSubText: pending ? "Switching hotspot…" : lastError.length > 0 ? lastError
         : !statusKnown ? "Status unavailable (check v7 installation)"
         : hotspotOn ? "ON — click to turn OFF and restore home Wi-Fi"
@@ -295,7 +295,7 @@ main() {
     command -v "$command_name" >/dev/null || { echo "Missing command: $command_name" >&2; exit 1; }
   done
   if [[ "$action" == --remove ]]; then
-    echo 'Remove the "Switch 2 Offline Hotspot Toggle" widget from the panel first.'
+    echo 'Remove the "SwitchNest Hotspot Toggle" widget from the panel first.'
     runuser -u "$target_user" -- kpackagetool6 --type Plasma/Applet --remove "$PLUGIN" || true
     rm -f -- "$ROOT_HELPER" "$POLKIT_RULE" "$OWNER_FILE"
     if [[ -f "$user_data/installed-marker" ]] && grep -Fxq 'steamdeck-switch2-plasma67-panel-toggle-v2' "$user_data/installed-marker"; then
@@ -369,10 +369,10 @@ POLKIT_CODE
     runuser -u "$target_user" -- kpackagetool6 --type Plasma/Applet --install "$dir/package"
   fi
   echo
-  echo 'Installed: Switch 2 Offline Hotspot Toggle (Plasma 6.7 panel widget).'
+  echo 'Installed: SwitchNest Hotspot Toggle (Plasma 6.7 panel widget).'
   echo 'The original KDE Networks/Hotspot button was NOT modified.'
   echo 'Right-click the taskbar -> Enter Edit Mode -> Add Widgets.'
-  echo 'Search for "Switch 2 Offline Hotspot Toggle" and drag it onto the panel.'
+  echo 'Search for "SwitchNest Hotspot Toggle" and drag it onto the panel.'
   echo 'Click its icon: OFF -> v7 Option 2, ON -> v7 Option 3 (restore Wi-Fi).'
   echo 'If the widget is not listed, log out and back into Desktop Mode.'
   echo "To uninstall: sudo bash $0 --remove"

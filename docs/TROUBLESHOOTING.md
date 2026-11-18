@@ -32,7 +32,7 @@ Stop only a conflicting server you recognize, such as a manually started Python 
 
 ## Widget not visible or toggle fails
 
-The supported add-on is `install-steamdeck-switch2-plasma67-panel-toggle.sh`. The earlier script that tried to find `Toolbar.qml` is not included. Plasma 6.7 packages the built-in network applet differently, and this add-on creates its own widget.
+The supported add-on is `install-switchnest-plasma67-panel-toggle.sh`. The earlier script that tried to find `Toolbar.qml` is not included. Plasma 6.7 packages the built-in network applet differently, and this add-on creates its own widget.
 
 Run the add-on installer from the normal desktop user's session with sudo, add its named widget, and sign out/in if it is not listed. Check manager Option 4 and the service journal if clicking fails. For a password-only v7.1 upgrade, the installed manager path and UUID stay compatible with the widget.
 
