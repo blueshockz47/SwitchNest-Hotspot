@@ -27,6 +27,7 @@ class Controller(QObject):
         if self.process.state() != QProcess.NotRunning:
             return
         self.kind = "refresh"
+        self.busyChanged.emit(True)
         self.process.setWorkingDirectory(str(Path(__file__).resolve().parent.parent))
         self.process.start(sys.executable, ["-m", "v8.diagnostics"])
 
