@@ -3,6 +3,8 @@ import ipaddress
 import json
 import datetime
 import time
+import threading
+from v8.ftp_tree import Tree
 import os
 from pathlib import Path
 import re
@@ -13,6 +15,8 @@ from PySide6.QtCore import QObject, Signal, Slot, Property, QProcess, QSettings
 
 class Browser(QObject):
     changed = Signal()
+    tree_event = Signal(str, str)
+    tree_finished = Signal(str)
     def __init__(self):
         super().__init__()
         self.settings = QSettings("SwitchNest", "FTP")
@@ -33,7 +37,17 @@ class Browser(QObject):
         self.total = 0
         self.completed = 0
         self.current_name = ""
-        self.history = []
+        try:
+            self.history = json.loads(str(self.settings.value("history", "[]")))[:100]
+            if not isinstance(self.history,list):
+                self.history=[]
+        except (ValueError, TypeError):
+            self.history=[]
+        self.tree_cancel = threading.Event()
+        self.tree_event.connect(self.on_tree_event)
+        self.tree_finished.connect(self.on_tree_finished)
+        self.reconnect = False
+        self.local_free = 0
         self.transfer_size = 0
         self.started = 0
         self.speed = 0
@@ -52,10 +66,11 @@ class Browser(QObject):
     def state(self):
         return json.dumps(dict(host=self.host, port=self.port, local=str(self.local),
             remote=self.remote, localRows=self.local_rows, remoteRows=self.remote_rows,
-            status=self.status, progress=self.progress, busy=self.busy, connected=self.connected, total=self.total, completed=self.completed, current=self.current_name, history=self.history, speed=self.speed, bytesDone=self.bytes_done, transferSize=self.transfer_size))
+            status=self.status, progress=self.progress, busy=self.busy, connected=self.connected, total=self.total, completed=self.completed, current=self.current_name, history=self.history, speed=self.speed, bytesDone=self.bytes_done, transferSize=self.transfer_size, localFree=self.local_free))
 
     def refresh_local(self):
         try:
+            self.local_free = shutil.disk_usage(self.local).free
             self.local_rows = sorted([dict(name=p.name, directory=p.is_dir(), size=p.stat().st_size if p.is_file() else None, date=datetime.datetime.fromtimestamp(p.stat().st_mtime).strftime("%Y-%m-%d"))
                 for p in self.local.iterdir() if not p.is_symlink()],
                 key=lambda x: (not x["directory"], x["name"].lower()))
@@ -253,8 +268,67 @@ class Browser(QObject):
             self.status = str(e)
             self.changed.emit()
 
+    @Slot(str, str, str)
+    def tree_batch(self, direction, raw, policy):
+        if self.busy or not self.connected or direction not in ("upload","download"):
+            return
+        try:
+            names=json.loads(raw)
+            rows=self.local_rows if direction=="upload" else self.remote_rows
+            allowed={x["name"]:x["directory"] for x in rows}
+            if not isinstance(names,list) or not names or len(names)>1000 or any(not isinstance(n,str) or n not in allowed or not self.valid_name(n) for n in names):
+                raise ValueError("Invalid selection")
+            names=list(dict.fromkeys(names))
+            local,remote=self.local,self.remote
+            tree=Tree(self.host,self.port,policy,self.tree_cancel.is_set,self.tree_event.emit)
+            self.tree_cancel.clear()
+            self.busy=True
+            self.job="tree"
+            self.completed=self.total=0
+            self.progress=self.transfer_size=0
+            self.status="Recursive transfer in progress"
+            self.changed.emit()
+            def work():
+                try:
+                    for name in names:
+                        if direction=="upload":
+                            tree.upload(local/name,remote)
+                        else:
+                            tree.download(remote,name,local,allowed[name])
+                    self.tree_finished.emit("Transfer complete")
+                except Exception as exc:
+                    self.tree_finished.emit("Transfer stopped: "+str(exc))
+            self.tree_thread=threading.Thread(target=work,daemon=True)
+            self.tree_thread.start()
+        except (ValueError,TypeError,OSError) as exc:
+            self.status=str(exc)
+            self.changed.emit()
+
+    @Slot(str,str)
+    def on_tree_event(self,name,result):
+        self.current_name=name
+        self.completed+=1
+        self.history=([dict(name=name,direction="tree",result=result,date=datetime.datetime.now().isoformat(timespec="seconds"))]+self.history)[:100]
+        self.settings.setValue("history",json.dumps(self.history))
+        self.status=result+": "+name
+        self.changed.emit()
+
+    @Slot(str)
+    def on_tree_finished(self,status):
+        self.busy=False
+        self.status=status
+        if status!="Transfer complete":
+            self.on_tree_event(self.current_name,"Cancelled" if self.tree_cancel.is_set() else "Failed")
+            self.status=status
+        self.refresh_local()
+        self.list_remote()
+        self.changed.emit()
+
     @Slot()
     def cancel(self):
+        if self.busy and self.job == "tree":
+            self.tree_cancel.set()
+            return
         if self.busy:
             self.queue.clear()
             self.cancelled = True
@@ -318,6 +392,8 @@ class Browser(QObject):
             self.changed.emit()
         if self.job in ("upload", "download"):
             self.history = ([dict(name=self.current_name, direction=self.job, result="Completed" if ok else "Cancelled" if self.cancelled else "Failed", date=datetime.datetime.now().isoformat(timespec="seconds"))] + self.history)[:100]
+        if self.job in ("upload", "download"):
+            self.settings.setValue("history", json.dumps(self.history))
         if self.job in ("upload", "download") and self.total:
             if ok:
                 self.completed += 1
@@ -329,5 +405,5 @@ class Browser(QObject):
                 self.queue.clear()
                 self.status += f" ({self.completed}/{self.total} completed)"
             self.changed.emit()
-        if ok and self.job in ("upload", "manage"):
+        if (ok and self.job in ("upload", "manage")) or (not ok and not self.cancelled and self.job in ("upload", "download", "manage")):
             self.list_remote()
