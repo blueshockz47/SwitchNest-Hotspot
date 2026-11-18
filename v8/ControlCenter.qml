@@ -70,8 +70,8 @@ ApplicationWindow {
                 NavButton { text: "Settings"; page: 5 }
                 NavButton { text: root.updateStatus.startsWith("Update available") ? "Updates •" : "Updates"; page: 6 }
                 Item { Layout.fillHeight: true }
-                Label { text: "v8.0-RC.3"; color: root.accent }
-                Label { text: "Developer preview"; color: root.muted; font.pixelSize: 12 }
+                Label { text: "v8.0.0"; color: root.accent }
+                Label { text: "Linux stable"; color: root.muted; font.pixelSize: 12 }
             }
         }
         ColumnLayout {
@@ -211,7 +211,7 @@ ApplicationWindow {
                 }
                 ColumnLayout {
                     Label { text: "Software updates"; font.pixelSize: 22 }
-                    Label { text: "Installed: v8.0-RC.3"; color: root.accent }
+                    Label { text: "Installed: v8.0.0"; color: root.accent }
                     ComboBox { id: channel; model: ["Development", "Stable"]; enabled: !root.updateBusy }
                     Label { text: root.updateStatus; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Button { text: root.updateBusy ? "Checking..." : "Check for Updates"; enabled: !root.updateBusy; onClicked: controller.check_updates(channel.currentIndex===0?"development":"stable") }
