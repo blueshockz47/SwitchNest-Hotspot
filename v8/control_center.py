@@ -6,6 +6,8 @@ import shutil
 import stat
 import os
 import sys
+import threading
+from v8 import updates
 from pathlib import Path
 from v8.ftp_browser import Browser
 from PySide6.QtCore import QObject, Signal, Slot, QProcess, QTimer, QUrl
@@ -16,6 +18,8 @@ class Controller(QObject):
     refreshed = Signal(str)
     message = Signal(str)
     busyChanged = Signal(bool)
+    updateResult = Signal(str)
+    updateBusy = Signal(bool)
 
     def __init__(self):
         super().__init__()
@@ -26,6 +30,23 @@ class Controller(QObject):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.refresh)
         self.timer.start(10000)
+
+    @Slot(str)
+    def check_updates(self, channel):
+        if getattr(self,"checking_updates",False): return
+        self.checking_updates=True
+        self.updateBusy.emit(True)
+        def worker():
+            try: result=updates.check(channel)
+            except Exception as exc: result=str(exc)
+            self.updateResult.emit(result)
+            self.checking_updates=False
+            self.updateBusy.emit(False)
+        threading.Thread(target=worker,daemon=True).start()
+
+    @Slot(bool)
+    def open_updates(self, development):
+        QDesktopServices.openUrl(QUrl(updates.DEVELOPMENT if development else updates.RELEASES))
 
     @Slot()
     def refresh(self):
