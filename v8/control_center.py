@@ -7,6 +7,7 @@ import stat
 import os
 import sys
 from pathlib import Path
+from v8.ftp_browser import Browser
 from PySide6.QtCore import QObject, Signal, Slot, QProcess, QTimer, QUrl
 from PySide6.QtGui import QGuiApplication, QDesktopServices
 from PySide6.QtQml import QQmlApplicationEngine
@@ -129,6 +130,9 @@ def main():
     engine = QQmlApplicationEngine()
     controller = Controller()
     engine.rootContext().setContextProperty("controller", controller)
+    browser = Browser()
+    engine.rootContext().setContextProperty("ftpBrowser", browser)
+    app.aboutToQuit.connect(browser.cancel)
     engine.load(QUrl.fromLocalFile(str(Path(__file__).with_name("ControlCenter.qml"))))
     if not engine.rootObjects():
         return 1
