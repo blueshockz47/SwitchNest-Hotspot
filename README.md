@@ -2,13 +2,45 @@
 
 *Connect locally. Play freely.*
 
+## Turn your PC or laptop into a Nintendo Switch 2 hotspot
+
+**SwitchNest uses your PC or laptop's Wi-Fi adapter to create a local wireless hotspot for your Nintendo Switch 2.** Your computer can remain connected to the internet through a **wired Ethernet/LAN connection** while its Wi-Fi adapter provides a separate connection for the Switch 2.
+
+This lets your computer act as a local hub for:
+
+- **FTP file transfers:** Browse, upload, download, and manage files between your PC and a Switch 2 running a compatible FTP server, such as OunceShell.
+- **Game streaming:** Use Sunshine on the computer and a compatible Moonlight client on the Switch 2 to stream your desktop or games over the local Wi-Fi connection.
+- **Other local functions:** Access compatible services and tools hosted on the computer without connecting the Switch 2 to the internet.
+
+### How it works
+
+```text
+Home router / Internet
+         |
+    Ethernet (LAN)
+         |
+  Linux PC / Laptop
+  +----------------------+
+  | Internet via LAN     |
+  | SwitchNest Hotspot   |
+  | Wi-Fi adapter (AP)   |
+  | FTP / Sunshine host  |
+  +----------------------+
+         ))) Local Wi-Fi ((( 
+                  |
+           Nintendo Switch 2
+           FTP / Moonlight client
+```
+
+**The PC's LAN internet connection is not shared with the Switch 2.** SwitchNest is designed for a local-only Switch 2 network, with IPv4/IPv6 forwarding blocked by its configured firewall rules. The PC can continue using its own wired internet connection. This is not a Nintendo online-service or general internet-sharing hotspot. Actual isolation depends on correct installation and should be verified on the target system.
+
+**Platform:** The current Linux v8.0.0 release targets SteamOS KDE Desktop Mode with an access-point-capable Wi-Fi adapter, NetworkManager, and the existing SwitchNest v7.1 networking backend. Other Linux distributions and Windows are not confirmed supported by this release.
+
 ![Historical Steam Deck v7.1 installer menu before rebranding](docs/images/installer-v7.1-menu.jpeg)
 
 *Historical screenshot: the current menu is named SwitchNest Hotspot.*
 
-Local Wi-Fi between a Linux host and a Nintendo Switch 2 (currently tested on SteamOS), with Pico-compatible Nintendo connectivity-check responses, optional WPA2-Personal security and a separate KDE Plasma taskbar toggle.
-
-**Linux v8.0.0 release candidate for public publication.** The v8 GUI requires the separately installed v7.1 hotspot backend. Historical v7.1 validation notes follow. **Review snapshot: v7.1.** The user confirmed the v7 open hotspot, Plasma 6.7.3 widget, Sunshine/Moonlight streaming and Steam Input mouse controls on their Steam Deck/Switch 2 setup. The newer v7.1 password feature has local syntax and mocked tests; WPA2 activation still needs hardware confirmation. The Linux v8.0.0 release source is prepared for public review; target-hardware verification is still pending.
+**Release status:** Linux v8.0.0 is prepared for public review, with final hardware validation pending. The v8 Control Center requires the separately installed v7.1 hotspot backend.
 
 ## Linux v8.0.0 Control Center
 
