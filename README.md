@@ -42,25 +42,90 @@ Home router / Internet
 
 **Release status:** Linux v8.0.0 is prepared for public review, with final hardware validation pending. The v8 Control Center requires the separately installed v7.1 hotspot backend.
 
-## Linux v8.0.0 Control Center
+## Installation — start here
 
-The v8 desktop Control Center is a user-local PySide6 application for an **existing v7.1 SteamOS hotspot installation**. It does not install the networking backend on its own.
+**Install in this order: 1) hotspot backend → 2) taskbar toggle helper → 3) v8 Control Center.** All three scripts are in the same extracted repository folder. The first two use `sudo`; the v8 Control Center installer **must not** use `sudo`.
 
-Install the hotspot backend first using the v7.1 instructions below. Then run the v8 installer as your **normal desktop user**:
+> **Compatibility:** These instructions target SteamOS in KDE Desktop Mode. You need an access-point-capable Wi-Fi adapter, NetworkManager, and the required system tools. An Ethernet/LAN connection is recommended if you want the computer to retain internet access while Wi-Fi hosts the Switch 2. Do not run the Linux installers on Windows.
+
+### Step 0 — Download and open the project
+
+1. Download the **[Linux v8.0.0 source ZIP](https://github.com/blueshockz47/SwitchNest-Hotspot/archive/refs/heads/release/v8.0.0.zip)**.
+2. Extract the ZIP using your file manager.
+3. Open the extracted `SwitchNest-Hotspot-release-v8.0.0` folder.
+4. Right-click an empty area inside that folder and choose **Open Terminal Here** (Konsole). All commands below are run **from this folder**. If your file manager doesn't offer that action, open Konsole and `cd` to the extracted folder first.
+
+### Step 1 — Install the hotspot backend (required, first)
 
 ```bash
-bash install-switchnest-v8.sh
+sudo bash ./install-switchnest-pico-connectivity-v7.1-password.sh
+```
+
+1. Enter your Linux `sudo` password when requested.
+2. In the installer menu, choose **1 — Install/update hotspot**.
+3. Choose **WPA2-Personal** (recommended) and enter a Wi-Fi password of 8–63 printable ASCII characters. You can choose OPEN mode, but anyone nearby could connect.
+4. Follow the prompts until installation completes. If the hotspot is not started automatically, choose **2 — Hotspot ON**.
+5. Verify that the Wi-Fi network **`SteamDeck-Switch2`** appears on your Switch 2. Connect using the password you set. Automatic IP/DNS is recommended.
+
+This step configures the Wi-Fi hotspot and its DHCP, DNS, local HTTP connectivity responses, and forwarding firewall rules. **Do not skip it**: installing the v8 GUI alone does not create a hotspot. You may lose your computer's existing Wi-Fi internet connection when its adapter switches into hotspot mode; Ethernet/LAN can remain connected.
+
+### Step 2 — Install the hotspot control helper (required for GUI ON/OFF)
+
+```bash
+sudo bash ./install-switchnest-plasma67-panel-toggle.sh
+```
+
+This installs the privileged ON/OFF helper used by the v8 Control Center and an **optional** KDE Plasma taskbar widget. Run this **after Step 1**, so the helper can find the installed backend.
+
+You do **not** need to add the widget to the taskbar to use the Control Center. If you want it, right-click the taskbar → **Enter Edit Mode** → **Add Widgets** → **SwitchNest Hotspot Toggle**. The widget is optional, but its installer is needed for v8's hotspot buttons.
+
+### Step 3 — Install SwitchNest v8.0 Control Center (required, last)
+
+Close any old SwitchNest Control Center window. Run this as your **normal desktop user** — **do not use sudo**:
+
+```bash
+bash ./install-switchnest-v8.sh
+```
+
+The installer creates a user-local Python environment, installs PySide6 (internet needed on first install), runs its included tests, creates a KDE application-menu shortcut, and activates the new release. Allow time for the first installation. At least 2 GiB of free disk space is recommended.
+
+Start the application from the KDE application menu by searching **SwitchNest Control Center**, or run:
+
+```bash
 ~/.local/share/switchnest/launch
 ```
 
-The v8 UI provides hotspot ON/OFF, read-only diagnostics, Sunshine controls, an FTP file manager with recursive folder operations, an opt-in KDE Desktop autostart setting, and a manual GitHub Releases update checker. The installer preserves a previous managed release for rollback:
+### Step 4 — Connect and use your Switch 2
+
+1. In SwitchNest Control Center, open **Overview** or **Network** and check the hotspot status. Turn the hotspot on if needed.
+2. Connect the Switch 2 to **`SteamDeck-Switch2`** with the Wi-Fi password chosen in Step 1.
+3. For **FTP**, start a compatible FTP server on the Switch 2 (for example, OunceShell). In the Control Center's **Files** page, enter the **IP address and port shown by the FTP server** and click **Connect**. An example from the developer's setup is `10.42.60.99:1337`; your address may differ.
+4. For **streaming**, install/configure Sunshine on the Linux host and use a compatible Moonlight client on the Switch 2. See [Sunshine/Moonlight setup](docs/SUNSHINE.md). Sunshine is a separate optional application, not installed by these three scripts.
+
+### Already have the v7.1 backend and helper?
+
+If Steps 1 and 2 are already installed and working, **skip directly to Step 3**. You do not need to reinstall the networking backend just to update the v8 interface.
+
+### Troubleshooting and rollback
+
+| Symptom | What to check |
+|---|---|
+| Hotspot ON/OFF button fails | Confirm Steps 1 and 2 completed; check polkit authorization and [troubleshooting](docs/TROUBLESHOOTING.md) |
+| Switch 2 cannot see Wi-Fi | Check the host Wi-Fi adapter supports AP mode; start hotspot using the v7.1 manager |
+| Files page cannot connect | Start FTP on Switch 2 and use its actual IP/port; verify both devices are on the hotspot |
+| v8 install fails | Confirm you ran it without `sudo`, have internet for PySide6, and have sufficient free disk space |
+| Sunshine isn't available | Install and configure Sunshine separately; see [streaming setup](docs/SUNSHINE.md) |
+
+Check installed versions or roll back to the previous managed Control Center release:
 
 ```bash
 python3 -m v8.install status
 python3 -m v8.install rollback
 ```
 
-See [v8 release notes and verification requirements](v8/STABLE.md). **Public hardware validation is still pending; do not treat the isolation indicator as a firewall audit.** Windows is experimental and is not included in this Linux release.
+Run these commands from the extracted project folder. Rollback works only if a previous managed release exists. The v8 installer does not change the system hotspot backend.
+
+See [v8 release notes and verification requirements](v8/STABLE.md). **Final hardware validation is pending.** Windows is experimental and not included in this Linux release.
 
 ## Control Center Preview
 
@@ -101,15 +166,9 @@ A SteamOS Desktop Mode session, administrator access through `sudo`, NetworkMana
 
 The Podman fallback needs at least 2 GiB free under `/home` and an internet connection for the initial Debian/dnsmasq image build. Later starts use the local image. The installer does not install host packages or change SteamOS read-only settings. A single Wi-Fi adapter normally disconnects from home Wi-Fi when starting the hotspot.
 
-## Install on a new Steam Deck
+## v7.1 hotspot installer menu reference
 
-Download or clone this repository, open Konsole in its folder, and run:
-
-```bash
-sudo bash ./install-switchnest-pico-connectivity-v7.1-password.sh
-```
-
-Choose **1**, select WPA2-Personal or OPEN, and follow the prompts. Choose **2** to start the hotspot if you did not start it during installation.
+Use the **Step 1** command above to open this menu:
 
 | Option | Action |
 |---|---|
@@ -146,32 +205,21 @@ Select `SteamDeck-Switch2`, enter the password if configured, and use automatic 
 
 DHCP leases use `10.42.60.20`–`10.42.60.100`. Give additional manually configured clients unique addresses outside that range.
 
-## Add the taskbar toggle
+## Optional KDE taskbar toggle
+
+The taskbar widget is installed by **Step 2** above. Adding it to the KDE panel is optional.
 
 ![Steam Deck taskbar showing the SwitchNest Hotspot toggle in the ON state](docs/images/taskbar-hotspot-on.jpeg)
 
-*Historical screenshot (before rebranding). The taskbar toggle in use: ON — click to turn OFF and restore home Wi-Fi.*
+*Historical screenshot (before rebranding).*
 
-After the hotspot is installed, run as your normal desktop user through sudo:
-
-```bash
-sudo bash ./install-switchnest-plasma67-panel-toggle.sh
-```
-
-Right-click the taskbar, choose **Enter Edit Mode → Add Widgets**, find **SwitchNest Hotspot Toggle**, and drag it onto the panel. If it does not appear, sign out and back into Desktop Mode.
-
-- OFF → click: starts the hotspot using the same ON operation as menu Option 2.
-- ON → click: stops it and attempts to restore the previous Wi-Fi, matching Option 3 with its prompts accepted.
-
-This is a separate widget. It does not replace the compiled KDE network applet. Its polkit rule authorizes the installing, active local desktop user to run only the fixed helper, whose accepted actions are ON/OFF/toggle. See [security notes](docs/SECURITY.md).
-
-To remove the widget, remove it from the panel and run:
+To remove the taskbar widget and its helper, first close the Control Center and run:
 
 ```bash
 sudo bash ./install-switchnest-plasma67-panel-toggle.sh --remove
 ```
 
-The hotspot remains installed. To stop the hotspot and disable boot startup, choose Option 3 in the manager.
+**Warning:** Removing the helper also disables the v8 Control Center's privileged hotspot ON/OFF controls until Step 2 is reinstalled. The v7.1 hotspot backend remains installed.
 
 ## Documentation and checks
 
