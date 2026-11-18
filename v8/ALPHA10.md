@@ -1,0 +1,3 @@
+# Alpha.10
+
+Rollback: milestone/v8.0-alpha.9.1. Hotspot unchanged. Recursive deletion retained. Transfer preflight estimates source bytes; curl progress percentages estimate cumulative transferred bytes and average speed. ETA includes remaining source bytes, can overestimate with skipped files, and excludes future verification overhead. Completion indicates traversal complete, not that skipped files were copied. Byte-offset resume remains unavailable pending server validation. Larger touch targets, hidden-file toggle and GiB formatting. Folder property scans reduce repeated per-file listing operations. Test large files, nested folders, skip/replace/rename, cancellation, zero-byte files, deletion, retry and small display layout. No hardware or automated validation yet.
