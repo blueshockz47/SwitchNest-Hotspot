@@ -10,6 +10,10 @@ Local Wi-Fi between a Linux host and a Nintendo Switch 2 (currently tested on St
 
 **Review snapshot: v7.1.** The user confirmed the v7 open hotspot, Plasma 6.7.3 widget, Sunshine/Moonlight streaming and Steam Input mouse controls on their Steam Deck/Switch 2 setup. The newer v7.1 password feature has local syntax and mocked tests; WPA2 activation still needs hardware confirmation. This repository is being prepared for private review before any public release.
 
+## v8.0-RC.1 Control Center (development preview)
+
+On an existing working v7.1 SteamOS installation, close the GUI and run `bash install-switchnest-v8.sh` from this checkout as your normal user. This installs the desktop application only; it does not change networking. See [RC.1 installation and validation](v8/RC1.md). Hardware validation remains pending; this is not a stable release.
+
 ## Features
 
 - SSID `SteamDeck-Switch2`; Steam Deck address `10.42.60.1/24`.
