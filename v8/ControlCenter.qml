@@ -8,7 +8,7 @@ ApplicationWindow {
     visible: true
     width: 960
     height: 620
-    minimumWidth: 700
+    minimumWidth: 620
     minimumHeight: 480
     title: "SwitchNest Control Center"
     Material.theme: Material.Dark
@@ -17,6 +17,8 @@ ApplicationWindow {
     property var report: ({})
     property bool busy: false
     property string notice: "Waiting for diagnostics"
+    property var hotspot: report.hotspot || ({state: "unknown"})
+    property string http: report.http_service ? report.http_service.output : "Unknown"
     property string dns: report.dns_service ? report.dns_service.output : "Unknown"
     property color muted: "#98a5b5"
     property color accent: "#52e0ae"
@@ -47,13 +49,13 @@ ApplicationWindow {
         spacing: 0
         Rectangle {
             color: "#161c25"
-            Layout.preferredWidth: 190
+            Layout.preferredWidth: root.width < 800 ? 145 : 190
             Layout.fillHeight: true
             ColumnLayout {
                 anchors.fill: parent
                 anchors.margins: 16
                 spacing: 10
-                Label { text: "◉  SwitchNest"; font.pixelSize: 23; font.bold: true; color: root.accent }
+                Label { text: "◉  SwitchNest"; font.pixelSize: root.width < 800 ? 17 : 23; font.bold: true; color: root.accent }
                 Label { text: "CONTROL CENTER"; font.pixelSize: 11; color: root.muted }
                 Item { Layout.preferredHeight: 20 }
                 NavButton { text: "Overview"; page: 0 }
@@ -63,14 +65,14 @@ ApplicationWindow {
                 NavButton { text: "Diagnostics"; page: 4 }
                 NavButton { text: "Settings"; page: 5 }
                 Item { Layout.fillHeight: true }
-                Label { text: "v8.0-alpha.2"; color: root.accent }
+                Label { text: "v8.0-alpha.3"; color: root.accent }
                 Label { text: "Developer preview"; color: root.muted; font.pixelSize: 12 }
             }
         }
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.margins: 22
+            Layout.margins: root.width < 800 ? 12 : 22
             spacing: 14
             RowLayout {
                 Layout.fillWidth: true
@@ -94,11 +96,10 @@ ApplicationWindow {
                                 anchors.fill: parent
                                 anchors.margins: 16
                                 Label { text: "OFFLINE HOTSPOT"; color: root.muted; font.pixelSize: 12 }
-                                Label { text: "SwitchNest network"; font.pixelSize: 25; font.bold: true }
+                                Label { text: root.hotspot.state === "on" ? "Hotspot active" : root.hotspot.state === "off" ? "Hotspot off" : "Status unknown"; font.pixelSize: 25; font.bold: true; color: root.hotspot.state === "on" ? root.accent : root.muted }
                                 Label { text: "Powered by your existing v7.1 installation"; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
                                 RowLayout {
-                                    Button { text: "Turn ON"; highlighted: true; enabled: !root.busy; onClicked: controller.action("on") }
-                                    Button { text: "Turn OFF"; enabled: !root.busy; onClicked: controller.action("off") }
+                                    Button { text: root.hotspot.state === "on" ? "Turn OFF" : "Turn ON"; highlighted: root.hotspot.state !== "on"; enabled: !root.busy && (root.hotspot.state === "on" || root.hotspot.state === "off"); onClicked: controller.action(root.hotspot.state === "on" ? "off" : "on") }
                                     BusyIndicator { running: root.busy; visible: running; implicitWidth: 30; implicitHeight: 30 }
                                 }
                             }
@@ -119,6 +120,31 @@ ApplicationWindow {
                                     anchors.fill: parent; anchors.margins: 14
                                     Label { text: "ISOLATION"; color: root.muted; font.pixelSize: 12 }
                                     Label { text: "Unverified"; font.pixelSize: 18; color: "#f2bf69" }
+                                }
+                            }
+                        }
+                        Panel {
+                            implicitHeight: networkInfo.implicitHeight + 28
+                            ColumnLayout {
+                                id: networkInfo
+                                anchors.fill: parent; anchors.margins: 14
+                                Label { text: "Network information"; font.bold: true }
+                                Label { text: "SSID: " + (root.hotspot.ssid || "Unavailable"); Layout.fillWidth: true; wrapMode: Text.Wrap }
+                                Label { text: "Host IPv4: " + (root.hotspot.ip || "Unavailable"); Layout.fillWidth: true; wrapMode: Text.Wrap }
+                                Label { text: "Security: " + (root.hotspot.security || "Unavailable"); Layout.fillWidth: true; wrapMode: Text.Wrap }
+                                Label { text: "HTTP service: " + root.http; color: root.http === "active" ? root.accent : root.muted }
+                            }
+                        }
+                        Panel {
+                            implicitHeight: clientsInfo.implicitHeight + 28
+                            ColumnLayout {
+                                id: clientsInfo
+                                anchors.fill: parent; anchors.margins: 14
+                                Label { text: "Connected Wi-Fi stations"; font.bold: true }
+                                Label { text: Array.isArray(root.hotspot.stations) ? String(root.hotspot.stations.length) + " associated stations" : "Station count unavailable"; color: root.accent }
+                                Repeater {
+                                    model: root.hotspot.stations || []
+                                    delegate: Label { required property string modelData; text: modelData; color: root.muted }
                                 }
                             }
                         }
@@ -164,13 +190,13 @@ ApplicationWindow {
             }
             Rectangle {
                 Layout.fillWidth: true
-                implicitHeight: 58
+                implicitHeight: 82
                 color: "#1b222d"
                 radius: 8
                 ScrollView {
                     anchors.fill: parent
                     anchors.margins: 8
-                    TextArea { text: root.notice; readOnly: true; wrapMode: TextEdit.Wrap; color: root.muted; font.pixelSize: 12 }
+                    TextArea { text: root.notice; readOnly: true; selectByMouse: true; wrapMode: TextEdit.Wrap; color: root.muted; font.pixelSize: 13 }
                 }
             }
         }
