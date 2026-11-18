@@ -4,7 +4,7 @@ import json
 import datetime
 import time
 import threading
-from v8.ftp_tree import Tree, delete_local
+from v8.ftp_tree import Tree, delete_local, valid, endpoint_allowed
 import os
 from pathlib import Path
 import re
@@ -92,8 +92,7 @@ class Browser(QObject):
         self.changed.emit()
 
     def valid_name(self, name):
-        return bool(name and name not in (".", "..") and "/" not in name
-                    and not any(ord(c) < 32 or ord(c) == 127 for c in name))
+        return valid(name)
 
     def url(self, name="", directory=False):
         path = self.remote + name
@@ -135,7 +134,7 @@ class Browser(QObject):
         try:
             ip = ipaddress.IPv4Address(host.strip())
             n = int(port)
-            if ip not in ipaddress.IPv4Network("10.42.60.0/24") or int(ip) & 255 in (0, 1, 255) or not 1 <= n <= 65535:
+            if not endpoint_allowed(ip) or not 1 <= n <= 65535:
                 raise ValueError()
         except ValueError:
             self.status = "Enter a local client address and valid port."
@@ -152,7 +151,7 @@ class Browser(QObject):
     def list_remote(self):
         try:
             ip=ipaddress.IPv4Address(self.host)
-            if ip not in ipaddress.IPv4Network("10.42.60.0/24") or int(ip)%256 in (0,1,255) or not 1<=int(self.port)<=65535:
+            if not endpoint_allowed(ip) or not 1<=int(self.port)<=65535:
                 raise ValueError()
         except ValueError:
             self.status="Invalid saved FTP endpoint; connect again."
@@ -594,7 +593,7 @@ class Browser(QObject):
                 expected=next((x.get("size") for x in self.remote_rows if x["name"]==self.current_name),None)
                 if expected is not None and self.temp.stat().st_size!=expected:
                     raise OSError("Download size verification failed")
-                os.link(self.temp, self.dest)
+                os.rename(self.temp, self.dest) if os.name=="nt" else os.link(self.temp, self.dest)
                 self.status = "Download complete"
                 self.refresh_local()
             else:
