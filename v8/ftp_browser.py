@@ -109,6 +109,9 @@ class Browser(QObject):
             self.changed.emit()
             return
         self.job = job
+        if job in ("list","manage"):
+            self.transfer_size=self.total=self.completed=0
+            self.current_name=""
         self.started = time.monotonic()
         self.speed = self.bytes_done = 0
         self.busy = True
@@ -147,6 +150,15 @@ class Browser(QObject):
         self.list_remote()
 
     def list_remote(self):
+        try:
+            ip=ipaddress.IPv4Address(self.host)
+            if ip not in ipaddress.IPv4Network("10.42.60.0/24") or int(ip)%256 in (0,1,255) or not 1<=int(self.port)<=65535:
+                raise ValueError()
+        except ValueError:
+            self.status="Invalid saved FTP endpoint; connect again."
+            self.connected=False
+            self.changed.emit()
+            return
         self.connected = False
         self.remote_rows = []
         self.start("list", ["--", self.url(directory=True)])
@@ -315,6 +327,8 @@ class Browser(QObject):
         if row is None or (side=="remote" and not self.connected): return
         local,remote=self.local,self.remote
         self.tree_cancel.clear()
+        self.speed=self.bytes_done=self.transfer_size=self.total=self.completed=0
+        self.progress=0
         self.busy=True
         self.job="tree"
         self.tree_kind="properties"
@@ -366,6 +380,7 @@ class Browser(QObject):
         self.tree_kind="delete"
         self.completed=self.total=0
         self.current_name=names[0]
+        self.speed=self.bytes_done=0
         self.progress=self.transfer_size=0
         self.status="Scanning folder before deletion"
         self.changed.emit()
@@ -570,8 +585,8 @@ class Browser(QObject):
                     if len(parts) == 9 and parts[0][0] in "d-" and self.valid_name(parts[8]):
                         rows.append(dict(name=parts[8], directory=parts[0][0] == "d", size=int(parts[4]) if parts[4].isdigit() and parts[0][0] == "-" else None, date=" ".join(parts[5:8])))
                 self.remote_rows = sorted(rows, key=lambda x: (not x["directory"], x["name"].lower()))
-                self.connected = True
-                self.status = "Directory listed" if rows or not output.strip() else "Listing format unsupported"
+                self.connected = bool(rows or not output.strip() or all(not line.strip() or re.fullmatch(r"total \\d+",line.strip()) for line in output.splitlines()))
+                self.status = "Directory listed" if self.connected else "Listing format unsupported"
                 if self.after_list_status:
                     self.status=self.after_list_status
                     self.after_list_status=""
