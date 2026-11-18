@@ -274,15 +274,20 @@ dns_run(){
   fi
 }
 wait_dns(){
+  # DNS readiness alone does not guarantee DHCP works. A client can associate
+  # with the AP but fail to obtain an address if dnsmasq never bound UDP/67.
   local attempt
   for attempt in {1..15}; do
     if systemctl is-active --quiet "$DNS_UNIT" && \
-       ss -H -4 -lun 'sport = :53' | awk -v ip="$AP_IP:53" '$4==ip {found=1} END{exit !found}'; then
+       ss -H -4 -lun 'sport = :53' | awk -v ip="$AP_IP:53" '$4==ip {found=1} END{exit !found}' && \
+       ss -H -4 -lun 'sport = :67' | awk -v ip="$AP_IP:67" \
+         '$4==ip || $4=="0.0.0.0:67" || $4=="*:67" {found=1} END{exit !found}'; then
       return 0
     fi
     sleep 1
   done
-  log 'DNS did not become ready at the hotspot IP within 15 seconds.'
+  log 'Hotspot DHCP/DNS did not become ready (UDP 67 and UDP 53) within 15 seconds.'
+  journalctl -u "$DNS_UNIT" -n 25 --no-pager || true
   return 1
 }
 
