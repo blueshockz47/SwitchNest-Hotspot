@@ -65,7 +65,7 @@ ApplicationWindow {
                 NavButton { text: "Diagnostics"; page: 4 }
                 NavButton { text: "Settings"; page: 5 }
                 Item { Layout.fillHeight: true }
-                Label { text: "v8.0-alpha.10"; color: root.accent }
+                Label { text: "v8.0-beta.1"; color: root.accent }
                 Label { text: "Developer preview"; color: root.muted; font.pixelSize: 12 }
             }
         }
