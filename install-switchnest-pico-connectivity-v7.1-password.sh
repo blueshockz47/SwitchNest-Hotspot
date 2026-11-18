@@ -96,6 +96,9 @@ apply_wifi_security(){
       nmcli connection modify uuid "$uuid" \
         802-11-wireless-security.key-mgmt wpa-psk \
         802-11-wireless-security.proto rsn \
+        802-11-wireless-security.pairwise ccmp \
+        802-11-wireless-security.group ccmp \
+        802-11-wireless-security.pmf 1 \
         802-11-wireless-security.psk "$password" \
         802-11-wireless-security.psk-flags 0 >/dev/null 2>&1
       ;;
