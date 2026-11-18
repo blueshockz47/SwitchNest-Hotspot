@@ -47,6 +47,7 @@ class Browser(QObject):
         self.tree_event.connect(self.on_tree_event)
         self.tree_finished.connect(self.on_tree_finished)
         self.reconnect = False
+        self.after_list_status = ""
         self.pending = []
         self.last_failed = None
         self.last_request = None
@@ -497,6 +498,7 @@ class Browser(QObject):
             self.status=status
         self.refresh_local()
         if self.connected:
+            self.after_list_status=status
             self.list_remote()
         self.changed.emit()
 
@@ -541,6 +543,9 @@ class Browser(QObject):
         try:
             if not ok:
                 self.status = "Cancelled" if self.cancelled else "FTP failed: " + self.err[-500:]
+                if self.job=="list" and self.after_list_status:
+                    self.status=self.after_list_status+"; refresh: "+self.status
+                    self.after_list_status=""
                 if self.job == "upload":
                     self.status += " — remote file may be incomplete."
             elif self.job == "list":
@@ -552,6 +557,9 @@ class Browser(QObject):
                 self.remote_rows = sorted(rows, key=lambda x: (not x["directory"], x["name"].lower()))
                 self.connected = True
                 self.status = "Directory listed" if rows or not output.strip() else "Listing format unsupported"
+                if self.after_list_status:
+                    self.status=self.after_list_status
+                    self.after_list_status=""
             elif self.job == "download":
                 expected=next((x.get("size") for x in self.remote_rows if x["name"]==self.current_name),None)
                 if expected is not None and self.temp.stat().st_size!=expected:
