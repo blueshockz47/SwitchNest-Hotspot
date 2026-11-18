@@ -139,3 +139,51 @@ class Tree:
                 self.tick(path,"Completed")
             finally:
                 Path(tmp).unlink(missing_ok=True)
+
+    def delete(self, remote, name):
+        """Plan the entire tree before issuing any destructive command."""
+        plan=[]
+        def visit(parent, entry, directory, depth):
+            self.check()
+            if depth>64 or not valid(entry) or len(plan)>=100000:
+                raise ValueError("Unsupported name or tree limit")
+            path=parent+entry
+            if directory:
+                for child,isdir in self.entries(path+"/").items():
+                    visit(path+"/",child,isdir,depth+1)
+            plan.append((parent,path,directory))
+        entries=self.entries(remote)
+        if name not in entries:
+            raise ValueError("Entry no longer exists")
+        visit(remote,name,entries[name],0)
+        for parent,path,directory in plan:
+            self.check()
+            self.run(parent,["--quote",("RMD " if directory else "DELE ")+path,"--output",os.devnull])
+            self.report(path,"Deleted")
+
+def delete_local(root, cancelled, report):
+    plan=[]
+    def visit(path,depth):
+        if cancelled():
+            raise InterruptedError("Deletion cancelled")
+        if depth>64 or len(plan)>=100000 or path.is_symlink():
+            raise ValueError("Unsupported link or tree limit")
+        if path.is_dir():
+            for child in path.iterdir():
+                visit(child,depth+1)
+            plan.append((path,True))
+        elif path.is_file():
+            plan.append((path,False))
+        else:
+            raise ValueError("Unsupported file type")
+    visit(root,0)
+    for path,directory in plan:
+        if cancelled():
+            raise InterruptedError("Deletion cancelled")
+        if path.is_symlink():
+            raise ValueError("Symbolic link encountered")
+        if directory:
+            path.rmdir()
+        else:
+            path.unlink()
+        report(str(path),"Deleted")
