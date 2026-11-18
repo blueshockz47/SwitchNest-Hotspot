@@ -2,6 +2,7 @@
 import ipaddress
 import json
 import datetime
+import time
 import os
 from pathlib import Path
 import re
@@ -32,6 +33,11 @@ class Browser(QObject):
         self.total = 0
         self.completed = 0
         self.current_name = ""
+        self.history = []
+        self.transfer_size = 0
+        self.started = 0
+        self.speed = 0
+        self.bytes_done = 0
         self.temp = None
         self.dest = None
         self.cancelled = False
@@ -46,7 +52,7 @@ class Browser(QObject):
     def state(self):
         return json.dumps(dict(host=self.host, port=self.port, local=str(self.local),
             remote=self.remote, localRows=self.local_rows, remoteRows=self.remote_rows,
-            status=self.status, progress=self.progress, busy=self.busy, connected=self.connected, total=self.total, completed=self.completed, current=self.current_name))
+            status=self.status, progress=self.progress, busy=self.busy, connected=self.connected, total=self.total, completed=self.completed, current=self.current_name, history=self.history, speed=self.speed, bytesDone=self.bytes_done, transferSize=self.transfer_size))
 
     def refresh_local(self):
         try:
@@ -75,6 +81,8 @@ class Browser(QObject):
             self.changed.emit()
             return
         self.job = job
+        self.started = time.monotonic()
+        self.speed = self.bytes_done = 0
         self.busy = True
         self.cancelled = False
         self.progress = 0
@@ -193,6 +201,8 @@ class Browser(QObject):
     def next_file(self):
         direction, name = self.queue.pop(0)
         self.current_name = name
+        rows = self.local_rows if direction == "upload" else self.remote_rows
+        self.transfer_size = next((x.get("size") or 0 for x in rows if x["name"] == name), 0)
         if direction == "upload":
             self.upload(name, True)
         else:
@@ -200,6 +210,47 @@ class Browser(QObject):
         if not self.busy:
             self.queue.clear()
             self.status = "Batch stopped: " + self.status
+            self.changed.emit()
+
+    @Slot(str, str, str, str)
+    def manage(self, side, action, name, new_name):
+        if self.busy or side not in ("local", "remote") or action not in ("mkdir", "rename", "delete"):
+            return
+        try:
+            rows = self.local_rows if side == "local" else self.remote_rows
+            existing = {x["name"]: x for x in rows}
+            if action != "mkdir" and (not self.valid_name(name) or name not in existing):
+                raise ValueError("Select an existing entry.")
+            if action != "delete" and (not self.valid_name(new_name) or new_name in existing):
+                raise ValueError("Invalid or existing destination name.")
+            if side == "local":
+                p = self.local / name
+                target = self.local / new_name
+                if action == "mkdir":
+                    target.mkdir()
+                elif p.is_symlink():
+                    raise ValueError("Symbolic links are not supported.")
+                elif action == "rename":
+                    if os.path.lexists(target):
+                        raise ValueError("Destination exists.")
+                    p.rename(target)
+                elif p.is_dir():
+                    p.rmdir()
+                else:
+                    p.unlink()
+                self.status = "Local operation complete"
+                self.refresh_local()
+            elif self.connected:
+                # Absolute FTP paths, with control characters rejected above.
+                source = self.remote + name
+                target = self.remote + new_name
+                commands = ["MKD " + target] if action == "mkdir" else ["RNFR " + source, "RNTO " + target] if action == "rename" else [("RMD " if existing[name]["directory"] else "DELE ") + source]
+                args = []
+                for command in commands:
+                    args += ["--quote", command]
+                self.start("manage", args + ["--output", os.devnull, "--", self.url(directory=True)])
+        except (OSError, ValueError) as e:
+            self.status = str(e)
             self.changed.emit()
 
     @Slot()
@@ -214,6 +265,9 @@ class Browser(QObject):
         matches = re.findall(r"(\d+(?:\.\d+)?)%", self.err)
         if matches:
             self.progress = min(100, float(matches[-1]))
+            if self.job in ("upload", "download"):
+                self.bytes_done = int(self.transfer_size * self.progress / 100)
+                self.speed = int(self.bytes_done / max(0.1, time.monotonic() - self.started))
         self.changed.emit()
 
     def cleanup(self):
@@ -253,7 +307,7 @@ class Browser(QObject):
                 self.status = "Download complete"
                 self.refresh_local()
             else:
-                self.status = "Upload complete"
+                self.status = "Operation complete" if self.job == "manage" else "Upload complete"
             if ok:
                 self.progress = 100
         except OSError as e:
@@ -262,6 +316,8 @@ class Browser(QObject):
         finally:
             self.cleanup()
             self.changed.emit()
+        if self.job in ("upload", "download"):
+            self.history = ([dict(name=self.current_name, direction=self.job, result="Completed" if ok else "Cancelled" if self.cancelled else "Failed", date=datetime.datetime.now().isoformat(timespec="seconds"))] + self.history)[:100]
         if self.job in ("upload", "download") and self.total:
             if ok:
                 self.completed += 1
@@ -273,5 +329,5 @@ class Browser(QObject):
                 self.queue.clear()
                 self.status += f" ({self.completed}/{self.total} completed)"
             self.changed.emit()
-        if ok and self.job == "upload":
+        if ok and self.job in ("upload", "manage"):
             self.list_remote()
