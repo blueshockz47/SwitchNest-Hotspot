@@ -9,9 +9,15 @@ import shutil
 import re
 import time
 
+def windows_name(name):
+    return (not any(c in name for c in '\\/:*?"<>|') and
+            not name.endswith((" ", ".")) and
+            not re.fullmatch(r"(?i:CON|PRN|AUX|NUL|COM[1-9¹²³]|LPT[1-9¹²³])", name.split(".")[0].rstrip()))
+
 def valid(name):
     return bool(name and name not in (".", "..") and "/" not in name and
-                not any(ord(c)<32 or ord(c)==127 for c in name))
+                not any(ord(c)<32 or ord(c)==127 for c in name) and
+                (os.name!="nt" or windows_name(name)))
 
 def listing(text):
     result = {}
@@ -28,10 +34,15 @@ def listing(text):
         result[p[8]] = p[0][0]=="d"
     return result
 
+def endpoint_allowed(ip):
+    if os.name=="nt":
+        return any(ip in ipaddress.IPv4Network(n) for n in ("192.168.0.0/16","10.0.0.0/8","172.16.0.0/12")) and int(ip)%256 not in (0,255)
+    return ip in ipaddress.IPv4Network("10.42.60.0/24") and int(ip)%256 not in (0,1,255)
+
 class Tree:
     def __init__(self, host, port, policy, cancelled, report):
         ip=ipaddress.IPv4Address(host)
-        if ip not in ipaddress.IPv4Network("10.42.60.0/24") or int(ip)%256 in (0,1,255) or not 1<=int(port)<=65535:
+        if not endpoint_allowed(ip) or not 1<=int(port)<=65535:
             raise ValueError("Invalid local FTP endpoint")
         if policy not in ("skip","replace","rename"):
             raise ValueError("Invalid conflict policy")
@@ -53,7 +64,7 @@ class Tree:
     def run(self, path, args=(), read=False, size=None):
         self.check()
         cmd=self.base.copy()
-        if size is not None:
+        if size is not None and hasattr(os,"pread"):
             cmd.remove('--silent')
             cmd+=['--progress-bar']
         if read:
@@ -66,7 +77,7 @@ class Tree:
                         p.kill()
                         p.wait()
                         self.check()
-                    if size is not None and time.monotonic()-last>=.25:
+                    if size is not None and hasattr(os,"pread") and time.monotonic()-last>=.25:
                         last=time.monotonic()
                         # Read with independent file description: do not move curl's write offset.
                         data=os.pread(err.fileno(),8192,max(0,os.fstat(err.fileno()).st_size-8192))
@@ -223,6 +234,8 @@ class Tree:
                     raise OSError("Download size verification failed")
                 if self.policy=="replace":
                     os.replace(tmp,dest)
+                elif os.name=="nt":
+                    os.rename(tmp,dest)
                 else:
                     os.link(tmp,dest)
                 self.tick(path,"Verified")
