@@ -1,10 +1,14 @@
 """Qt desktop preview for the installed v7.1 manager. Run as an ordinary user."""
 import json
+import ipaddress
+import re
+import shutil
+import stat
 import os
 import sys
 from pathlib import Path
 from PySide6.QtCore import QObject, Signal, Slot, QProcess, QTimer, QUrl
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QGuiApplication, QDesktopServices
 from PySide6.QtQml import QQmlApplicationEngine
 
 class Controller(QObject):
@@ -42,6 +46,65 @@ class Controller(QObject):
         self.kind = "action"
         self.busyChanged.emit(True)
         self.process.start("/usr/bin/pkexec", [helper, action])
+
+    @Slot(str)
+    def sunshine(self, action):
+        if action not in ("start", "stop") or self.process.state() != QProcess.NotRunning:
+            return
+        executable = shutil.which("flatpak")
+        if not executable:
+            self.message.emit("Flatpak is unavailable.")
+            return
+        app = "dev.lizardbyte.app.Sunshine"
+        if action == "start":
+            ok, _ = QProcess.startDetached(executable, ["run", app])
+            self.message.emit("Sunshine launch requested." if ok else "Sunshine launch failed.")
+            QTimer.singleShot(2000, self.refresh)
+        else:
+            self.kind = "action"
+            self.busyChanged.emit(True)
+            self.process.start(executable, ["kill", app])
+
+    @Slot()
+    def sunshine_web(self):
+        QDesktopServices.openUrl(QUrl("https://localhost:47990"))
+
+    @Slot(str, str)
+    def open_ftp(self, host, port):
+        try:
+            address = ipaddress.IPv4Address(host.strip())
+            number = int(port)
+            if not 1 <= number <= 65535 or address not in ipaddress.IPv4Network("10.42.60.0/24"):
+                raise ValueError()
+            if address in (ipaddress.IPv4Address("10.42.60.0"), ipaddress.IPv4Address("10.42.60.1"), ipaddress.IPv4Address("10.42.60.255")):
+                raise ValueError()
+        except ValueError:
+            self.message.emit("Enter a client IPv4 address in 10.42.60.0/24 and a valid port.")
+            return
+        dolphin = shutil.which("dolphin")
+        if not dolphin:
+            self.message.emit("KDE Dolphin is unavailable.")
+            return
+        ok, _ = QProcess.startDetached(dolphin, [f"ftp://{address}:{number}/"])
+        self.message.emit("Dolphin launch requested. FTP is unencrypted." if ok else "Dolphin launch failed.")
+
+    @Slot()
+    def wifi_settings(self):
+        manager = Path("/etc/steamdeck-switch2/manager.sh")
+        try:
+            st = manager.lstat()
+            parent = manager.parent.lstat()
+            if not stat.S_ISREG(st.st_mode) or not stat.S_ISDIR(parent.st_mode) or any(x.st_uid != 0 or x.st_mode & 0o022 for x in (st, parent)):
+                raise OSError("Untrusted manager")
+        except OSError as exc:
+            self.message.emit(str(exc))
+            return
+        konsole = shutil.which("konsole")
+        if not konsole:
+            self.message.emit("Konsole unavailable.")
+            return
+        ok, _ = QProcess.startDetached(konsole, ["--hold", "-e", "/usr/bin/sudo", "/usr/bin/bash", str(manager)])
+        self.message.emit("Use option 5 in the existing manager to change WPA2 settings." if ok else "Konsole launch failed.")
 
     def failed(self, error):
         self.message.emit(self.process.errorString())
