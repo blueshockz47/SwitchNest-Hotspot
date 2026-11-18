@@ -13,4 +13,4 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m compileall -q v8
-      - run: python -m unittest -v v8.test_ftp_tree v8.test_install v8.test_updates
+      - run: python -m unittest -v v8.test_ftp_tree v8.test_install v8.test_updates v8.test_autostart
