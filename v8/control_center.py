@@ -7,10 +7,10 @@ import stat
 import os
 import sys
 import threading
-from v8 import updates
+from v8 import updates, autostart
 from pathlib import Path
 from v8.ftp_browser import Browser
-from PySide6.QtCore import QObject, Signal, Slot, QProcess, QTimer, QUrl
+from PySide6.QtCore import QObject, Signal, Slot, Property, QLockFile, QStandardPaths, QProcess, QTimer, QUrl
 from PySide6.QtGui import QGuiApplication, QDesktopServices
 from PySide6.QtQml import QQmlApplicationEngine
 
@@ -20,6 +20,7 @@ class Controller(QObject):
     busyChanged = Signal(bool)
     updateResult = Signal(str)
     updateBusy = Signal(bool)
+    autostartChanged = Signal()
 
     def __init__(self):
         super().__init__()
@@ -30,6 +31,19 @@ class Controller(QObject):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.refresh)
         self.timer.start(10000)
+
+    @Property(bool, notify=autostartChanged)
+    def startOnLogin(self):
+        return autostart.enabled()
+
+    @Slot(bool)
+    def set_autostart(self, enabled):
+        try:
+            autostart.set_enabled(enabled)
+            self.message.emit("Desktop autostart enabled" if enabled else "Desktop autostart disabled")
+        except (OSError,RuntimeError) as exc:
+            self.message.emit(str(exc))
+        self.autostartChanged.emit()
 
     @Slot(str)
     def check_updates(self, channel):
@@ -148,6 +162,11 @@ def main():
         sys.exit("Run the control center as your normal desktop user, not root.")
     app = QGuiApplication(sys.argv)
     app.setApplicationName("SwitchNest Control Center")
+    runtime=Path(QStandardPaths.writableLocation(QStandardPaths.RuntimeLocation))
+    lock=QLockFile(str(runtime/"switchnest-control-center.lock"))
+    if not lock.tryLock(0):
+        print("SwitchNest is already running or the session lock is unavailable.")
+        return 0
     engine = QQmlApplicationEngine()
     controller = Controller()
     engine.rootContext().setContextProperty("controller", controller)
