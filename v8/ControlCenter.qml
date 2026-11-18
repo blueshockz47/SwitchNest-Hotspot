@@ -64,13 +64,13 @@ ApplicationWindow {
                 Item { Layout.preferredHeight: 20 }
                 NavButton { text: "Overview"; page: 0 }
                 NavButton { text: "Network"; page: 1 }
-                NavButton { text: "Streaming"; page: 2 }
+                NavButton { text: "Streaming"; page: 2; visible: !windowsPreview }
                 NavButton { text: "Files"; page: 3 }
                 NavButton { text: "Diagnostics"; page: 4 }
                 NavButton { text: "Settings"; page: 5 }
-                NavButton { text: root.updateStatus.startsWith("Update available") ? "Updates •" : "Updates"; page: 6 }
+                NavButton { visible: !windowsPreview; text: root.updateStatus.startsWith("Update available") ? "Updates •" : "Updates"; page: 6 }
                 Item { Layout.fillHeight: true }
-                Label { text: "v8.0-RC.3"; color: root.accent }
+                Label { text: "Windows alpha.1"; color: root.accent }
                 Label { text: "Developer preview"; color: root.muted; font.pixelSize: 12 }
             }
         }
@@ -101,14 +101,15 @@ ApplicationWindow {
                                 id: hotspotLayout
                                 anchors.fill: parent
                                 anchors.margins: 16
-                                Label { text: "OFFLINE HOTSPOT"; color: root.muted; font.pixelSize: 12 }
+                                Label { text: windowsPreview ? "WINDOWS NETWORK" : "OFFLINE HOTSPOT"; color: root.muted; font.pixelSize: 12 }
                                 RowLayout {
                                     Layout.fillWidth: true
-                                    Label { text: root.hotspot.state === "on" ? "Hotspot Active" : root.hotspot.state === "off" ? "Hotspot Inactive" : "Status unknown"; font.pixelSize: root.width < 800 ? 18 : 25; font.bold: true; color: root.hotspot.state === "on" ? root.accent : root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
-                                    Button { text: root.hotspot.state === "on" ? "Turn OFF" : "Turn ON"; highlighted: root.hotspot.state !== "on"; enabled: !root.busy && (root.hotspot.state === "on" || root.hotspot.state === "off"); onClicked: controller.action(root.hotspot.state === "on" ? "off" : "on") }
+                                    Label { text: windowsPreview ? "Local FTP preview" : root.hotspot.state === "on" ? "Hotspot Active" : root.hotspot.state === "off" ? "Hotspot Inactive" : "Status unknown"; font.pixelSize: root.width < 800 ? 18 : 25; font.bold: true; color: root.hotspot.state === "on" ? root.accent : root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                                    Button { visible: !windowsPreview; text: root.hotspot.state === "on" ? "Turn OFF" : "Turn ON"; highlighted: root.hotspot.state !== "on"; enabled: !root.busy && (root.hotspot.state === "on" || root.hotspot.state === "off"); onClicked: controller.action(root.hotspot.state === "on" ? "off" : "on") }
                                     BusyIndicator { running: root.busy; visible: running; implicitWidth: 30; implicitHeight: 30 }
                                 }
-                                Label { text: "v7.1 backend"; color: root.muted }
+                                Label { text: windowsPreview ? "Network isolation is not managed" : "v7.1 backend"; color: root.muted }
+                                Button { visible: windowsPreview; text: "Windows Mobile Hotspot settings"; onClicked: controller.windows_hotspot() }
                             }
                         }
                         RowLayout {
@@ -194,6 +195,7 @@ ApplicationWindow {
                     Label { text: "Settings"; font.pixelSize: 22 }
                     CheckBox {
                         id: launchAtLogin
+                        visible: !windowsPreview
                         text: "Start SwitchNest on desktop login"
                         checked: controller.startOnLogin
                         onToggled: controller.set_autostart(checked)
@@ -203,15 +205,15 @@ ApplicationWindow {
                         }
                     }
                     Label { text: "Launches the app in Desktop Mode, not the hotspot. Gaming Mode is not supported."; wrapMode: Text.Wrap; Layout.fillWidth: true; color: root.muted }
-                    Label { text: "Wi-Fi settings use the existing v7.1 manager."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
-                    Button { text: "Change Wi-Fi password"; enabled: !root.busy; onClicked: controller.wifi_settings() }
+                    Label { text: windowsPreview ? "Windows network setup is manual." : "Wi-Fi settings use the existing v7.1 manager."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                    Button { visible: !windowsPreview; text: "Change Wi-Fi password"; enabled: !root.busy; onClicked: controller.wifi_settings() }
                     Label { text: "Select option 5 in Konsole. SSID changes are not supported in this preview."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Label { text: "Refresh interval: 10 seconds"; color: root.muted }
                     Item { Layout.fillHeight: true }
                 }
                 ColumnLayout {
                     Label { text: "Software updates"; font.pixelSize: 22 }
-                    Label { text: "Installed: v8.0-RC.3"; color: root.accent }
+                    Label { text: "Installed: Windows alpha.1"; color: root.accent }
                     ComboBox { id: channel; model: ["Development", "Stable"]; enabled: !root.updateBusy }
                     Label { text: root.updateStatus; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Button { text: root.updateBusy ? "Checking..." : "Check for Updates"; enabled: !root.updateBusy; onClicked: controller.check_updates(channel.currentIndex===0?"development":"stable") }
