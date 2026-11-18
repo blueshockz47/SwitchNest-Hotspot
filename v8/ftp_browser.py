@@ -139,6 +139,8 @@ class Browser(QObject):
         self.settings.setValue("host", self.host)
         self.settings.setValue("port", self.port)
         self.remote = "/"
+        self.navigation["remote"].clear()
+        self.forward_paths["remote"].clear()
         self.list_remote()
 
     def list_remote(self):
@@ -549,7 +551,8 @@ class Browser(QObject):
                 self.connected = True
                 self.status = "Directory listed" if rows or not output.strip() else "Listing format unsupported"
             elif self.job == "download":
-                if self.temp.stat().st_size!=self.transfer_size:
+                expected=next((x.get("size") for x in self.remote_rows if x["name"]==self.current_name),None)
+                if expected is not None and self.temp.stat().st_size!=expected:
                     raise OSError("Download size verification failed")
                 os.link(self.temp, self.dest)
                 self.status = "Download complete"
