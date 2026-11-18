@@ -30,6 +30,20 @@ python3 -m v8.install rollback
 
 See [v8 release notes and verification requirements](v8/STABLE.md). **Public hardware validation is still pending; do not treat the isolation indicator as a firewall audit.** Windows is experimental and is not included in this Linux release.
 
+## Control Center Preview
+
+Actual SwitchNest Linux v8.0.0 running in SteamOS KDE Desktop Mode.
+
+### Sunshine / Moonlight
+
+![SwitchNest v8.0.0 Control Center Streaming page showing Sunshine start, stop and web UI controls](docs/images/control-center-streaming.jpg)
+
+### Files — Nintendo Switch 2 FTP
+
+![SwitchNest v8.0.0 Control Center Files page showing local SteamOS files alongside Switch 2 FTP folders](docs/images/control-center-files.jpg)
+
+*Screenshots supplied by the project maintainer. Device and network details shown are illustrative; features depend on the installed v7.1 backend and FTP service.*
+
 ## Features
 
 - SSID `SteamDeck-Switch2`; Steam Deck address `10.42.60.1/24`.
