@@ -70,7 +70,7 @@ ApplicationWindow {
                 NavButton { text: "Settings"; page: 5 }
                 NavButton { text: root.updateStatus.startsWith("Update available") ? "Updates •" : "Updates"; page: 6 }
                 Item { Layout.fillHeight: true }
-                Label { text: "v8.0-RC.2"; color: root.accent }
+                Label { text: "v8.0-RC.3"; color: root.accent }
                 Label { text: "Developer preview"; color: root.muted; font.pixelSize: 12 }
             }
         }
@@ -192,6 +192,17 @@ ApplicationWindow {
                 }
                 ColumnLayout {
                     Label { text: "Settings"; font.pixelSize: 22 }
+                    CheckBox {
+                        id: launchAtLogin
+                        text: "Start SwitchNest on desktop login"
+                        checked: controller.startOnLogin
+                        onToggled: controller.set_autostart(checked)
+                        Connections {
+                            target: controller
+                            function onAutostartChanged() { launchAtLogin.checked = controller.startOnLogin }
+                        }
+                    }
+                    Label { text: "Launches the app in Desktop Mode, not the hotspot. Gaming Mode is not supported."; wrapMode: Text.Wrap; Layout.fillWidth: true; color: root.muted }
                     Label { text: "Wi-Fi settings use the existing v7.1 manager."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Button { text: "Change Wi-Fi password"; enabled: !root.busy; onClicked: controller.wifi_settings() }
                     Label { text: "Select option 5 in Konsole. SSID changes are not supported in this preview."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
@@ -200,7 +211,7 @@ ApplicationWindow {
                 }
                 ColumnLayout {
                     Label { text: "Software updates"; font.pixelSize: 22 }
-                    Label { text: "Installed: v8.0-RC.2"; color: root.accent }
+                    Label { text: "Installed: v8.0-RC.3"; color: root.accent }
                     ComboBox { id: channel; model: ["Development", "Stable"]; enabled: !root.updateBusy }
                     Label { text: root.updateStatus; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Button { text: root.updateBusy ? "Checking..." : "Check for Updates"; enabled: !root.updateBusy; onClicked: controller.check_updates(channel.currentIndex===0?"development":"stable") }
