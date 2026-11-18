@@ -9,6 +9,7 @@ ColumnLayout {
     property var remoteSelected: []
     property var uploadName: []
     property int sortMode: 0
+    property bool showHidden: true
     property var deleteNames: []
     function clearSelection() { localSelected=[]; remoteSelected=[]; entryName="" }
     function selectAll() { if (activeSide==="local") localSelected=sorted(dataState.localRows).map(x=>x.name); else remoteSelected=sorted(dataState.remoteRows).map(x=>x.name) }
@@ -51,8 +52,8 @@ ColumnLayout {
     Shortcut { sequence: StandardKey.Copy; enabled: page.visible && !page.dataState.busy && !host.activeFocus && !port.activeFocus && !search.activeFocus && !editDialog.visible && !conflictDialog.visible; onActivated: page.copyFiles() }
     Shortcut { sequence: StandardKey.Paste; enabled: page.visible && !page.dataState.busy && !host.activeFocus && !port.activeFocus && !search.activeFocus && !editDialog.visible && !conflictDialog.visible; onActivated: page.pasteFiles() }
     function toggle(items, name) { return items.indexOf(name) < 0 ? items.concat([name]) : items.filter(x => x !== name) }
-    function sorted(rows) { return rows.filter(x => x.name.toLowerCase().includes(search.text.toLowerCase())).sort((a,b) => a.directory !== b.directory ? (a.directory ? -1 : 1) : sortMode === 1 ? (b.size || 0)-(a.size || 0) || a.name.localeCompare(b.name) : a.name.localeCompare(b.name)) }
-    function sizeText(n) { return n === null || n === undefined ? "" : n >= 1048576 ? (n/1048576).toFixed(1)+" MiB" : n >= 1024 ? (n/1024).toFixed(1)+" KiB" : n+" B" }
+    function sorted(rows) { return rows.filter(x => (showHidden || !x.name.startsWith(".")) && x.name.toLowerCase().includes(search.text.toLowerCase())).sort((a,b) => a.directory !== b.directory ? (a.directory ? -1 : 1) : sortMode === 1 ? (b.size || 0)-(a.size || 0) || a.name.localeCompare(b.name) : a.name.localeCompare(b.name)) }
+    function sizeText(n) { return n === null || n === undefined ? "" : n >= 1073741824 ? (n/1073741824).toFixed(2)+" GiB" : n >= 1048576 ? (n/1048576).toFixed(1)+" MiB" : n >= 1024 ? (n/1024).toFixed(1)+" KiB" : n+" B" }
     Connections {
         target: ftpBrowser
         function onChanged() { page.dataState = JSON.parse(ftpBrowser.state) }
@@ -69,7 +70,10 @@ ColumnLayout {
         Button { text: "★"; onClicked: ftpBrowser.bookmark(page.activeSide); enabled: !page.dataState.busy }
         Button { text: "Bookmarks"; onClicked: bookmarkDialog.open() }
     }
-    TextField { id: search; placeholderText: "Filter files and folders"; Layout.fillWidth: true }
+    RowLayout {
+        TextField { id: search; placeholderText: "Filter files and folders"; Layout.fillWidth: true }
+        CheckBox { text: "Hidden"; checked: page.showHidden; onToggled: { page.showHidden=checked; page.clearSelection() } }
+    }
     RowLayout { Label { text: "Local FTP • PASV"; color: "#98a5b5" } Item { Layout.fillWidth: true } ComboBox { model: ["Name", "Size"]; onCurrentIndexChanged: page.sortMode=currentIndex; enabled: !page.dataState.busy } }
     RowLayout {
         Layout.fillWidth: true
@@ -100,7 +104,7 @@ ColumnLayout {
                     width: ListView.view.width
                     text: (modelData.directory ? "📁 " : "▧ ") + modelData.name + (modelData.directory ? "" : "  ·  " + page.sizeText(modelData.size))
                     font.pixelSize: 13
-                    implicitHeight: 34
+                    implicitHeight: 42
                     ToolTip.visible: hovered
                     ToolTip.text: modelData.name + "  " + (modelData.date || "")
                     highlighted: page.localSelected.indexOf(modelData.name) >= 0
@@ -171,7 +175,7 @@ ColumnLayout {
                     width: ListView.view.width
                     text: (modelData.directory ? "📁 " : "▧ ") + modelData.name + (modelData.directory ? "" : "  ·  " + page.sizeText(modelData.size))
                     font.pixelSize: 13
-                    implicitHeight: 34
+                    implicitHeight: 42
                     ToolTip.visible: hovered
                     ToolTip.text: modelData.name + "  " + (modelData.date || "")
                     highlighted: page.remoteSelected.indexOf(modelData.name) >= 0
@@ -231,7 +235,7 @@ ColumnLayout {
         Button { text: "Queue"; onClicked: queueDialog.open() }
         Label { text: page.activeSide; color: "#52e0ae" }
     }
-    Label { visible: page.dataState.busy && page.dataState.transferSize > 0; text: page.sizeText(page.dataState.bytesDone) + " / " + page.sizeText(page.dataState.transferSize) + " · " + page.sizeText(page.dataState.speed) + "/s" + (page.dataState.speed > 0 ? " · ETA " + Math.ceil((page.dataState.transferSize-page.dataState.bytesDone)/page.dataState.speed) + " s" : ""); Layout.fillWidth: true }
+    Label { visible: page.dataState.busy && page.dataState.transferSize > 0; text: page.sizeText(page.dataState.bytesDone) + " / " + page.sizeText(page.dataState.transferSize) + " · " + page.sizeText(page.dataState.speed) + "/s" + (page.dataState.speed > 0 ? " · ETA " + Math.max(0,Math.ceil((page.dataState.transferSize-page.dataState.bytesDone)/page.dataState.speed)) + " s" : ""); Layout.fillWidth: true }
     ProgressBar { indeterminate: page.dataState.busy && page.dataState.transferSize === 0 && page.dataState.total === 0; Layout.fillWidth: true; from: 0; to: 100; value: page.dataState.total > 0 && page.dataState.busy && page.dataState.current !== "" ? Math.min(100, (page.dataState.completed + page.dataState.progress/100)*100/page.dataState.total) : page.dataState.progress }
     Label { text: page.dataState.status + (page.dataState.total > 0 ? " · " + page.dataState.completed + "/" + page.dataState.total + " files · " + page.dataState.current : page.dataState.completed > 0 ? " · " + page.dataState.completed + " entries" : ""); wrapMode: Text.Wrap; Layout.fillWidth: true; maximumLineCount: 4 }
     RowLayout {
