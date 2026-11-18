@@ -16,6 +16,8 @@ ApplicationWindow {
     color: "#11151c"
     property var report: ({})
     property bool busy: false
+    property bool updateBusy: false
+    property string updateStatus: "Check for published GitHub releases."
     property string notice: "Waiting for diagnostics"
     property var hotspot: report.hotspot || ({state: "unknown"})
     property string http: report.http_service ? report.http_service.output : "Unknown"
@@ -30,6 +32,8 @@ ApplicationWindow {
         }
         function onMessage(message) { root.notice = message }
         function onBusyChanged(value) { root.busy = value }
+        function onUpdateBusy(value) { root.updateBusy = value }
+        function onUpdateResult(value) { root.updateStatus = value }
     }
     component Panel: Rectangle {
         color: "#1b222d"
@@ -64,8 +68,9 @@ ApplicationWindow {
                 NavButton { text: "Files"; page: 3 }
                 NavButton { text: "Diagnostics"; page: 4 }
                 NavButton { text: "Settings"; page: 5 }
+                NavButton { text: root.updateStatus.startsWith("Update available") ? "Updates •" : "Updates"; page: 6 }
                 Item { Layout.fillHeight: true }
-                Label { text: "v8.0-RC.1"; color: root.accent }
+                Label { text: "v8.0-RC.2"; color: root.accent }
                 Label { text: "Developer preview"; color: root.muted; font.pixelSize: 12 }
             }
         }
@@ -76,7 +81,7 @@ ApplicationWindow {
             spacing: 14
             RowLayout {
                 Layout.fillWidth: true
-                Label { text: ["Overview","Network","Streaming","Files","Diagnostics","Settings"][pages.currentIndex]; font.pixelSize: 28; font.bold: true }
+                Label { text: ["Overview","Network","Streaming","Files","Diagnostics","Settings","Updates"][pages.currentIndex]; font.pixelSize: 28; font.bold: true }
                 Item { Layout.fillWidth: true }
                 Button { text: "Refresh"; enabled: !root.busy; onClicked: controller.refresh() }
             }
@@ -91,17 +96,19 @@ ApplicationWindow {
                         width: parent.width
                         spacing: 8
                         Panel {
-                            implicitHeight: 142
+                            implicitHeight: hotspotLayout.implicitHeight + 32
                             ColumnLayout {
+                                id: hotspotLayout
                                 anchors.fill: parent
                                 anchors.margins: 16
                                 Label { text: "OFFLINE HOTSPOT"; color: root.muted; font.pixelSize: 12 }
-                                Label { text: root.hotspot.state === "on" ? "Hotspot active" : root.hotspot.state === "off" ? "Hotspot off" : "Status unknown"; font.pixelSize: 25; font.bold: true; color: root.hotspot.state === "on" ? root.accent : root.muted }
-                                Label { text: "v7.1 backend"; color: root.muted }
                                 RowLayout {
+                                    Layout.fillWidth: true
+                                    Label { text: root.hotspot.state === "on" ? "Hotspot Active" : root.hotspot.state === "off" ? "Hotspot Inactive" : "Status unknown"; font.pixelSize: root.width < 800 ? 18 : 25; font.bold: true; color: root.hotspot.state === "on" ? root.accent : root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
                                     Button { text: root.hotspot.state === "on" ? "Turn OFF" : "Turn ON"; highlighted: root.hotspot.state !== "on"; enabled: !root.busy && (root.hotspot.state === "on" || root.hotspot.state === "off"); onClicked: controller.action(root.hotspot.state === "on" ? "off" : "on") }
                                     BusyIndicator { running: root.busy; visible: running; implicitWidth: 30; implicitHeight: 30 }
                                 }
+                                Label { text: "v7.1 backend"; color: root.muted }
                             }
                         }
                         RowLayout {
@@ -189,6 +196,17 @@ ApplicationWindow {
                     Button { text: "Change Wi-Fi password"; enabled: !root.busy; onClicked: controller.wifi_settings() }
                     Label { text: "Select option 5 in Konsole. SSID changes are not supported in this preview."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Label { text: "Refresh interval: 10 seconds"; color: root.muted }
+                    Item { Layout.fillHeight: true }
+                }
+                ColumnLayout {
+                    Label { text: "Software updates"; font.pixelSize: 22 }
+                    Label { text: "Installed: v8.0-RC.2"; color: root.accent }
+                    ComboBox { id: channel; model: ["Development", "Stable"]; enabled: !root.updateBusy }
+                    Label { text: root.updateStatus; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                    Button { text: root.updateBusy ? "Checking..." : "Check for Updates"; enabled: !root.updateBusy; onClicked: controller.check_updates(channel.currentIndex===0?"development":"stable") }
+                    Button { text: "Open GitHub releases"; onClicked: controller.open_updates(false) }
+                    Button { text: "Open development downloads"; onClicked: controller.open_updates(true) }
+                    Label { text: "Private repository: sign in using GitHub CLI for automatic lookup, or use your browser. Download a trusted ZIP and run the installer to update."; wrapMode: Text.Wrap; Layout.fillWidth: true; color: root.muted }
                     Item { Layout.fillHeight: true }
                 }
             }
