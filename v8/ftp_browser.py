@@ -16,6 +16,7 @@ from PySide6.QtCore import QObject, Signal, Slot, Property, QProcess, QSettings
 class Browser(QObject):
     changed = Signal()
     tree_event = Signal(str, str)
+    tree_metric = Signal(object, object, object)
     tree_finished = Signal(str)
     def __init__(self):
         super().__init__()
@@ -45,6 +46,7 @@ class Browser(QObject):
             self.history=[]
         self.tree_cancel = threading.Event()
         self.tree_event.connect(self.on_tree_event)
+        self.tree_metric.connect(self.on_tree_metric)
         self.tree_finished.connect(self.on_tree_finished)
         self.reconnect = False
         self.after_list_status = ""
@@ -441,13 +443,16 @@ class Browser(QObject):
             self.last_request=(direction,raw,policy,str(local),remote,self.host,self.port)
             self.pending=names.copy()
             self.last_failed=None
+            tree.metric=self.tree_metric.emit
             self.root_total=len(names)
             self.completed=self.total=0
             self.progress=self.transfer_size=0
-            self.status="Recursive transfer in progress"
+            self.speed=self.bytes_done=0
+            self.status="Scanning transfer size"
             self.changed.emit()
             def work():
                 try:
+                    tree.prepare(direction,local,remote,names,allowed)
                     for name in names:
                         self.tree_event.emit(name,"Active")
                         if direction=="upload":
@@ -464,6 +469,14 @@ class Browser(QObject):
             self.status=str(exc)
             self.changed.emit()
 
+    @Slot(object,object,object)
+    def on_tree_metric(self,done,total,speed):
+        self.bytes_done=done
+        self.transfer_size=total
+        self.speed=speed
+        self.progress=min(100,100*done/total) if total else 0
+        self.changed.emit()
+
     @Slot(str,str)
     def on_tree_event(self,name,result):
         self.current_name=name
@@ -473,7 +486,8 @@ class Browser(QObject):
             return
         if result=="Entry finished":
             if name in self.pending: self.pending.remove(name)
-            self.progress=100*(self.root_total-len(self.pending))/self.root_total
+            if not self.transfer_size:
+                self.progress=100*(self.root_total-len(self.pending))/self.root_total
             self.changed.emit()
             return
         self.completed+=1
@@ -493,6 +507,7 @@ class Browser(QObject):
         if getattr(self,"tree_kind","")=="transfer" and status!="Transfer complete" and self.last_request:
             self.last_failed=self.last_request[:1]+(json.dumps(self.pending),)+self.last_request[2:]
         self.pending=[]
+        if status=="Transfer complete": self.progress=100
         if status not in ("Transfer complete","Deletion complete"):
             self.on_tree_event(self.current_name,"Cancelled" if self.tree_cancel.is_set() else "Failed")
             self.status=status
