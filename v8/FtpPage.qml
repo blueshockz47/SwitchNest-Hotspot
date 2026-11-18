@@ -11,9 +11,12 @@ ColumnLayout {
     property int sortMode: 0
     property bool showHidden: true
     property var deleteNames: []
+    property string deleteSide: "local"
+    property string deletePath: ""
+    property bool selectionMode: false
     function clearSelection() { localSelected=[]; remoteSelected=[]; entryName="" }
     function selectAll() { if (activeSide==="local") localSelected=sorted(dataState.localRows).map(x=>x.name); else remoteSelected=sorted(dataState.remoteRows).map(x=>x.name) }
-    function deleteSelected() { deleteNames=(activeSide==="local"?localSelected:remoteSelected).slice(); if(deleteNames.length) batchDelete.open() }
+    function deleteSelected() { deleteSide=activeSide; deletePath=activeSide==="local"?dataState.local:dataState.remote; deleteNames=(activeSide==="local"?localSelected:remoteSelected).slice(); if(deleteNames.length) batchDelete.open() }
     function navigate(action) { clearSelection(); ftpBrowser.navigate(activeSide,action) }
     Shortcut { sequence: "Ctrl+A"; enabled: page.visible && !page.dataState.busy && !search.activeFocus && !host.activeFocus && !port.activeFocus && !editDialog.visible && !conflictDialog.visible && !batchDelete.visible; onActivated: page.selectAll() }
     Shortcut { sequence: "F5"; enabled: page.visible && !page.dataState.busy && page.dataState.connected; onActivated: { page.clearSelection(); ftpBrowser.refresh() } }
@@ -71,7 +74,8 @@ ColumnLayout {
         Button { text: "Bookmarks"; onClicked: bookmarkDialog.open() }
     }
     RowLayout {
-        TextField { id: search; placeholderText: "Filter files and folders"; Layout.fillWidth: true }
+        TextField { id: search; placeholderText: "Filter files and folders"; Layout.fillWidth: true; onTextChanged: page.clearSelection() }
+        CheckBox { text: "Select"; checked: page.selectionMode; onToggled: { page.selectionMode=checked; page.clearSelection() } }
         CheckBox { text: "Hidden"; checked: page.showHidden; onToggled: { page.showHidden=checked; page.clearSelection() } }
     }
     RowLayout { Label { text: "Local FTP • PASV"; color: "#98a5b5" } Item { Layout.fillWidth: true } ComboBox { model: ["Name", "Size"]; onCurrentIndexChanged: page.sortMode=currentIndex; enabled: !page.dataState.busy } }
@@ -112,7 +116,7 @@ ColumnLayout {
                     property string fileName: modelData.name
                     onClicked: {
                         page.activeSide="local"; page.entryName=modelData.name
-                        if (modelData.directory) { page.localSelected=[]; ftpBrowser.local_open(modelData.name); page.entryName="" }
+                        if (modelData.directory && !page.selectionMode) { page.localSelected=[]; ftpBrowser.local_open(modelData.name); page.entryName="" }
                         else page.localSelected=page.toggle(page.localSelected, modelData.name)
                     }
                     onPressAndHold: { page.activeSide="local"; page.entryName=modelData.name; entryMenu.popup() }
@@ -183,7 +187,7 @@ ColumnLayout {
                     property string fileName: modelData.name
                     onClicked: {
                         page.activeSide="remote"; page.entryName=modelData.name
-                        if (modelData.directory) { page.remoteSelected=[]; ftpBrowser.remote_open(modelData.name); page.entryName="" }
+                        if (modelData.directory && !page.selectionMode) { page.remoteSelected=[]; ftpBrowser.remote_open(modelData.name); page.entryName="" }
                         else page.remoteSelected=page.toggle(page.remoteSelected, modelData.name)
                     }
                     onPressAndHold: { page.activeSide="remote"; page.entryName=modelData.name; entryMenu.popup() }
@@ -257,8 +261,8 @@ ColumnLayout {
         title: "Permanent deletion"
         modal: true
         standardButtons: Dialog.Ok | Dialog.Cancel
-        Label { text: "Delete "+page.deleteNames.length+" selected entries and ALL their contents from "+page.activeSide+"? This cannot be undone."; wrapMode: Text.Wrap; width: 300 }
-        onAccepted: { ftpBrowser.delete_batch(page.activeSide,JSON.stringify(page.deleteNames),true); page.clearSelection() }
+        Label { text: "Delete "+page.deleteNames.length+" selected entries and ALL their contents from "+page.deletePath+"? This cannot be undone."; wrapMode: Text.Wrap; width: 300 }
+        onAccepted: { if (page.deletePath === (page.deleteSide==="local"?page.dataState.local:page.dataState.remote)) ftpBrowser.delete_batch(page.deleteSide,JSON.stringify(page.deleteNames),true); page.clearSelection() }
     }
     Dialog {
         id: queueDialog
@@ -298,7 +302,7 @@ ColumnLayout {
             Label { text: page.operation === "delete" ? "Permanently delete " + page.opName + (page.opDirectory ? " and ALL files and subfolders inside? This cannot be undone." : "? This cannot be undone.") : "Enter new name"; wrapMode: Text.Wrap; Layout.preferredWidth: 280 }
             TextField { id: newName; visible: page.operation !== "delete"; Layout.fillWidth: true }
         }
-        onAccepted: { if (page.operation==="delete" && page.opDirectory) ftpBrowser.recursive_delete(page.opSide,page.opName,true); else ftpBrowser.manage(page.opSide, page.operation, page.opName, newName.text); page.entryName=""; page.localSelected=[]; page.remoteSelected=[] }
+        onAccepted: { if (page.operation==="delete") ftpBrowser.delete_batch(page.opSide,JSON.stringify([page.opName]),true); else ftpBrowser.manage(page.opSide, page.operation, page.opName, newName.text); page.entryName=""; page.localSelected=[]; page.remoteSelected=[] }
     }
     Dialog {
         id: historyDialog
