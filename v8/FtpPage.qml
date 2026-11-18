@@ -213,8 +213,8 @@ ColumnLayout {
         Label { text: page.activeSide; color: "#52e0ae" }
     }
     Label { visible: page.dataState.busy && page.dataState.transferSize > 0; text: page.sizeText(page.dataState.bytesDone) + " / " + page.sizeText(page.dataState.transferSize) + " · " + page.sizeText(page.dataState.speed) + "/s" + (page.dataState.speed > 0 ? " · ETA " + Math.ceil((page.dataState.transferSize-page.dataState.bytesDone)/page.dataState.speed) + " s" : ""); Layout.fillWidth: true }
-    ProgressBar { Layout.fillWidth: true; from: 0; to: 100; value: page.dataState.total > 0 && page.dataState.busy && page.dataState.current !== "" ? Math.min(100, (page.dataState.completed + page.dataState.progress/100)*100/page.dataState.total) : page.dataState.progress }
-    Label { text: page.dataState.status + (page.dataState.total > 0 ? " · " + page.dataState.completed + "/" + page.dataState.total + " files · " + page.dataState.current : ""); wrapMode: Text.Wrap; Layout.fillWidth: true; maximumLineCount: 4 }
+    ProgressBar { indeterminate: page.dataState.busy && page.dataState.transferSize === 0 && page.dataState.total === 0; Layout.fillWidth: true; from: 0; to: 100; value: page.dataState.total > 0 && page.dataState.busy && page.dataState.current !== "" ? Math.min(100, (page.dataState.completed + page.dataState.progress/100)*100/page.dataState.total) : page.dataState.progress }
+    Label { text: page.dataState.status + (page.dataState.total > 0 ? " · " + page.dataState.completed + "/" + page.dataState.total + " files · " + page.dataState.current : page.dataState.completed > 0 ? " · " + page.dataState.completed + " entries" : ""); wrapMode: Text.Wrap; Layout.fillWidth: true; maximumLineCount: 4 }
     Dialog {
         id: editDialog
         modal: true
@@ -247,7 +247,14 @@ ColumnLayout {
             Label { text: "Replace may overwrite files. Interrupted uploads may leave partial files."; wrapMode: Text.Wrap; Layout.preferredWidth: 300 }
         }
         onOpened: policy.currentIndex=0
-        onAccepted: ftpBrowser.tree_batch(page.transferSide === "local" ? "upload" : "download",JSON.stringify(page.transferNames),["skip","rename","replace"][policy.currentIndex])
+        onAccepted: {
+            let source = page.transferSide === "local" ? page.dataState.localRows : page.dataState.remoteRows
+            let dest = page.transferSide === "local" ? page.dataState.remoteRows : page.dataState.localRows
+            let simple = page.transferNames.every(n => source.some(x => x.name === n && !x.directory) && !dest.some(x => x.name === n))
+            let direction = page.transferSide === "local" ? "upload" : "download"
+            if (simple && direction === "download") ftpBrowser.batch(direction,JSON.stringify(page.transferNames))
+            else ftpBrowser.tree_batch(direction,JSON.stringify(page.transferNames),["skip","rename","replace"][policy.currentIndex])
+        }
     }
     Dialog {
         id: confirm
