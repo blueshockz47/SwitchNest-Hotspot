@@ -318,12 +318,8 @@ ColumnLayout {
         }
         onOpened: policy.currentIndex=0
         onAccepted: {
-            let source = page.transferSide === "local" ? page.dataState.localRows : page.dataState.remoteRows
-            let dest = page.transferSide === "local" ? page.dataState.remoteRows : page.dataState.localRows
-            let simple = page.transferNames.every(n => source.some(x => x.name === n && !x.directory) && !dest.some(x => x.name === n))
             let direction = page.transferSide === "local" ? "upload" : "download"
-            if (simple && direction === "download") ftpBrowser.batch(direction,JSON.stringify(page.transferNames))
-            else ftpBrowser.tree_batch(direction,JSON.stringify(page.transferNames),["skip","rename","replace"][policy.currentIndex])
+            ftpBrowser.tree_batch(direction,JSON.stringify(page.transferNames),["skip","rename","replace"][policy.currentIndex])
         }
     }
     Dialog {
