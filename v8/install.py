@@ -8,7 +8,7 @@ import subprocess
 import sys
 import uuid
 
-VERSION = "8.0-beta.2"
+VERSION = "8.0-RC.1"
 ROOT = Path.home()/".local/share/switchnest"
 SOURCE = Path(__file__).resolve().parent.parent
 
@@ -34,6 +34,8 @@ def install():
         raise RuntimeError("curl is required")
     releases=ROOT/"releases"
     releases.mkdir(exist_ok=True)
+    if releases.is_symlink() or releases.stat().st_uid!=os.getuid(): raise RuntimeError("Invalid releases directory")
+    if shutil.disk_usage(releases).free < 2*1024**3: raise RuntimeError("At least 2 GiB free recommended for a new Qt environment")
     release=releases/(VERSION+"-"+uuid.uuid4().hex[:10])
     try:
         release.mkdir()
@@ -45,7 +47,8 @@ def install():
         python=release/"venv/bin/python"
         run(python,"-m","pip","install","PySide6>=6.7,<7")
         run(python,"-m","compileall","-q",release/"v8")
-        subprocess.run([str(python),"-m","unittest","-v","v8.test_ftp_tree"],cwd=release,check=True)
+        subprocess.run([str(python),"-m","unittest","-v","v8.test_ftp_tree","v8.test_install"],cwd=release,check=True)
+        run(python,"-c","from PySide6 import QtCore, QtGui, QtQml; print(QtCore.qVersion())")
         old=current("current")
         launcher()
         if old: point("previous",old)
