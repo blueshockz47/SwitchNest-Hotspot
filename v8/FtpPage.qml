@@ -9,6 +9,13 @@ ColumnLayout {
     property var remoteSelected: []
     property var uploadName: []
     property int sortMode: 0
+    property var deleteNames: []
+    function clearSelection() { localSelected=[]; remoteSelected=[]; entryName="" }
+    function selectAll() { if (activeSide==="local") localSelected=sorted(dataState.localRows).map(x=>x.name); else remoteSelected=sorted(dataState.remoteRows).map(x=>x.name) }
+    function deleteSelected() { deleteNames=(activeSide==="local"?localSelected:remoteSelected).slice(); if(deleteNames.length) batchDelete.open() }
+    function navigate(action) { clearSelection(); ftpBrowser.navigate(activeSide,action) }
+    Shortcut { sequence: "Ctrl+A"; enabled: page.visible && !page.dataState.busy && !search.activeFocus && !host.activeFocus && !port.activeFocus && !editDialog.visible && !conflictDialog.visible && !batchDelete.visible; onActivated: page.selectAll() }
+    Shortcut { sequence: "F5"; enabled: page.visible && !page.dataState.busy && page.dataState.connected; onActivated: { page.clearSelection(); ftpBrowser.refresh() } }
     property string transferSide: "local"
     property var transferNames: []
     property string activeSide: "local"
@@ -54,6 +61,13 @@ ColumnLayout {
         TextField { id: host; text: page.dataState.host; Layout.fillWidth: true; enabled: !page.dataState.busy }
         TextField { id: port; text: page.dataState.port; Layout.preferredWidth: 85; enabled: !page.dataState.busy }
         Button { text: "Connect"; enabled: !page.dataState.busy; onClicked: { page.remoteSelected=[]; ftpBrowser.connect_to(host.text, port.text) } }
+    }
+    RowLayout {
+        Button { text: "←"; onClicked: page.navigate("back"); enabled: !page.dataState.busy }
+        Button { text: "→"; onClicked: page.navigate("forward"); enabled: !page.dataState.busy }
+        Button { text: "Home"; onClicked: page.navigate("home"); enabled: !page.dataState.busy }
+        Button { text: "★"; onClicked: ftpBrowser.bookmark(page.activeSide); enabled: !page.dataState.busy }
+        Button { text: "Bookmarks"; onClicked: bookmarkDialog.open() }
     }
     TextField { id: search; placeholderText: "Filter files and folders"; Layout.fillWidth: true }
     RowLayout { Label { text: "Local FTP • PASV"; color: "#98a5b5" } Item { Layout.fillWidth: true } ComboBox { model: ["Name", "Size"]; onCurrentIndexChanged: page.sortMode=currentIndex; enabled: !page.dataState.busy } }
@@ -123,6 +137,7 @@ ColumnLayout {
                     Menu {
                         id: entryMenu
                         MenuItem { text: "Upload file / folder"; onTriggered: page.transfer("local",[page.entryName]) }
+                        MenuItem { text: "Properties"; onTriggered: { ftpBrowser.properties(page.activeSide,page.entryName); propertiesDialog.open() } }
                         MenuItem { text: "Rename"; onTriggered: page.editEntry("rename") }
                         MenuItem { text: "Delete"; onTriggered: page.editEntry("delete") }
                     }
@@ -193,6 +208,7 @@ ColumnLayout {
                     Menu {
                         id: entryMenu
                         MenuItem { text: "Download file / folder"; onTriggered: page.transfer("remote",[page.entryName]) }
+                        MenuItem { text: "Properties"; onTriggered: { ftpBrowser.properties(page.activeSide,page.entryName); propertiesDialog.open() } }
                         MenuItem { text: "Rename"; onTriggered: page.editEntry("rename") }
                         MenuItem { text: "Delete"; onTriggered: page.editEntry("delete") }
                     }
@@ -212,11 +228,63 @@ ColumnLayout {
         Button { text: "Paste"; enabled: !page.dataState.busy && page.clipboard.length > 0 && page.clipSide !== page.activeSide; onClicked: page.pasteFiles() }
         Button { text: "+ Folder"; enabled: !page.dataState.busy && (page.activeSide === "local" || page.dataState.connected); onClicked: page.editEntry("mkdir") }
         Button { text: "History"; onClicked: historyDialog.open() }
+        Button { text: "Queue"; onClicked: queueDialog.open() }
         Label { text: page.activeSide; color: "#52e0ae" }
     }
     Label { visible: page.dataState.busy && page.dataState.transferSize > 0; text: page.sizeText(page.dataState.bytesDone) + " / " + page.sizeText(page.dataState.transferSize) + " · " + page.sizeText(page.dataState.speed) + "/s" + (page.dataState.speed > 0 ? " · ETA " + Math.ceil((page.dataState.transferSize-page.dataState.bytesDone)/page.dataState.speed) + " s" : ""); Layout.fillWidth: true }
     ProgressBar { indeterminate: page.dataState.busy && page.dataState.transferSize === 0 && page.dataState.total === 0; Layout.fillWidth: true; from: 0; to: 100; value: page.dataState.total > 0 && page.dataState.busy && page.dataState.current !== "" ? Math.min(100, (page.dataState.completed + page.dataState.progress/100)*100/page.dataState.total) : page.dataState.progress }
     Label { text: page.dataState.status + (page.dataState.total > 0 ? " · " + page.dataState.completed + "/" + page.dataState.total + " files · " + page.dataState.current : page.dataState.completed > 0 ? " · " + page.dataState.completed + " entries" : ""); wrapMode: Text.Wrap; Layout.fillWidth: true; maximumLineCount: 4 }
+    RowLayout {
+        Button { text: "All"; enabled: !page.dataState.busy; onClicked: page.selectAll() }
+        Button { text: "Clear"; onClicked: page.clearSelection() }
+        Button { text: "Delete selected"; enabled: !page.dataState.busy && (page.activeSide==="local"?page.localSelected.length:page.remoteSelected.length)>0; onClicked: page.deleteSelected() }
+        Button { text: "Retry"; enabled: !page.dataState.busy && page.dataState.retryAvailable; onClicked: retryDialog.open() }
+    }
+    Dialog {
+        id: retryDialog
+        title: "Retry remaining entries"
+        modal: true
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        Label { text: "Restart unfinished entries. Replace existing files, including partial files?"; wrapMode: Text.Wrap; width: 300 }
+        onAccepted: ftpBrowser.retry_failed("replace")
+    }
+    Dialog {
+        id: batchDelete
+        title: "Permanent deletion"
+        modal: true
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        Label { text: "Delete "+page.deleteNames.length+" selected entries and ALL their contents from "+page.activeSide+"? This cannot be undone."; wrapMode: Text.Wrap; width: 300 }
+        onAccepted: { ftpBrowser.delete_batch(page.activeSide,JSON.stringify(page.deleteNames),true); page.clearSelection() }
+    }
+    Dialog {
+        id: queueDialog
+        title: "Transfer queue"
+        modal: true
+        standardButtons: Dialog.Close
+        ColumnLayout {
+            Label { text: page.dataState.status; wrapMode: Text.Wrap; Layout.preferredWidth: 300 }
+            Label { text: "Pending / active: "+page.dataState.pending.length }
+            ScrollView { Layout.preferredWidth: 300; Layout.preferredHeight: 160; TextArea { readOnly: true; text: page.dataState.pending.join("\n") } }
+            Button { text: "Cancel transfer"; enabled: page.dataState.busy; onClicked: ftpBrowser.cancel() }
+        }
+    }
+    Dialog {
+        id: bookmarkDialog
+        title: "Saved directories"
+        modal: true
+        standardButtons: Dialog.Close
+        ColumnLayout {
+            ComboBox { id: saved; model: page.dataState.bookmarks.map(x=>x.side+": "+x.path); Layout.preferredWidth: 300 }
+            Button { text: "Open"; enabled: saved.currentIndex>=0 && !page.dataState.busy; onClicked: { page.clearSelection(); ftpBrowser.open_bookmark(saved.currentIndex); bookmarkDialog.close() } }
+        }
+    }
+    Dialog {
+        id: propertiesDialog
+        title: "Properties"
+        modal: true
+        standardButtons: Dialog.Close
+        Label { text: page.dataState.details; width: 300; wrapMode: Text.Wrap }
+    }
     Dialog {
         id: editDialog
         modal: true
