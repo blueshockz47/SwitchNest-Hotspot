@@ -66,7 +66,18 @@ def launcher():
     executable=ROOT/"launch"
     executable.write_text('#!/bin/sh\nset -eu\ncd -- "$(dirname -- "$0")/current"\nexec ./venv/bin/python -m v8.control_center "$@"\n')
     executable.chmod(0o700)
-    (apps/"switchnest-control-center.desktop").write_text("[Desktop Entry]\nType=Application\nName=SwitchNest Control Center\nExec="+desktop_quote(str(executable))+"\nIcon=network-wireless\nTerminal=false\nCategories=Network;Utility;\n")
+    (apps/"switchnest-control-center.desktop").write_text(
+        "[Desktop Entry]\n"
+        "Type=Application\n"
+        "Name=SwitchNest Control Center\n"
+        "Comment=SwitchNest v8 Hotspot Manager\n"
+        "Exec=" + desktop_quote(str(executable)) + "\n"
+        "Path=" + str(ROOT / "current") + "\n"
+        "Icon=network-wireless\n"
+        "Terminal=false\n"
+        "Categories=Network;Utility;\n"
+        "StartupNotify=true\n"
+    )
     print("Installed KDE application launcher:",apps/"switchnest-control-center.desktop")
 
 def main():
