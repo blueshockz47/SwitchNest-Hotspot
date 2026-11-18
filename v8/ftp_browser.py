@@ -440,6 +440,7 @@ class Browser(QObject):
             self.last_request=(direction,raw,policy,str(local),remote,self.host,self.port)
             self.pending=names.copy()
             self.last_failed=None
+            self.root_total=len(names)
             self.completed=self.total=0
             self.progress=self.transfer_size=0
             self.status="Recursive transfer in progress"
@@ -471,6 +472,7 @@ class Browser(QObject):
             return
         if result=="Entry finished":
             if name in self.pending: self.pending.remove(name)
+            self.progress=100*(self.root_total-len(self.pending))/self.root_total
             self.changed.emit()
             return
         self.completed+=1
