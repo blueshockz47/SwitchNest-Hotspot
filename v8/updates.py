@@ -5,7 +5,7 @@ import shutil
 import subprocess
 import urllib.request
 
-VERSION="8.0-RC.3"
+VERSION="8.0.0"
 REPO="blueshockz47/SwitchNest-Hotspot"
 RELEASES="https://github.com/"+REPO+"/releases"
 DEVELOPMENT="https://github.com/"+REPO+"/tree/development/v8.0"
