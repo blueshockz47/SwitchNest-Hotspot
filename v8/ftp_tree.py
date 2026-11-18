@@ -18,6 +18,8 @@ def listing(text):
         if not line.strip() or re.fullmatch(r"total \d+", line.strip()):
             continue
         p = line.split(maxsplit=8)
+        if len(p)==9 and p[0].startswith("d") and p[8] in (".",".."):
+            continue
         if len(p)!=9 or not valid(p[8]):
             raise ValueError("Unsupported directory entry: "+line[:100])
         if p[0][0] not in "d-":
@@ -192,7 +194,10 @@ class Tree:
         visit(remote,name,entries[name],0)
         for parent,path,directory in plan:
             self.check()
-            self.run(parent,["--quote",("RMD " if directory else "DELE ")+path,"--output",os.devnull])
+            try:
+                self.run(parent,["--quote",("RMD " if directory else "DELE ")+path,"--head","--output",os.devnull])
+            except OSError as exc:
+                raise OSError(("RMD " if directory else "DELE ")+path+": "+str(exc)) from exc
             self.report(path,"Deleted")
 
 def delete_local(root, cancelled, report):
