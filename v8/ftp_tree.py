@@ -14,6 +14,9 @@ def windows_name(name):
             not name.endswith((" ", ".")) and
             not re.fullmatch(r"(?i:CON|PRN|AUX|NUL|COM[1-9¹²³]|LPT[1-9¹²³])", name.split(".")[0].rstrip()))
 
+def linked(path):
+    return path.is_symlink() or (os.name=="nt" and bool(getattr(path.lstat(),"st_file_attributes",0)&1024)) if os.path.lexists(path) else False
+
 def valid(name):
     return bool(name and name not in (".", "..") and "/" not in name and
                 not any(ord(c)<32 or ord(c)==127 for c in name) and
@@ -113,7 +116,7 @@ class Tree:
                 files=p.rglob("*") if p.is_dir() else [p]
                 for f in files:
                     self.check()
-                    if f.is_symlink(): raise ValueError("Symbolic link not supported")
+                    if linked(f): raise ValueError("Symbolic link not supported")
                     if f.is_file():
                         count+=1
                         total+=f.stat().st_size
@@ -180,7 +183,7 @@ class Tree:
 
     def upload(self, source, remote, depth=0):
         self.check()
-        if depth>64 or source.is_symlink() or not valid(source.name):
+        if depth>64 or linked(source) or not valid(source.name):
             raise ValueError("Unsupported source or directory depth")
         directory=source.is_dir()
         if not directory and not source.is_file():
@@ -205,14 +208,14 @@ class Tree:
 
     def download(self, remote, name, local, directory, depth=0):
         self.check()
-        if depth>64 or not valid(name) or local.is_symlink():
+        if depth>64 or not valid(name) or linked(local):
             raise ValueError("Unsupported destination or directory depth")
         existing={p.name:p.is_dir() for p in local.iterdir()}
         target=self.choose(name,existing,directory)
         if target is None:
             self.tick(name,"Skipped"); return
         dest=local/target
-        if dest.is_symlink():
+        if linked(dest):
             raise ValueError("Symbolic link destination")
         path=remote+name
         if directory:
@@ -272,7 +275,7 @@ def delete_local(root, cancelled, report):
     def visit(path,depth):
         if cancelled():
             raise InterruptedError("Deletion cancelled")
-        if depth>64 or len(plan)>=100000 or path.is_symlink():
+        if depth>64 or len(plan)>=100000 or linked(path):
             raise ValueError("Unsupported link or tree limit")
         if path.is_dir():
             for child in path.iterdir():
@@ -286,7 +289,7 @@ def delete_local(root, cancelled, report):
     for path,directory in plan:
         if cancelled():
             raise InterruptedError("Deletion cancelled")
-        if path.is_symlink() or any(p.is_symlink() for p in path.parents):
+        if linked(path) or any(linked(p) for p in path.parents):
             raise ValueError("Symbolic link encountered")
         if directory:
             path.rmdir()
