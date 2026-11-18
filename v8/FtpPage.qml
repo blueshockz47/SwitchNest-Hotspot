@@ -16,6 +16,7 @@ ColumnLayout {
     property string operation: ""
     property string opSide: ""
     property string opName: ""
+    property bool opDirectory: false
     property var clipboard: []
     property string clipSide: ""
     property string clipPath: ""
@@ -36,6 +37,7 @@ ColumnLayout {
     }
     function editEntry(action) {
         opSide=activeSide; opName=entryName; operation=action
+        opDirectory=(opSide==="local" ? dataState.localRows : dataState.remoteRows).some(x=>x.name===opName && x.directory)
         newName.text= action === "rename" ? entryName : ""
         editDialog.open()
     }
@@ -221,10 +223,10 @@ ColumnLayout {
         title: page.operation + " · " + page.opSide
         standardButtons: Dialog.Ok | Dialog.Cancel
         ColumnLayout {
-            Label { text: page.operation === "delete" ? "Permanently delete " + page.opName + "? Only empty folders can be deleted." : "Enter new name"; wrapMode: Text.Wrap; Layout.preferredWidth: 280 }
+            Label { text: page.operation === "delete" ? "Permanently delete " + page.opName + (page.opDirectory ? " and ALL files and subfolders inside? This cannot be undone." : "? This cannot be undone.") : "Enter new name"; wrapMode: Text.Wrap; Layout.preferredWidth: 280 }
             TextField { id: newName; visible: page.operation !== "delete"; Layout.fillWidth: true }
         }
-        onAccepted: { ftpBrowser.manage(page.opSide, page.operation, page.opName, newName.text); page.entryName=""; page.localSelected=[]; page.remoteSelected=[] }
+        onAccepted: { if (page.operation==="delete" && page.opDirectory) ftpBrowser.recursive_delete(page.opSide,page.opName,true); else ftpBrowser.manage(page.opSide, page.operation, page.opName, newName.text); page.entryName=""; page.localSelected=[]; page.remoteSelected=[] }
     }
     Dialog {
         id: historyDialog
