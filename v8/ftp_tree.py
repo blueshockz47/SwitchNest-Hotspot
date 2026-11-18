@@ -70,7 +70,7 @@ class Tree:
                         last=time.monotonic()
                         # Read with independent file description: do not move curl's write offset.
                         data=os.pread(err.fileno(),8192,max(0,os.fstat(err.fileno()).st_size-8192))
-                        matches=re.findall(rb'(\\d+(?:\\.\\d+)?)%',data)
+                        matches=re.findall(rb'(\d+(?:\.\d+)?)%',data)
                         if matches:
                             self.emit_metric(int(size*min(100,float(matches[-1]))/100))
                     time.sleep(.05)
@@ -240,6 +240,7 @@ class Tree:
             if directory:
                 for child,isdir in self.entries(path+"/").items():
                     visit(path+"/",child,isdir,depth+1)
+            if len(plan)>=100000: raise ValueError("Tree limit reached")
             plan.append((parent,path,directory))
         entries=self.entries(remote)
         if name not in entries:
@@ -272,7 +273,7 @@ def delete_local(root, cancelled, report):
     for path,directory in plan:
         if cancelled():
             raise InterruptedError("Deletion cancelled")
-        if path.is_symlink():
+        if path.is_symlink() or any(p.is_symlink() for p in path.parents):
             raise ValueError("Symbolic link encountered")
         if directory:
             path.rmdir()
