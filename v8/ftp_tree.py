@@ -7,6 +7,7 @@ from urllib.parse import quote
 import ipaddress
 import shutil
 import re
+import time
 
 def valid(name):
     return bool(name and name not in (".", "..") and "/" not in name and
@@ -40,30 +41,75 @@ class Tree:
         self.cancelled=cancelled
         self.report=report
         self.count=0
+        self.metric=lambda *args: None
+        self.expected_total=0
+        self.finished_bytes=0
+        self.started=time.monotonic()
 
     def check(self):
         if self.cancelled():
             raise InterruptedError("Cancelled; remote partial files may remain")
 
-    def run(self, path, args=(), read=False):
+    def run(self, path, args=(), read=False, size=None):
         self.check()
         cmd=self.base.copy()
+        if size is not None:
+            cmd.remove('--silent')
+            cmd+=['--progress-bar']
         if read:
             cmd+=["--retry","2","--retry-connrefused","--retry-delay","1","--max-time","60"]
         with tempfile.TemporaryFile() as out, tempfile.TemporaryFile() as err:
             with subprocess.Popen(cmd+list(args)+["--",self.endpoint+quote(path,safe="/")],stdout=out,stderr=err) as p:
-                import time
+                last=0
                 while p.poll() is None:
                     if self.cancelled():
                         p.kill()
                         p.wait()
                         self.check()
-                    time.sleep(.1)
+                    if size is not None and time.monotonic()-last>=.25:
+                        last=time.monotonic()
+                        # Read with independent file description: do not move curl's write offset.
+                        data=os.pread(err.fileno(),8192,max(0,os.fstat(err.fileno()).st_size-8192))
+                        matches=re.findall(rb'(\\d+(?:\\.\\d+)?)%',data)
+                        if matches:
+                            self.emit_metric(int(size*min(100,float(matches[-1]))/100))
+                    time.sleep(.05)
                 if p.returncode:
                     err.seek(0)
                     raise OSError(err.read().decode(errors="replace")[-500:])
+            if size is not None:
+                self.finished_bytes+=size
+                self.emit_metric(0)
             out.seek(0)
             return out.read().decode("utf-8",errors="strict")
+
+    def emit_metric(self, partial):
+        done=self.finished_bytes+partial
+        elapsed=max(.1,time.monotonic()-self.started)
+        self.metric(done,self.expected_total,int(done/elapsed))
+
+    def prepare(self, direction, local, remote, names, allowed):
+        total=0
+        count=0
+        for name in names:
+            self.check()
+            if direction=="download":
+                n,b=self.properties(remote,name,allowed[name])
+                total+=b
+                count+=n
+            else:
+                p=local/name
+                files=p.rglob("*") if p.is_dir() else [p]
+                for f in files:
+                    self.check()
+                    if f.is_symlink(): raise ValueError("Symbolic link not supported")
+                    if f.is_file():
+                        count+=1
+                        total+=f.stat().st_size
+            if count>100000: raise ValueError("File limit reached")
+        self.expected_total=total
+        self.started=time.monotonic()
+        self.emit_metric(0)
 
     def entries(self, path):
         return listing(self.run(path,read=True))
@@ -86,8 +132,15 @@ class Tree:
                 raise ValueError("File size unavailable")
             return (1,size)
         count=size=0
-        for child,isdir in self.entries(remote+name+"/").items():
-            n,b=self.properties(remote+name+"/",child,isdir,depth+1)
+        folder=remote+name+"/"
+        entries=self.entries(folder)
+        sizes=self.sizes(folder)
+        for child,isdir in entries.items():
+            if isdir:
+                n,b=self.properties(folder,child,True,depth+1)
+            else:
+                if child not in sizes: raise ValueError("File size unavailable")
+                n,b=1,sizes[child]
             count+=n
             size+=b
         return count,size
@@ -134,7 +187,7 @@ class Tree:
                 self.upload(child,dest+"/",depth+1)
         else:
             size=source.stat().st_size
-            self.run(dest,["--upload-file",str(source)])
+            self.run(dest,["--upload-file",str(source)],size=size)
             if self.sizes(remote).get(name)!=size:
                 raise OSError("Upload size verification failed: "+dest)
             self.tick(dest,"Verified")
@@ -165,7 +218,7 @@ class Tree:
             fd,tmp=tempfile.mkstemp(prefix=".switchnest-",dir=local)
             os.close(fd)
             try:
-                self.run(path,["--output",tmp])
+                self.run(path,["--output",tmp],size=expected)
                 if Path(tmp).stat().st_size!=expected:
                     raise OSError("Download size verification failed")
                 if self.policy=="replace":
