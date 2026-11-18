@@ -7,7 +7,9 @@ import stat
 import os
 import sys
 import threading
-from v8 import updates, autostart
+from v8 import updates
+if os.name!="nt":
+    from v8 import autostart
 from pathlib import Path
 from v8.ftp_browser import Browser
 from PySide6.QtCore import QObject, Signal, Slot, Property, QLockFile, QStandardPaths, QProcess, QTimer, QUrl
@@ -34,10 +36,11 @@ class Controller(QObject):
 
     @Property(bool, notify=autostartChanged)
     def startOnLogin(self):
-        return autostart.enabled()
+        return False if os.name=="nt" else autostart.enabled()
 
     @Slot(bool)
     def set_autostart(self, enabled):
+        if os.name=="nt": return
         try:
             autostart.set_enabled(enabled)
             self.message.emit("Desktop autostart enabled" if enabled else "Desktop autostart disabled")
@@ -66,13 +69,21 @@ class Controller(QObject):
     def refresh(self):
         if self.process.state() != QProcess.NotRunning:
             return
+        if os.name=="nt":
+            self.refreshed.emit(json.dumps({"version":"Windows alpha.1","hotspot":{"state":"unknown"},"note":"Use Windows Mobile Hotspot or an existing local network. Isolation not managed."}))
+            return
         self.kind = "refresh"
         self.busyChanged.emit(True)
         self.process.setWorkingDirectory(str(Path(__file__).resolve().parent.parent))
         self.process.start(sys.executable, ["-m", "v8.diagnostics"])
 
+    @Slot()
+    def windows_hotspot(self):
+        if os.name=="nt": os.startfile("ms-settings:network-mobilehotspot")
+
     @Slot(str)
     def action(self, action):
+        if os.name=="nt": return
         if action not in ("on", "off") or self.process.state() != QProcess.NotRunning:
             return
         helper = "/etc/steamdeck-switch2-panel-toggle"
@@ -85,6 +96,7 @@ class Controller(QObject):
 
     @Slot(str)
     def sunshine(self, action):
+        if os.name=="nt": return
         if action not in ("start", "stop") or self.process.state() != QProcess.NotRunning:
             return
         executable = shutil.which("flatpak")
@@ -126,6 +138,7 @@ class Controller(QObject):
 
     @Slot()
     def wifi_settings(self):
+        if os.name=="nt": return
         manager = Path("/etc/steamdeck-switch2/manager.sh")
         try:
             st = manager.lstat()
@@ -158,11 +171,12 @@ class Controller(QObject):
             QTimer.singleShot(0, self.refresh)
 
 def main():
-    if os.geteuid() == 0:
+    if hasattr(os,"geteuid") and os.geteuid() == 0:
         sys.exit("Run the control center as your normal desktop user, not root.")
     app = QGuiApplication(sys.argv)
     app.setApplicationName("SwitchNest Control Center")
-    runtime=Path(QStandardPaths.writableLocation(QStandardPaths.RuntimeLocation))
+    runtime=Path(QStandardPaths.writableLocation(QStandardPaths.AppLocalDataLocation if os.name=="nt" else QStandardPaths.RuntimeLocation))
+    runtime.mkdir(parents=True,exist_ok=True)
     lock=QLockFile(str(runtime/"switchnest-control-center.lock"))
     if not lock.tryLock(0):
         print("SwitchNest is already running or the session lock is unavailable.")
@@ -170,6 +184,7 @@ def main():
     engine = QQmlApplicationEngine()
     controller = Controller()
     engine.rootContext().setContextProperty("controller", controller)
+    engine.rootContext().setContextProperty("windowsPreview", os.name=="nt")
     browser = Browser()
     engine.rootContext().setContextProperty("ftpBrowser", browser)
     app.aboutToQuit.connect(browser.cancel)
