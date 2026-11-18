@@ -8,7 +8,7 @@ import subprocess
 import sys
 import uuid
 
-VERSION = "8.0-RC.1"
+VERSION = "8.0-RC.2"
 ROOT = Path.home()/".local/share/switchnest"
 SOURCE = Path(__file__).resolve().parent.parent
 
