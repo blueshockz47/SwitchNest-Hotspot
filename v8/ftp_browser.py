@@ -1,6 +1,7 @@
 """Local FTP browser, with asynchronous curl and no privileged changes."""
 import ipaddress
 import json
+import datetime
 import os
 from pathlib import Path
 import re
@@ -27,6 +28,10 @@ class Browser(QObject):
         self.busy = False
         self.connected = False
         self.job = ""
+        self.queue = []
+        self.total = 0
+        self.completed = 0
+        self.current_name = ""
         self.temp = None
         self.dest = None
         self.cancelled = False
@@ -41,11 +46,11 @@ class Browser(QObject):
     def state(self):
         return json.dumps(dict(host=self.host, port=self.port, local=str(self.local),
             remote=self.remote, localRows=self.local_rows, remoteRows=self.remote_rows,
-            status=self.status, progress=self.progress, busy=self.busy, connected=self.connected))
+            status=self.status, progress=self.progress, busy=self.busy, connected=self.connected, total=self.total, completed=self.completed, current=self.current_name))
 
     def refresh_local(self):
         try:
-            self.local_rows = sorted([dict(name=p.name, directory=p.is_dir())
+            self.local_rows = sorted([dict(name=p.name, directory=p.is_dir(), size=p.stat().st_size if p.is_file() else None, date=datetime.datetime.fromtimestamp(p.stat().st_mtime).strftime("%Y-%m-%d"))
                 for p in self.local.iterdir() if not p.is_symlink()],
                 key=lambda x: (not x["directory"], x["name"].lower()))
         except OSError as e:
@@ -162,9 +167,45 @@ class Browser(QObject):
             return
         self.start("upload", ["--upload-file", str(p), "--", self.url(name)])
 
+    @Slot(str, str)
+    def batch(self, direction, raw):
+        if self.busy or not self.connected or direction not in ("upload", "download"):
+            return
+        try:
+            names = json.loads(raw)
+            if not isinstance(names, list) or not names or len(names) > 1000:
+                raise ValueError("Invalid selection")
+            rows = self.local_rows if direction == "upload" else self.remote_rows
+            allowed = {x["name"] for x in rows if not x["directory"]}
+            if any(not isinstance(n, str) or n not in allowed or not self.valid_name(n) for n in names):
+                raise ValueError("Invalid selection")
+            names = list(dict.fromkeys(names))
+            if direction == "download" and any(os.path.lexists(self.local / n) for n in names):
+                raise ValueError("Local destination exists; choose another folder.")
+            self.queue = [(direction, n) for n in names]
+            self.total = len(names)
+            self.completed = 0
+            self.next_file()
+        except (ValueError, TypeError, OSError) as e:
+            self.status = str(e)
+            self.changed.emit()
+
+    def next_file(self):
+        direction, name = self.queue.pop(0)
+        self.current_name = name
+        if direction == "upload":
+            self.upload(name, True)
+        else:
+            self.download(name)
+        if not self.busy:
+            self.queue.clear()
+            self.status = "Batch stopped: " + self.status
+            self.changed.emit()
+
     @Slot()
     def cancel(self):
         if self.busy:
+            self.queue.clear()
             self.cancelled = True
             self.proc.kill()
 
@@ -183,6 +224,7 @@ class Browser(QObject):
     def error(self, error):
         if error == QProcess.ProcessError.FailedToStart:
             self.busy = False
+            self.queue.clear()
             self.status = self.proc.errorString()
             self.cleanup()
             self.changed.emit()
@@ -202,7 +244,7 @@ class Browser(QObject):
                 for line in output.splitlines():
                     parts = line.split(maxsplit=8)
                     if len(parts) == 9 and parts[0][0] in "d-" and self.valid_name(parts[8]):
-                        rows.append(dict(name=parts[8], directory=parts[0][0] == "d"))
+                        rows.append(dict(name=parts[8], directory=parts[0][0] == "d", size=int(parts[4]) if parts[4].isdigit() and parts[0][0] == "-" else None, date=" ".join(parts[5:8])))
                 self.remote_rows = sorted(rows, key=lambda x: (not x["directory"], x["name"].lower()))
                 self.connected = True
                 self.status = "Directory listed" if rows or not output.strip() else "Listing format unsupported"
@@ -215,9 +257,21 @@ class Browser(QObject):
             if ok:
                 self.progress = 100
         except OSError as e:
+            ok = False
             self.status = str(e)
         finally:
             self.cleanup()
+            self.changed.emit()
+        if self.job in ("upload", "download") and self.total:
+            if ok:
+                self.completed += 1
+                if self.queue:
+                    self.next_file()
+                    return
+                self.status = f"Batch complete: {self.completed}/{self.total}"
+            else:
+                self.queue.clear()
+                self.status += f" ({self.completed}/{self.total} completed)"
             self.changed.emit()
         if ok and self.job == "upload":
             self.list_remote()
