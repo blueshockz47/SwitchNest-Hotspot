@@ -34,13 +34,13 @@ Home router / Internet
 
 **The PC's LAN internet connection is not shared with the Switch 2.** SwitchNest is designed for a local-only Switch 2 network, with IPv4/IPv6 forwarding blocked by its configured firewall rules. The PC can continue using its own wired internet connection. This is not a Nintendo online-service or general internet-sharing hotspot. Actual isolation depends on correct installation and should be verified on the target system.
 
-**Platform:** The current Linux v8.0.0 release targets SteamOS KDE Desktop Mode with an access-point-capable Wi-Fi adapter, NetworkManager, and the existing SwitchNest v7.1 networking backend. Other Linux distributions and Windows are not confirmed supported by this release.
+**Platform:** The current Linux v8.0.1 release targets SteamOS KDE Desktop Mode with an access-point-capable Wi-Fi adapter, NetworkManager, and the existing SwitchNest v7.1 networking backend. Other Linux distributions and Windows are not confirmed supported by this release.
 
 ![Historical Steam Deck v7.1 installer menu before rebranding](docs/images/installer-v7.1-menu.jpeg)
 
 *Historical screenshot: the current menu is named SwitchNest Hotspot.*
 
-**Release status:** Linux v8.0.0 is prepared for public review, with final hardware validation pending. The v8 Control Center requires the separately installed v7.1 hotspot backend.
+**Release status:** Linux v8.0.1 includes the verified WPA2-Personal authentication settings (RSN, CCMP pairwise/group, PMF disabled) for PC/PS5 compatibility. Final hardware validation of the full installer remains pending. The v8 Control Center requires the separately installed v7.1 hotspot backend.
 
 ## Installation — start here
 
@@ -50,9 +50,9 @@ Home router / Internet
 
 ### Step 0 — Download and open the project
 
-1. Download the **[Linux v8.0.0 source ZIP](https://github.com/blueshockz47/SwitchNest-Hotspot/archive/refs/heads/release/v8.0.0.zip)**.
+1. Download the **[Linux v8.0.1 source ZIP](https://github.com/blueshockz47/SwitchNest-Hotspot/archive/refs/heads/release/v8.0.1.zip)**.
 2. Extract the ZIP using your file manager.
-3. Open the extracted `SwitchNest-Hotspot-release-v8.0.0` folder.
+3. Open the extracted `SwitchNest-Hotspot-release-v8.0.1` folder.
 4. Right-click an empty area inside that folder and choose **Open Terminal Here** (Konsole). All commands below are run **from this folder**. If your file manager doesn't offer that action, open Konsole and `cd` to the extracted folder first.
 
 ### Step 1 — Install the hotspot backend (required, first)
@@ -129,15 +129,15 @@ See [v8 release notes and verification requirements](v8/STABLE.md). **Final hard
 
 ## Control Center Preview
 
-Actual SwitchNest Linux v8.0.0 running in SteamOS KDE Desktop Mode.
+Actual SwitchNest Linux v8.0.1 running in SteamOS KDE Desktop Mode.
 
 ### Sunshine / Moonlight
 
-![SwitchNest v8.0.0 Control Center Streaming page showing Sunshine start, stop and web UI controls](docs/images/control-center-streaming.jpg)
+![SwitchNest v8.0.1 Control Center Streaming page showing Sunshine start, stop and web UI controls](docs/images/control-center-streaming.jpg)
 
 ### Files — Nintendo Switch 2 FTP
 
-![SwitchNest v8.0.0 Control Center Files page showing local SteamOS files alongside Switch 2 FTP folders](docs/images/control-center-files.jpg)
+![SwitchNest v8.0.1 Control Center Files page showing local SteamOS files alongside Switch 2 FTP folders](docs/images/control-center-files.jpg)
 
 *Screenshots supplied by the project maintainer. Device and network details shown are illustrative; features depend on the installed v7.1 backend and FTP service.*
 
@@ -236,7 +236,7 @@ Run local tests without changing Wi-Fi, firewall rules or system services:
 python3 -m unittest discover -s tests -v
 ```
 
-The installers have been rebranded without changing their network operations. Hardware behavior varies across SteamOS versions, Wi-Fi drivers and client firmware. The v8.0.0 public release requires owner review and hardware checks.
+The installers have been rebranded without changing their network operations. Hardware behavior varies across SteamOS versions, Wi-Fi drivers and client firmware. The v8.0.1 public release requires owner review and hardware checks.
 
 ## Credits
 
