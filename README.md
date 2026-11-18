@@ -8,11 +8,27 @@
 
 Local Wi-Fi between a Linux host and a Nintendo Switch 2 (currently tested on SteamOS), with Pico-compatible Nintendo connectivity-check responses, optional WPA2-Personal security and a separate KDE Plasma taskbar toggle.
 
-**Review snapshot: v7.1.** The user confirmed the v7 open hotspot, Plasma 6.7.3 widget, Sunshine/Moonlight streaming and Steam Input mouse controls on their Steam Deck/Switch 2 setup. The newer v7.1 password feature has local syntax and mocked tests; WPA2 activation still needs hardware confirmation. This repository is being prepared for private review before any public release.
+**Linux v8.0.0 release candidate for public publication.** The v8 GUI requires the separately installed v7.1 hotspot backend. Historical v7.1 validation notes follow. **Review snapshot: v7.1.** The user confirmed the v7 open hotspot, Plasma 6.7.3 widget, Sunshine/Moonlight streaming and Steam Input mouse controls on their Steam Deck/Switch 2 setup. The newer v7.1 password feature has local syntax and mocked tests; WPA2 activation still needs hardware confirmation. The Linux v8.0.0 release source is prepared for public review; target-hardware verification is still pending.
 
-## v8.0-RC.1 Control Center (development preview)
+## Linux v8.0.0 Control Center
 
-On an existing working v7.1 SteamOS installation, close the GUI and run `bash install-switchnest-v8.sh` from this checkout as your normal user. This installs the desktop application only; it does not change networking. See [RC.1 installation and validation](v8/RC1.md). Hardware validation remains pending; this is not a stable release.
+The v8 desktop Control Center is a user-local PySide6 application for an **existing v7.1 SteamOS hotspot installation**. It does not install the networking backend on its own.
+
+Install the hotspot backend first using the v7.1 instructions below. Then run the v8 installer as your **normal desktop user**:
+
+```bash
+bash install-switchnest-v8.sh
+~/.local/share/switchnest/launch
+```
+
+The v8 UI provides hotspot ON/OFF, read-only diagnostics, Sunshine controls, an FTP file manager with recursive folder operations, an opt-in KDE Desktop autostart setting, and a manual GitHub Releases update checker. The installer preserves a previous managed release for rollback:
+
+```bash
+python3 -m v8.install status
+python3 -m v8.install rollback
+```
+
+See [v8 release notes and verification requirements](v8/STABLE.md). **Public hardware validation is still pending; do not treat the isolation indicator as a firewall audit.** Windows is experimental and is not included in this Linux release.
 
 ## Features
 
@@ -126,7 +142,7 @@ Run local tests without changing Wi-Fi, firewall rules or system services:
 python3 -m unittest discover -s tests -v
 ```
 
-The installers have been rebranded without changing their network operations. Hardware behavior varies across SteamOS versions, Wi-Fi drivers and client firmware. Public release remains pending the owner's review and hardware checks.
+The installers have been rebranded without changing their network operations. Hardware behavior varies across SteamOS versions, Wi-Fi drivers and client firmware. The v8.0.0 public release requires owner review and hardware checks.
 
 ## Credits
 
