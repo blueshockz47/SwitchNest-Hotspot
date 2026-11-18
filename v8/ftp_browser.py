@@ -47,6 +47,16 @@ class Browser(QObject):
         self.tree_event.connect(self.on_tree_event)
         self.tree_finished.connect(self.on_tree_finished)
         self.reconnect = False
+        self.pending = []
+        self.last_failed = None
+        self.last_request = None
+        self.details = ""
+        self.navigation = {"local": [], "remote": []}
+        self.forward_paths = {"local": [], "remote": []}
+        try:
+            self.bookmarks=json.loads(str(self.settings.value("bookmarks","[]")))
+            if not isinstance(self.bookmarks,list): self.bookmarks=[]
+        except (TypeError,ValueError): self.bookmarks=[]
         self.local_free = 0
         self.transfer_size = 0
         self.started = 0
@@ -66,7 +76,7 @@ class Browser(QObject):
     def state(self):
         return json.dumps(dict(host=self.host, port=self.port, local=str(self.local),
             remote=self.remote, localRows=self.local_rows, remoteRows=self.remote_rows,
-            status=self.status, progress=self.progress, busy=self.busy, connected=self.connected, total=self.total, completed=self.completed, current=self.current_name, history=self.history, speed=self.speed, bytesDone=self.bytes_done, transferSize=self.transfer_size, localFree=self.local_free))
+            status=self.status, progress=self.progress, busy=self.busy, connected=self.connected, total=self.total, completed=self.completed, current=self.current_name, history=self.history, speed=self.speed, bytesDone=self.bytes_done, transferSize=self.transfer_size, localFree=self.local_free, pending=self.pending, retryAvailable=self.last_failed is not None, details=self.details, bookmarks=self.bookmarks))
 
     def refresh_local(self):
         try:
@@ -142,6 +152,8 @@ class Browser(QObject):
             return
         p = self.local.parent if name == ".." else self.local / name
         if (name == ".." or self.valid_name(name)) and p.is_dir() and not p.is_symlink():
+            self.navigation["local"].append(str(self.local))
+            self.forward_paths["local"].clear()
             self.local = p
             self.refresh_local()
 
@@ -149,12 +161,15 @@ class Browser(QObject):
     def remote_open(self, name):
         if self.busy or not self.connected:
             return
+        previous=self.remote
         if name == "..":
             self.remote = self.remote.rstrip("/").rsplit("/", 1)[0] + "/"
         elif self.valid_name(name) and any(x["name"] == name and x["directory"] for x in self.remote_rows):
             self.remote += name + "/"
         else:
             return
+        self.navigation["remote"].append(previous)
+        self.forward_paths["remote"].clear()
         self.list_remote()
 
     @Slot()
@@ -170,6 +185,9 @@ class Browser(QObject):
         if not any(x["name"] == name and not x["directory"] for x in self.remote_rows):
             return
         try:
+            expected=next((x.get("size") for x in self.remote_rows if x["name"]==name),None)
+            if expected is not None and expected>shutil.disk_usage(self.local).free:
+                raise OSError("Insufficient local storage")
             self.dest = self.local / name
             if os.path.lexists(self.dest):
                 raise OSError("Destination exists; choose a different local folder.")
@@ -227,13 +245,107 @@ class Browser(QObject):
             self.status = "Batch stopped: " + self.status
             self.changed.emit()
 
+    @Slot(str)
+    def retry_failed(self, policy):
+        if self.busy or not self.last_failed: return
+        direction,raw,old,local,remote,host,port=self.last_failed
+        if (local,remote,host,port)!=(str(self.local),self.remote,self.host,self.port):
+            self.status="Return to original directories and endpoint before retry"
+            self.changed.emit()
+            return
+        self.tree_batch(direction,raw,policy)
+
+    @Slot(str,str)
+    def navigate(self,side,action):
+        if self.busy or side not in self.navigation or (side=="remote" and not self.connected): return
+        current=str(self.local) if side=="local" else self.remote
+        stack=self.navigation[side] if action=="back" else self.forward_paths[side]
+        other=self.forward_paths[side] if action=="back" else self.navigation[side]
+        if action=="home":
+            target=str(Path.home()) if side=="local" else "/"
+            self.navigation[side].append(current)
+            self.forward_paths[side].clear()
+        elif action in ("back","forward") and stack:
+            target=stack.pop()
+            other.append(current)
+        else: return
+        if side=="local":
+            p=Path(target)
+            if p.is_dir() and not p.is_symlink(): self.local=p; self.refresh_local()
+        else:
+            self.remote=target
+            self.list_remote()
+
+    @Slot(str)
+    def bookmark(self,side):
+        if self.busy or side not in self.navigation or (side=="remote" and not self.connected): return
+        item=dict(side=side,path=str(self.local) if side=="local" else self.remote,host=self.host,port=self.port)
+        if item not in self.bookmarks:
+            self.bookmarks=(self.bookmarks+[item])[-50:]
+            self.settings.setValue("bookmarks",json.dumps(self.bookmarks))
+        self.changed.emit()
+
+    @Slot(int)
+    def open_bookmark(self,index):
+        if self.busy or not 0<=index<len(self.bookmarks): return
+        item=self.bookmarks[index]
+        if item["side"]=="local":
+            p=Path(item["path"])
+            if p.is_dir() and not p.is_symlink():
+                self.navigation["local"].append(str(self.local))
+                self.local=p
+                self.refresh_local()
+        elif self.connected and (item["host"],item["port"])==(self.host,self.port):
+            path=item["path"]
+            if path.startswith("/") and path.endswith("/") and all(self.valid_name(n) for n in path.split("/") if n):
+                self.navigation["remote"].append(self.remote)
+                self.remote=path
+                self.list_remote()
+
+    @Slot(str,str)
+    def properties(self,side,name):
+        if self.busy or side not in self.navigation or not self.valid_name(name): return
+        rows=self.local_rows if side=="local" else self.remote_rows
+        row=next((x for x in rows if x["name"]==name),None)
+        if row is None or (side=="remote" and not self.connected): return
+        local,remote=self.local,self.remote
+        self.tree_cancel.clear()
+        self.busy=True
+        self.job="tree"
+        self.tree_kind="properties"
+        self.details="Calculating..."
+        self.changed.emit()
+        def work():
+            try:
+                if side=="remote":
+                    n,b=Tree(self.host,self.port,"skip",self.tree_cancel.is_set,lambda *x:None).properties(remote,name,row["directory"])
+                else:
+                    p=local/name
+                    files=p.rglob("*") if p.is_dir() else [p]
+                    n=b=0
+                    for f in files:
+                        if self.tree_cancel.is_set(): raise InterruptedError("Cancelled")
+                        if f.is_file() and not f.is_symlink(): n+=1; b+=f.stat().st_size
+                self.tree_finished.emit(f"Properties: {name} — {n} files, {b:,} bytes")
+            except Exception as exc: self.tree_finished.emit("Properties: "+str(exc))
+        self.tree_thread=threading.Thread(target=work,daemon=True)
+        self.tree_thread.start()
+
     @Slot(str, str, bool)
-    def recursive_delete(self, side, name, confirmed):
-        if self.busy or not confirmed or side not in ("local","remote") or not self.valid_name(name):
+    def recursive_delete(self,side,name,confirmed):
+        self.delete_batch(side,json.dumps([name]),confirmed)
+
+    @Slot(str, str, bool)
+    def delete_batch(self, side, raw, confirmed):
+        if self.busy or not confirmed or side not in ("local","remote") :
             return
         rows=self.local_rows if side=="local" else self.remote_rows
-        if not any(x["name"]==name and x["directory"] for x in rows):
-            return
+        try:
+            names=json.loads(raw)
+            allowed={x["name"] for x in rows}
+            if not isinstance(names,list) or not names or len(names)>1000 or any(not isinstance(n,str) or n not in allowed or not self.valid_name(n) for n in names): return
+            names=list(dict.fromkeys(names))
+        except (ValueError,TypeError): return
         if side=="remote" and not self.connected:
             return
         local,remote=self.local,self.remote
@@ -248,16 +360,17 @@ class Browser(QObject):
         self.job="tree"
         self.tree_kind="delete"
         self.completed=self.total=0
-        self.current_name=name
+        self.current_name=names[0]
         self.progress=self.transfer_size=0
         self.status="Scanning folder before deletion"
         self.changed.emit()
         def work():
             try:
-                if tree:
-                    tree.delete(remote,name)
-                else:
-                    delete_local(local/name,self.tree_cancel.is_set,self.tree_event.emit)
+                for name in names:
+                    if tree:
+                        tree.delete(remote,name)
+                    else:
+                        delete_local(local/name,self.tree_cancel.is_set,self.tree_event.emit)
                 self.tree_finished.emit("Deletion complete")
             except Exception as exc:
                 self.tree_finished.emit("Deletion stopped; some entries may already be gone: "+str(exc))
@@ -322,6 +435,9 @@ class Browser(QObject):
             self.busy=True
             self.job="tree"
             self.tree_kind="transfer"
+            self.last_request=(direction,raw,policy,str(local),remote,self.host,self.port)
+            self.pending=names.copy()
+            self.last_failed=None
             self.completed=self.total=0
             self.progress=self.transfer_size=0
             self.status="Recursive transfer in progress"
@@ -329,10 +445,12 @@ class Browser(QObject):
             def work():
                 try:
                     for name in names:
+                        self.tree_event.emit(name,"Active")
                         if direction=="upload":
                             tree.upload(local/name,remote)
                         else:
                             tree.download(remote,name,local,allowed[name])
+                        self.tree_event.emit(name,"Entry finished")
                     self.tree_finished.emit("Transfer complete")
                 except Exception as exc:
                     self.tree_finished.emit("Transfer stopped: "+str(exc))
@@ -345,6 +463,14 @@ class Browser(QObject):
     @Slot(str,str)
     def on_tree_event(self,name,result):
         self.current_name=name
+        if result=="Active":
+            self.status="Active: "+name
+            self.changed.emit()
+            return
+        if result=="Entry finished":
+            if name in self.pending: self.pending.remove(name)
+            self.changed.emit()
+            return
         self.completed+=1
         self.history=([dict(name=name,direction=getattr(self,"tree_kind","transfer"),result=result,date=datetime.datetime.now().isoformat(timespec="seconds"))]+self.history)[:100]
         self.settings.setValue("history",json.dumps(self.history))
@@ -355,6 +481,13 @@ class Browser(QObject):
     def on_tree_finished(self,status):
         self.busy=False
         self.status=status
+        if getattr(self,"tree_kind","")=="properties":
+            self.details=status
+            self.changed.emit()
+            return
+        if getattr(self,"tree_kind","")=="transfer" and status!="Transfer complete" and self.last_request:
+            self.last_failed=self.last_request[:1]+(json.dumps(self.pending),)+self.last_request[2:]
+        self.pending=[]
         if status not in ("Transfer complete","Deletion complete"):
             self.on_tree_event(self.current_name,"Cancelled" if self.tree_cancel.is_set() else "Failed")
             self.status=status
@@ -416,6 +549,8 @@ class Browser(QObject):
                 self.connected = True
                 self.status = "Directory listed" if rows or not output.strip() else "Listing format unsupported"
             elif self.job == "download":
+                if self.temp.stat().st_size!=self.transfer_size:
+                    raise OSError("Download size verification failed")
                 os.link(self.temp, self.dest)
                 self.status = "Download complete"
                 self.refresh_local()
