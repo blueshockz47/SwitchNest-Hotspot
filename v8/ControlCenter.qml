@@ -65,7 +65,7 @@ ApplicationWindow {
                 NavButton { text: "Diagnostics"; page: 4 }
                 NavButton { text: "Settings"; page: 5 }
                 Item { Layout.fillHeight: true }
-                Label { text: "v8.0-alpha.4"; color: root.accent }
+                Label { text: "v8.0-alpha.5"; color: root.accent }
                 Label { text: "Developer preview"; color: root.muted; font.pixelSize: 12 }
             }
         }
@@ -179,15 +179,7 @@ ApplicationWindow {
                     Label { text: "Stopping Sunshine disconnects existing streams."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Item { Layout.fillHeight: true }
                 }
-                ColumnLayout {
-                    Label { text: "File transfers"; font.pixelSize: 22 }
-                    Label { text: "Start your local FTP server, then open its files in Dolphin."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
-                    TextField { id: ftpHost; placeholderText: "Client IPv4 address"; Layout.fillWidth: true; inputMethodHints: Qt.ImhFormattedNumbersOnly }
-                    TextField { id: ftpPort; text: "21"; placeholderText: "FTP port"; inputMethodHints: Qt.ImhDigitsOnly; Layout.fillWidth: true }
-                    Button { text: "Open FTP file manager"; enabled: root.hotspot.state === "on" && ftpHost.text.length > 0; onClicked: controller.open_ftp(ftpHost.text, ftpPort.text) }
-                    Label { text: "FTP is unencrypted. Dolphin handles browsing and copy/paste."; wrapMode: Text.Wrap; Layout.fillWidth: true; color: root.muted }
-                    Item { Layout.fillHeight: true }
-                }
+                FtpPage {}
                 ScrollView {
                     TextArea { readOnly: true; text: JSON.stringify(root.report, null, 2); wrapMode: TextEdit.Wrap }
                 }
