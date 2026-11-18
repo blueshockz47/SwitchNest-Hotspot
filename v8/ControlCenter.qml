@@ -65,7 +65,7 @@ ApplicationWindow {
                 NavButton { text: "Diagnostics"; page: 4 }
                 NavButton { text: "Settings"; page: 5 }
                 Item { Layout.fillHeight: true }
-                Label { text: "v8.0-alpha.3"; color: root.accent }
+                Label { text: "v8.0-alpha.4"; color: root.accent }
                 Label { text: "Developer preview"; color: root.muted; font.pixelSize: 12 }
             }
         }
@@ -89,15 +89,15 @@ ApplicationWindow {
                     contentWidth: availableWidth
                     ColumnLayout {
                         width: parent.width
-                        spacing: 12
+                        spacing: 8
                         Panel {
-                            implicitHeight: 174
+                            implicitHeight: 142
                             ColumnLayout {
                                 anchors.fill: parent
                                 anchors.margins: 16
                                 Label { text: "OFFLINE HOTSPOT"; color: root.muted; font.pixelSize: 12 }
                                 Label { text: root.hotspot.state === "on" ? "Hotspot active" : root.hotspot.state === "off" ? "Hotspot off" : "Status unknown"; font.pixelSize: 25; font.bold: true; color: root.hotspot.state === "on" ? root.accent : root.muted }
-                                Label { text: "Powered by your existing v7.1 installation"; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                                Label { text: "v7.1 backend"; color: root.muted }
                                 RowLayout {
                                     Button { text: root.hotspot.state === "on" ? "Turn OFF" : "Turn ON"; highlighted: root.hotspot.state !== "on"; enabled: !root.busy && (root.hotspot.state === "on" || root.hotspot.state === "off"); onClicked: controller.action(root.hotspot.state === "on" ? "off" : "on") }
                                     BusyIndicator { running: root.busy; visible: running; implicitWidth: 30; implicitHeight: 30 }
@@ -107,7 +107,7 @@ ApplicationWindow {
                         RowLayout {
                             Layout.fillWidth: true
                             Panel {
-                                implicitHeight: 100
+                                implicitHeight: 76
                                 ColumnLayout {
                                     anchors.fill: parent; anchors.margins: 14
                                     Label { text: "DNS SERVICE"; color: root.muted; font.pixelSize: 12 }
@@ -115,7 +115,7 @@ ApplicationWindow {
                                 }
                             }
                             Panel {
-                                implicitHeight: 100
+                                implicitHeight: 76
                                 ColumnLayout {
                                     anchors.fill: parent; anchors.margins: 14
                                     Label { text: "ISOLATION"; color: root.muted; font.pixelSize: 12 }
@@ -170,12 +170,22 @@ ApplicationWindow {
                 }
                 ColumnLayout {
                     Label { text: "Sunshine / Moonlight"; font.pixelSize: 22 }
-                    Label { text: "Streaming management is planned for a later build."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                    Label { text: !root.report.sunshine_installed ? "Checking installation" : !root.report.sunshine_installed.ok ? "Flatpak installation unavailable" : root.report.sunshine_processes && root.report.sunshine_processes.ok ? (root.report.sunshine_processes.output.indexOf("dev.lizardbyte.app.Sunshine") >= 0 ? "Sunshine running" : "Sunshine stopped") : "Process state unavailable"; color: root.accent; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                    RowLayout {
+                        Button { text: "Start"; enabled: !root.busy; onClicked: controller.sunshine("start") }
+                        Button { text: "Stop"; enabled: !root.busy; onClicked: controller.sunshine("stop") }
+                    }
+                    Button { text: "Open Sunshine web UI"; onClicked: controller.sunshine_web() }
+                    Label { text: "Stopping Sunshine disconnects existing streams."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Item { Layout.fillHeight: true }
                 }
                 ColumnLayout {
                     Label { text: "File transfers"; font.pixelSize: 22 }
-                    Label { text: "Local FTP integration is planned."; color: root.muted }
+                    Label { text: "Start your local FTP server, then open its files in Dolphin."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                    TextField { id: ftpHost; placeholderText: "Client IPv4 address"; Layout.fillWidth: true; inputMethodHints: Qt.ImhFormattedNumbersOnly }
+                    TextField { id: ftpPort; text: "21"; placeholderText: "FTP port"; inputMethodHints: Qt.ImhDigitsOnly; Layout.fillWidth: true }
+                    Button { text: "Open FTP file manager"; enabled: root.hotspot.state === "on" && ftpHost.text.length > 0; onClicked: controller.open_ftp(ftpHost.text, ftpPort.text) }
+                    Label { text: "FTP is unencrypted. Dolphin handles browsing and copy/paste."; wrapMode: Text.Wrap; Layout.fillWidth: true; color: root.muted }
                     Item { Layout.fillHeight: true }
                 }
                 ScrollView {
@@ -183,14 +193,16 @@ ApplicationWindow {
                 }
                 ColumnLayout {
                     Label { text: "Settings"; font.pixelSize: 22 }
-                    Label { text: "Existing v7.1 settings are unchanged."; color: root.muted }
+                    Label { text: "Wi-Fi settings use the existing v7.1 manager."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                    Button { text: "Change Wi-Fi password"; enabled: !root.busy; onClicked: controller.wifi_settings() }
+                    Label { text: "Select option 5 in Konsole. SSID changes are not supported in this preview."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Label { text: "Refresh interval: 10 seconds"; color: root.muted }
                     Item { Layout.fillHeight: true }
                 }
             }
             Rectangle {
                 Layout.fillWidth: true
-                implicitHeight: 82
+                implicitHeight: 65
                 color: "#1b222d"
                 radius: 8
                 ScrollView {
