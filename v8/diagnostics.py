@@ -48,7 +48,12 @@ def hotspot():
 
 def collect():
     return {
-        "version": "8.0-alpha.3",
+        "version": "8.0-alpha.4",
+        "sunshine_installed": probe(["flatpak", "info", "dev.lizardbyte.app.Sunshine"]),
+        "sunshine_processes": probe(["flatpak", "ps", "--columns=application"]),
+        "hotspot_service": probe(["systemctl", "is-active", "steamdeck-switch2-hotspot.service"]),
+        "ipv4_forwarding": probe(["sysctl", "-n", "net.ipv4.ip_forward"]),
+        "ipv6_forwarding": probe(["sysctl", "-n", "net.ipv6.conf.all.forwarding"]),
         "hotspot": hotspot(),
         "http_service": probe(["systemctl", "is-active", "steamdeck-switch2-http.service"]),
         "network_mode": "unverified",
