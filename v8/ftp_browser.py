@@ -4,7 +4,7 @@ import json
 import datetime
 import time
 import threading
-from v8.ftp_tree import Tree
+from v8.ftp_tree import Tree, delete_local
 import os
 from pathlib import Path
 import re
@@ -227,6 +227,43 @@ class Browser(QObject):
             self.status = "Batch stopped: " + self.status
             self.changed.emit()
 
+    @Slot(str, str, bool)
+    def recursive_delete(self, side, name, confirmed):
+        if self.busy or not confirmed or side not in ("local","remote") or not self.valid_name(name):
+            return
+        rows=self.local_rows if side=="local" else self.remote_rows
+        if not any(x["name"]==name and x["directory"] for x in rows):
+            return
+        if side=="remote" and not self.connected:
+            return
+        local,remote=self.local,self.remote
+        try:
+            tree=Tree(self.host,self.port,"skip",self.tree_cancel.is_set,self.tree_event.emit) if side=="remote" else None
+        except ValueError as exc:
+            self.status=str(exc)
+            self.changed.emit()
+            return
+        self.tree_cancel.clear()
+        self.busy=True
+        self.job="tree"
+        self.tree_kind="delete"
+        self.completed=self.total=0
+        self.current_name=name
+        self.progress=self.transfer_size=0
+        self.status="Scanning folder before deletion"
+        self.changed.emit()
+        def work():
+            try:
+                if tree:
+                    tree.delete(remote,name)
+                else:
+                    delete_local(local/name,self.tree_cancel.is_set,self.tree_event.emit)
+                self.tree_finished.emit("Deletion complete")
+            except Exception as exc:
+                self.tree_finished.emit("Deletion stopped; some entries may already be gone: "+str(exc))
+        self.tree_thread=threading.Thread(target=work,daemon=True)
+        self.tree_thread.start()
+
     @Slot(str, str, str, str)
     def manage(self, side, action, name, new_name):
         if self.busy or side not in ("local", "remote") or action not in ("mkdir", "rename", "delete"):
@@ -284,6 +321,7 @@ class Browser(QObject):
             self.tree_cancel.clear()
             self.busy=True
             self.job="tree"
+            self.tree_kind="transfer"
             self.completed=self.total=0
             self.progress=self.transfer_size=0
             self.status="Recursive transfer in progress"
@@ -308,7 +346,7 @@ class Browser(QObject):
     def on_tree_event(self,name,result):
         self.current_name=name
         self.completed+=1
-        self.history=([dict(name=name,direction="tree",result=result,date=datetime.datetime.now().isoformat(timespec="seconds"))]+self.history)[:100]
+        self.history=([dict(name=name,direction=getattr(self,"tree_kind","transfer"),result=result,date=datetime.datetime.now().isoformat(timespec="seconds"))]+self.history)[:100]
         self.settings.setValue("history",json.dumps(self.history))
         self.status=result+": "+name
         self.changed.emit()
@@ -317,11 +355,12 @@ class Browser(QObject):
     def on_tree_finished(self,status):
         self.busy=False
         self.status=status
-        if status!="Transfer complete":
+        if status not in ("Transfer complete","Deletion complete"):
             self.on_tree_event(self.current_name,"Cancelled" if self.tree_cancel.is_set() else "Failed")
             self.status=status
         self.refresh_local()
-        self.list_remote()
+        if self.connected:
+            self.list_remote()
         self.changed.emit()
 
     @Slot()
