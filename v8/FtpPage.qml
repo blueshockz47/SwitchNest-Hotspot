@@ -9,6 +9,8 @@ ColumnLayout {
     property var remoteSelected: []
     property var uploadName: []
     property int sortMode: 0
+    property string transferSide: "local"
+    property var transferNames: []
     property string activeSide: "local"
     property string entryName: ""
     property string operation: ""
@@ -26,8 +28,7 @@ ColumnLayout {
     }
     function transfer(side, names) {
         if (dataState.busy || !dataState.connected || !names.length) return
-        if (side === "local") { uploadName = names.slice(); confirm.open() }
-        else ftpBrowser.batch("download", JSON.stringify(names))
+        transferSide=side; transferNames=names.slice(); conflictDialog.open()
     }
     function pasteFiles() {
         if (clipSide === activeSide || clipPath !== (clipSide === "local" ? dataState.local : dataState.remote) || clipHost !== dataState.host + ":" + dataState.port) return
@@ -38,10 +39,10 @@ ColumnLayout {
         newName.text= action === "rename" ? entryName : ""
         editDialog.open()
     }
-    Shortcut { sequence: StandardKey.Copy; enabled: page.visible && !page.dataState.busy && !host.activeFocus && !port.activeFocus && !editDialog.visible; onActivated: page.copyFiles() }
-    Shortcut { sequence: StandardKey.Paste; enabled: page.visible && !page.dataState.busy && !host.activeFocus && !port.activeFocus && !editDialog.visible; onActivated: page.pasteFiles() }
+    Shortcut { sequence: StandardKey.Copy; enabled: page.visible && !page.dataState.busy && !host.activeFocus && !port.activeFocus && !search.activeFocus && !editDialog.visible && !conflictDialog.visible; onActivated: page.copyFiles() }
+    Shortcut { sequence: StandardKey.Paste; enabled: page.visible && !page.dataState.busy && !host.activeFocus && !port.activeFocus && !search.activeFocus && !editDialog.visible && !conflictDialog.visible; onActivated: page.pasteFiles() }
     function toggle(items, name) { return items.indexOf(name) < 0 ? items.concat([name]) : items.filter(x => x !== name) }
-    function sorted(rows) { return rows.slice().sort((a,b) => a.directory !== b.directory ? (a.directory ? -1 : 1) : sortMode === 1 ? (b.size || 0)-(a.size || 0) || a.name.localeCompare(b.name) : a.name.localeCompare(b.name)) }
+    function sorted(rows) { return rows.filter(x => x.name.toLowerCase().includes(search.text.toLowerCase())).sort((a,b) => a.directory !== b.directory ? (a.directory ? -1 : 1) : sortMode === 1 ? (b.size || 0)-(a.size || 0) || a.name.localeCompare(b.name) : a.name.localeCompare(b.name)) }
     function sizeText(n) { return n === null || n === undefined ? "" : n >= 1048576 ? (n/1048576).toFixed(1)+" MiB" : n >= 1024 ? (n/1024).toFixed(1)+" KiB" : n+" B" }
     Connections {
         target: ftpBrowser
@@ -52,6 +53,7 @@ ColumnLayout {
         TextField { id: port; text: page.dataState.port; Layout.preferredWidth: 85; enabled: !page.dataState.busy }
         Button { text: "Connect"; enabled: !page.dataState.busy; onClicked: { page.remoteSelected=[]; ftpBrowser.connect_to(host.text, port.text) } }
     }
+    TextField { id: search; placeholderText: "Filter files and folders"; Layout.fillWidth: true }
     RowLayout { Label { text: "Local FTP • PASV"; color: "#98a5b5" } Item { Layout.fillWidth: true } ComboBox { model: ["Name", "Size"]; onCurrentIndexChanged: page.sortMode=currentIndex; enabled: !page.dataState.busy } }
     RowLayout {
         Layout.fillWidth: true
@@ -60,7 +62,7 @@ ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.preferredWidth: 1
-            Label { text: "Local files"; font.bold: true }
+            Label { text: "Local · " + page.sizeText(page.dataState.localFree) + " free"; font.bold: true }
             Label { text: page.dataState.local; elide: Text.ElideMiddle; Layout.fillWidth: true }
             Button { text: "Up"; enabled: !page.dataState.busy; onClicked: { page.activeSide="local"; page.entryName=""; page.localSelected=[]; ftpBrowser.local_open("..") } }
             ListView {
@@ -94,6 +96,10 @@ ColumnLayout {
                         else page.localSelected=page.toggle(page.localSelected, modelData.name)
                     }
                     onPressAndHold: { page.activeSide="local"; page.entryName=modelData.name; entryMenu.popup() }
+                    TapHandler {
+                        acceptedButtons: Qt.RightButton
+                        onTapped: { page.activeSide="local"; page.entryName=modelData.name; entryMenu.popup() }
+                    }
                     Drag.active: dragHandler.active || dragFinishing
                     property bool dragFinishing: false
                     Drag.keys: ["local"]
@@ -114,6 +120,7 @@ ColumnLayout {
                     }
                     Menu {
                         id: entryMenu
+                        MenuItem { text: "Upload file / folder"; onTriggered: page.transfer("local",[page.entryName]) }
                         MenuItem { text: "Rename"; onTriggered: page.editEntry("rename") }
                         MenuItem { text: "Delete"; onTriggered: page.editEntry("delete") }
                     }
@@ -125,7 +132,7 @@ ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.preferredWidth: 1
-            Label { text: "Remote files"; font.bold: true }
+            Label { text: "Remote · capacity unavailable"; font.bold: true }
             Label { text: page.dataState.remote; elide: Text.ElideMiddle; Layout.fillWidth: true }
             Button { text: "Up"; enabled: !page.dataState.busy && page.dataState.connected; onClicked: { page.activeSide="remote"; page.entryName=""; page.remoteSelected=[]; ftpBrowser.remote_open("..") } }
             ListView {
@@ -159,6 +166,10 @@ ColumnLayout {
                         else page.remoteSelected=page.toggle(page.remoteSelected, modelData.name)
                     }
                     onPressAndHold: { page.activeSide="remote"; page.entryName=modelData.name; entryMenu.popup() }
+                    TapHandler {
+                        acceptedButtons: Qt.RightButton
+                        onTapped: { page.activeSide="remote"; page.entryName=modelData.name; entryMenu.popup() }
+                    }
                     Drag.active: dragHandler.active || dragFinishing
                     property bool dragFinishing: false
                     Drag.keys: ["remote"]
@@ -179,6 +190,7 @@ ColumnLayout {
                     }
                     Menu {
                         id: entryMenu
+                        MenuItem { text: "Download file / folder"; onTriggered: page.transfer("remote",[page.entryName]) }
                         MenuItem { text: "Rename"; onTriggered: page.editEntry("rename") }
                         MenuItem { text: "Delete"; onTriggered: page.editEntry("delete") }
                     }
@@ -188,8 +200,8 @@ ColumnLayout {
         }
     }
     RowLayout {
-        Button { text: "Upload (" + page.localSelected.length + ")"; enabled: !page.dataState.busy && page.dataState.connected && page.localSelected.length > 0; onClicked: { page.uploadName=page.localSelected; confirm.open() } }
-        Button { text: "Download (" + page.remoteSelected.length + ")"; enabled: !page.dataState.busy && page.dataState.connected && page.remoteSelected.length > 0; onClicked: ftpBrowser.batch("download", JSON.stringify(page.remoteSelected)) }
+        Button { text: "Upload (" + page.localSelected.length + ")"; enabled: !page.dataState.busy && page.dataState.connected && page.localSelected.length > 0; onClicked: page.transfer("local",page.localSelected) }
+        Button { text: "Download (" + page.remoteSelected.length + ")"; enabled: !page.dataState.busy && page.dataState.connected && page.remoteSelected.length > 0; onClicked: page.transfer("remote",page.remoteSelected) }
         Button { text: "Reload"; enabled: !page.dataState.busy && page.dataState.connected; onClicked: { page.localSelected=[]; page.remoteSelected=[]; ftpBrowser.refresh() } }
         Button { text: "Cancel"; enabled: page.dataState.busy; onClicked: ftpBrowser.cancel() }
     }
@@ -216,13 +228,26 @@ ColumnLayout {
     }
     Dialog {
         id: historyDialog
-        title: "Transfer history (this session)"
+        title: "Transfer history (saved)"
         modal: true
         standardButtons: Dialog.Close
         ScrollView {
             width: 320; height: 240
             TextArea { readOnly: true; wrapMode: TextEdit.Wrap; text: page.dataState.history.map(x => x.result + " · " + x.direction + " · " + x.name + " · " + x.date).join("\n") || "No transfers yet" }
         }
+    }
+    Dialog {
+        id: conflictDialog
+        title: "Transfer options"
+        modal: true
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        ColumnLayout {
+            Label { text: (page.transferSide === "local" ? "Upload " : "Download ") + page.transferNames.length + " selected entries (including subfolders)."; wrapMode: Text.Wrap; Layout.preferredWidth: 300 }
+            ComboBox { id: policy; model: ["Skip existing", "Keep both (rename)", "Replace existing"] }
+            Label { text: "Replace may overwrite files. Interrupted uploads may leave partial files."; wrapMode: Text.Wrap; Layout.preferredWidth: 300 }
+        }
+        onOpened: policy.currentIndex=0
+        onAccepted: ftpBrowser.tree_batch(page.transferSide === "local" ? "upload" : "download",JSON.stringify(page.transferNames),["skip","rename","replace"][policy.currentIndex])
     }
     Dialog {
         id: confirm
