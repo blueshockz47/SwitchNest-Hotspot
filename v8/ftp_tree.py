@@ -66,6 +66,30 @@ class Tree:
     def entries(self, path):
         return listing(self.run(path,read=True))
 
+    def sizes(self,path):
+        result={}
+        for line in self.run(path,read=True).splitlines():
+            p=line.split(maxsplit=8)
+            if len(p)==9 and p[0].startswith("-") and valid(p[8]) and p[4].isdigit():
+                result[p[8]]=int(p[4])
+        return result
+
+    def properties(self,remote,name,directory,depth=0):
+        self.check()
+        if depth>64 or not valid(name):
+            raise ValueError("Invalid path or depth")
+        if not directory:
+            size=self.sizes(remote).get(name)
+            if size is None:
+                raise ValueError("File size unavailable")
+            return (1,size)
+        count=size=0
+        for child,isdir in self.entries(remote+name+"/").items():
+            n,b=self.properties(remote+name+"/",child,isdir,depth+1)
+            count+=n
+            size+=b
+        return count,size
+
     def choose(self, name, existing, directory):
         if name not in existing:
             return name
@@ -107,8 +131,11 @@ class Tree:
             for child in sorted(source.iterdir()):
                 self.upload(child,dest+"/",depth+1)
         else:
+            size=source.stat().st_size
             self.run(dest,["--upload-file",str(source)])
-            self.tick(dest,"Completed")
+            if self.sizes(remote).get(name)!=size:
+                raise OSError("Upload size verification failed: "+dest)
+            self.tick(dest,"Verified")
 
     def download(self, remote, name, local, directory, depth=0):
         self.check()
@@ -128,15 +155,22 @@ class Tree:
             for child,isdir in self.entries(path+"/").items():
                 self.download(path+"/",child,dest,isdir,depth+1)
         else:
+            expected=self.sizes(remote).get(name)
+            if expected is None:
+                raise OSError("Remote size unavailable")
+            if expected>shutil.disk_usage(local).free:
+                raise OSError("Insufficient local storage")
             fd,tmp=tempfile.mkstemp(prefix=".switchnest-",dir=local)
             os.close(fd)
             try:
                 self.run(path,["--output",tmp])
+                if Path(tmp).stat().st_size!=expected:
+                    raise OSError("Download size verification failed")
                 if self.policy=="replace":
                     os.replace(tmp,dest)
                 else:
                     os.link(tmp,dest)
-                self.tick(path,"Completed")
+                self.tick(path,"Verified")
             finally:
                 Path(tmp).unlink(missing_ok=True)
 
