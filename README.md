@@ -42,6 +42,31 @@ Home router / Internet
 
 **Release status:** Linux v8.0.1 includes the verified WPA2-Personal authentication settings (RSN, CCMP pairwise/group, PMF disabled) for PC/PS5 compatibility. Final hardware validation of the full installer remains pending. The v8 Control Center requires the separately installed v7.1 hotspot backend.
 
+## SwitchNest Hotspot vs. a normal Wi-Fi hotspot
+
+A normal hotspot typically **shares the host's internet connection** with connected devices. **SwitchNest v8.0.1 instead creates a local-only Wi-Fi network** designed for console-to-PC communication, including Nintendo Switch connectivity checks, without forwarding client traffic to the internet.
+
+| Feature | Typical internet-sharing hotspot | SwitchNest v8.0.1 (default offline mode) |
+|---|---|---|
+| Main purpose | Give connected devices internet access | Connect consoles and PCs to local services |
+| Internet for connected devices | Usually yes | **No** — hotspot forwarding is blocked |
+| Internet on the host PC | Depends on uplink | **Yes**, when the host has a separate Ethernet/LAN connection |
+| DNS behavior | Usually resolves public domains via upstream DNS | Local dnsmasq wildcard resolution points names to the hotspot host |
+| Nintendo connectivity checks | Normally reach Nintendo's internet services | Selected checks receive **local DNS and HTTP responses** |
+| Nintendo server access | Normally possible | Internet forwarding is blocked for hotspot clients |
+| Local FTP and streaming | Possible if configured | Designed for local FTP and Sunshine/Moonlight use |
+| Wi-Fi security | Depends on hotspot settings | Optional WPA2-Personal (recommended) or open Wi-Fi |
+
+### Why the custom DNS matters
+
+Some Nintendo Switch connectivity checks can fail on a conventional **offline** hotspot because the console expects DNS and HTTP responses. SwitchNest supplies local DNS resolution and HTTP responses for specific connectivity-check endpoints, helping the console establish a local Wi-Fi connection **without granting internet access**. This is not a general-purpose Nintendo online connection.
+
+### What stays online?
+
+With a separate Ethernet uplink, your **SteamOS PC can still browse the internet**, download files, or run online applications while the **SwitchNest-connected console remains offline**. FTP file management, Sunshine/Moonlight and other compatible local services can still work between the devices.
+
+**Security note:** SwitchNest's current offline mode blocks forwarding between the hotspot and other networks; it does not isolate clients from the host or each other. Verify firewall behavior on your machine. The experimental filtered-internet/90DNS-style prototype in a separate development branch is **not part of the v8.0.1 release** and does not guarantee Nintendo server blocking.
+
 ## Installation — start here
 
 **Install in this order: 1) hotspot backend → 2) taskbar toggle helper → 3) v8 Control Center.** All three scripts are in the same extracted repository folder. The first two use `sudo`; the v8 Control Center installer **must not** use `sudo`.
