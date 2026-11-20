@@ -6,9 +6,16 @@ from unittest.mock import patch
 from v8 import homebrew
 
 class HomebrewTests(unittest.TestCase):
+    def test_new_reddit_emulator_catalog(self):
+        entries = {item["name"]: item for item in homebrew.catalog_search(category="Emulation")}
+        for name, repo in {"SW2NES": "Rodpad/SW2NES", "SW2SNES": "Rodpad/SW2SNES", "SW2PS2": "Rodpad/SW2PS2", "Toronja (3DS)": "Olmectron/toronja"}.items():
+            self.assertEqual(entries[name]["repo"], repo)
+            self.assertTrue(entries[name]["manual"])
+            self.assertIn("manual", entries[name]["status"].lower())
+
     def test_manual_install_warnings(self):
         entries = {item["name"]: item for item in homebrew.catalog_search()}
-        self.assertEqual(len(entries), 28)
+        self.assertEqual(len(entries), 32)
         self.assertTrue(entries["FTPD Plugin"]["manual"])
         self.assertIn("manual", entries["FTPD Plugin"]["status"].lower())
         self.assertFalse(entries["RetroArch"]["manual"])
