@@ -1,4 +1,4 @@
-# SwitchNest Hotspot
+# SwitchNest (Offline Hotspot + Homebrew Manager)
 
 **A local Nintendo Switch 2 hotspot and file-management hub for SteamOS.**
 
