@@ -21,6 +21,57 @@ ColumnLayout {
     property string transferStatus: ""
     property bool installingZip: false
     property string statusText: "Loading the curated Switch 2 homebrew catalog..."
+    property var monitorGithub: []
+    property var monitorReddit: []
+    property var monitorKnownVersions: ({})
+    property bool monitorInitialized: false
+    property bool monitorVisible: false
+    property string monitorStatus: "Checking latest Switch 2 releases..."
+    // 6-hour refresh; network work runs on a Python background thread.
+    Timer {
+        id: homebrewRefreshTimer
+        interval: 21600000
+        running: true
+        repeat: true
+        onTriggered: controller.homebrew_monitor_refresh()
+    }
+    Dialog {
+        id: homebrewUpdateNotice
+        title: "New Switch 2 homebrew releases"
+        standardButtons: Dialog.Ok
+        anchors.centerIn: parent
+        Label { text: "New releases detected. Open Latest Releases to review them."; wrapMode: Text.Wrap; width: 300 }
+    }
+    Connections {
+        target: controller
+        function onHomebrewMonitorResult(raw) {
+            try {
+                let data = JSON.parse(raw)
+                if (data.kind !== "monitor") {
+                    home.monitorStatus = data.message || "Homebrew refresh failed"
+                    return
+                }
+                let changed = false
+                let next = ({})
+                for (let item of data.github) {
+                    next[item.repo] = item.version
+                    if (home.monitorInitialized && home.monitorKnownVersions[item.repo] !== undefined &&
+                        home.monitorKnownVersions[item.repo] !== item.version)
+                        changed = true
+                }
+                home.monitorKnownVersions = next
+                home.monitorInitialized = true
+                home.monitorGithub = data.github
+                home.monitorReddit = data.reddit
+                home.monitorStatus = data.github.length + " GitHub releases • " +
+                    data.reddit.length + " unverified Reddit discoveries" +
+                    (data.warnings.length ? " • " + data.warnings.join("; ") : "")
+                if (changed) homebrewUpdateNotice.open()
+            } catch (e) {
+                home.monitorStatus = "Invalid discovery response"
+            }
+        }
+    }
     property string activeCategory: "All"
     property string action: ""
     property string actionRepo: ""
@@ -48,7 +99,7 @@ ColumnLayout {
         }
     }
     spacing: 4
-    Component.onCompleted: controller.homebrew_search("", "All")
+    Component.onCompleted: { controller.homebrew_search("", "All"); controller.homebrew_monitor_refresh() }
     Connections {
         target: ftpBrowser
         function onChanged() { home.ftpState = JSON.parse(ftpBrowser.state) }
@@ -118,6 +169,28 @@ ColumnLayout {
         Button { text: "Disconnect"; enabled: home.ftpState.connected && !home.ftpState.busy && !home.working; onClicked: ftpBrowser.disconnect() }
     }
     Label { text: (home.ftpState.busy ? "Connecting / FTP operation in progress" : home.ftpState.connected ? "Connected to " + home.ftpState.host + ":" + home.ftpState.port : "Not connected") + " — " + home.ftpState.status; color: home.ftpState.connected ? "#22c55e" : "#ef4444"; wrapMode: Text.Wrap; Layout.fillWidth: true }
+    RowLayout {
+        Layout.fillWidth: true
+        Label { text: "Live Homebrew Updates"; font.bold: true; color: "#52e0ae" }
+        Label { text: home.monitorStatus; Layout.fillWidth: true; elide: Text.ElideRight; font.pixelSize: 11 }
+        Button { text: "Check Now"; onClicked: controller.homebrew_monitor_refresh() }
+        Button { text: home.monitorVisible ? "Hide Releases" : "Latest Releases"; onClicked: home.monitorVisible = !home.monitorVisible }
+    }
+    ListView {
+        Layout.fillWidth: true
+        Layout.preferredHeight: home.monitorVisible ? 170 : 0
+        visible: home.monitorVisible
+        clip: true
+        model: home.monitorGithub.concat(home.monitorReddit)
+        delegate: ItemDelegate {
+            required property var modelData
+            width: ListView.view.width
+            text: modelData.source === "GitHub"
+                  ? "GitHub • " + modelData.repo + " • " + modelData.version + " (" + modelData.asset_count + " assets)"
+                  : "Reddit • UNVERIFIED • " + modelData.title
+            onClicked: Qt.openUrlExternally(modelData.url)
+        }
+    }
     RowLayout {
         TextField { id: searchBox; placeholderText: "Search Switch 2 homebrew"; Layout.fillWidth: true; onAccepted: controller.homebrew_search(text, categoryBox.currentText) }
         ComboBox {
