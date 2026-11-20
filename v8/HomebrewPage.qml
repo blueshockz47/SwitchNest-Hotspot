@@ -37,7 +37,7 @@ ColumnLayout {
             try {
                 let data = JSON.parse(raw)
                 if (data.kind === "search") { home.results = data.items; home.assets = []; home.readyZip = ""; home.statusText = data.items.length + " community-listed Switch 2 projects. Browse-only entries cannot be installed automatically." }
-                else if (data.kind === "assets") { home.selectedRepo = data.repo; home.assets = data.assets; home.readyZip = ""; home.statusText = "Release " + data.version + " — select a ZIP to download and preview" }
+                else if (data.kind === "assets") { home.selectedRepo = data.repo; home.assets = data.assets; home.readyZip = ""; home.statusText = "Release " + data.version + " — verified NRO: install over FTP; verified ZIP: download only and open folder" }
                 else if (data.kind === "download_only_ready") {
                     home.downloadedDirectory = data.directory
                     home.statusText = data.message + " Saved: " + data.path
@@ -54,7 +54,7 @@ ColumnLayout {
         }
     }
     Label { text: "Switch 2 Homebrew Manager"; font.pixelSize: 22; font.bold: true }
-    Label { text: "Only Switch 2 candidate projects are listed. NRO installation requires a GitHub SHA-256 digest and explicit confirmation. ZIPs require a verified download followed by separate installation confirmation."; wrapMode: Text.Wrap; Layout.fillWidth: true }
+    Label { text: "Only Switch 2 candidate projects are listed. NRO installation requires a GitHub SHA-256 digest and explicit confirmation. ZIPs are download-only and must be installed manually."; wrapMode: Text.Wrap; Layout.fillWidth: true }
     RowLayout {
         Layout.fillWidth: true
         Label { text: "Switch 2 FTP"; font.bold: true }
@@ -107,25 +107,25 @@ ColumnLayout {
                 text: modelData.name + (modelData.digest ? " (SHA-256)" : " (no digest)")
                 onClicked: {
                     home.selectedAsset = modelData.name
-                    if (home.selectedManual) {
-                        if (modelData.digest && (modelData.name.toLowerCase().endsWith(".zip") || modelData.name.toLowerCase().endsWith(".nro")))
-                            downloadOnlyDialog.open()
+                    if (!modelData.digest) {
+                        home.statusText = "SHA-256 unavailable: automatic installation and download are disabled."
+                    } else if (modelData.name.toLowerCase().endsWith(".nro")) {
+                        if (!home.ftpState.connected)
+                            home.statusText = "Connect to Switch 2 FTP before installing this NRO."
                         else
-                            home.statusText = "MANUAL INSTALL: No supported SHA-256 verified ZIP/NRO available for automatic download. Check the official project release instructions."
+                            installDialog.open()
+                    } else if (modelData.name.toLowerCase().endsWith(".zip")) {
+                        downloadOnlyDialog.open()
+                    } else {
+                        home.statusText = "Unsupported asset format. Only verified NRO and ZIP packages are supported."
                     }
-                    else if (modelData.name.toLowerCase().endsWith(".zip") && modelData.digest)
-                        downloadZipDialog.open()
-                    else if (modelData.name.toLowerCase().endsWith(".nro") && modelData.digest)
-                        installDialog.open()
-                    else
-                        home.statusText = "Unsupported package. ZIP and NRO require a valid SHA-256; other assets are display-only."
                 }
             }
         }
     }
     RowLayout {
         visible: home.downloadedDirectory.length > 0
-        Label { text: "Downloaded locally — manual installation only"; color: "#f59e0b" }
+        Label { text: "Downloaded ZIP — manual installation required"; color: "#f59e0b" }
         Button { text: "Open download folder"; onClicked: controller.homebrew_open_download_directory(home.downloadedDirectory) }
     }
     ColumnLayout {
@@ -149,7 +149,7 @@ ColumnLayout {
         standardButtons: Dialog.Yes | Dialog.No
         ColumnLayout {
             Label { text: "Download " + home.selectedAsset + " to SteamOS and open its folder?"; wrapMode: Text.Wrap; Layout.preferredWidth: 380 }
-            Label { text: "This does NOT install or upload anything to your Switch 2. Follow the project’s manual installation instructions. SHA-256 verification is required."; color: "#f59e0b"; wrapMode: Text.Wrap; Layout.preferredWidth: 380 }
+            Label { text: "ZIP download only: no extraction or FTP upload. Follow the project’s manual installation instructions. SHA-256 verification is required."; color: "#f59e0b"; wrapMode: Text.Wrap; Layout.preferredWidth: 380 }
         }
         onAccepted: controller.homebrew_download_only(home.selectedRepo, home.selectedAsset)
     }
