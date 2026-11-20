@@ -28,6 +28,8 @@ class Controller(QObject):
         self.process.finished.connect(self.finished)
         self.process.errorOccurred.connect(self.failed)
         self.kind = ""
+        self.latestUpdateTag = None
+        self.latestUpdateChannel = "stable"
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.refresh)
         self.timer.start(10000)
@@ -50,13 +52,43 @@ class Controller(QObject):
         if getattr(self,"checking_updates",False): return
         self.checking_updates=True
         self.updateBusy.emit(True)
+        self.latestUpdateTag = None
+        self.latestUpdateChannel = channel
         def worker():
             try: result=updates.check(channel)
             except Exception as exc: result=str(exc)
+            if result.startswith("Update available: "):
+                self.latestUpdateTag = result.removeprefix("Update available: ").strip()
             self.updateResult.emit(result)
             self.checking_updates=False
             self.updateBusy.emit(False)
         threading.Thread(target=worker,daemon=True).start()
+
+    @Slot()
+    def install_update(self):
+        if self.process.state() != QProcess.NotRunning or getattr(self, "installing_update", False):
+            return
+        if not self.latestUpdateTag or self.latestUpdateChannel != "stable":
+            self.message.emit("Check for a stable update first.")
+            return
+        self.installing_update = True
+        self.kind = "install_update"
+        self.busyChanged.emit(True)
+        self.process.setWorkingDirectory(str(Path(__file__).resolve().parent.parent))
+        self.process.start(sys.executable, ["-m", "v8.in_app_update"])
+        
+    @Slot()
+    def download_update(self):
+        tag = self.latestUpdateTag
+        if not tag:
+            self.message.emit("Check for updates first.")
+            return
+        try:
+            url = updates.release_url(tag)
+        except ValueError:
+            self.message.emit("Invalid release version.")
+            return
+        QDesktopServices.openUrl(QUrl(url))
 
     @Slot(bool)
     def open_updates(self, development):
@@ -143,6 +175,8 @@ class Controller(QObject):
         self.message.emit("Use option 5 in the existing manager to change WPA2 settings." if ok else "Konsole launch failed.")
 
     def failed(self, error):
+        if self.kind == "install_update":
+            self.installing_update = False
         self.message.emit(self.process.errorString())
         self.busyChanged.emit(False)
 
@@ -154,6 +188,8 @@ class Controller(QObject):
         else:
             self.message.emit(("Completed: " if code == 0 else "Failed: ") + (output + errors).strip())
         self.busyChanged.emit(False)
+        if self.kind == "install_update":
+            self.installing_update = False
         if self.kind == "action":
             QTimer.singleShot(0, self.refresh)
 
@@ -177,6 +213,7 @@ def main():
     if not engine.rootObjects():
         return 1
     QTimer.singleShot(0, controller.refresh)
+    QTimer.singleShot(1500, lambda: controller.check_updates("stable"))
     return app.exec()
 
 if __name__ == "__main__":

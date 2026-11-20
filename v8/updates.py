@@ -5,7 +5,7 @@ import shutil
 import subprocess
 import urllib.request
 
-VERSION="8.0.0"
+VERSION="8.0.2"
 REPO="blueshockz47/SwitchNest-Hotspot"
 RELEASES="https://github.com/"+REPO+"/releases"
 DEVELOPMENT="https://github.com/"+REPO+"/tree/development/v8.0"
@@ -15,6 +15,11 @@ def version_key(value):
     if not m: raise ValueError("Unsupported version")
     major,minor,patch,stage,number=m.groups()
     return int(major),int(minor),int(patch or 0),{"alpha":0,"beta":1,"rc":2,None:3}[stage.lower() if stage else None],int(number or 0)
+
+def release_url(tag):
+    """Construct a GitHub URL only from a validated release tag."""
+    version_key(tag)
+    return RELEASES + "/tag/" + tag
 
 def check(channel):
     if channel not in ("stable","development"): raise ValueError("Invalid channel")
