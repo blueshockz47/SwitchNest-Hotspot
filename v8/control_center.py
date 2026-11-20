@@ -6,6 +6,7 @@ import shutil
 import stat
 import os
 import sys
+import subprocess
 import threading
 from v8 import updates, autostart
 from pathlib import Path
@@ -20,12 +21,18 @@ class Controller(QObject):
     busyChanged = Signal(bool)
     updateResult = Signal(str)
     updateBusy = Signal(bool)
+    updateLog = Signal(str)
+    updateInstalled = Signal(str)
     autostartChanged = Signal()
 
     def __init__(self):
         super().__init__()
         self.process = QProcess(self)
         self.process.finished.connect(self.finished)
+        self.process.readyReadStandardOutput.connect(self.read_stdout)
+        self.process.readyReadStandardError.connect(self.read_stderr)
+        self._process_output = []
+        self.update_installed = False
         self.process.errorOccurred.connect(self.failed)
         self.kind = ""
         self.latestUpdateTag = None
@@ -72,11 +79,43 @@ class Controller(QObject):
             self.message.emit("Check for a stable update first.")
             return
         self.installing_update = True
+        self.update_installed = False
+        self._process_output = []
         self.kind = "install_update"
+        self.updateLog.emit("Starting update download and installation...\n")
         self.busyChanged.emit(True)
         self.process.setWorkingDirectory(str(Path(__file__).resolve().parent.parent))
         self.process.start(sys.executable, ["-m", "v8.in_app_update"])
         
+    def read_stdout(self):
+        data = bytes(self.process.readAllStandardOutput()).decode(errors="replace")
+        self._process_output.append(data)
+        if self.kind == "install_update":
+            self.updateLog.emit(data)
+
+    def read_stderr(self):
+        data = bytes(self.process.readAllStandardError()).decode(errors="replace")
+        self._process_output.append(data)
+        if self.kind == "install_update":
+            self.updateLog.emit(data)
+
+    @Slot()
+    def restart_after_update(self):
+        if not self.update_installed or self.process.state() != QProcess.NotRunning:
+            self.message.emit("No completed update is ready to restart.")
+            return
+        launcher = Path.home() / ".local/share/switchnest/launch"
+        if not launcher.is_file():
+            self.message.emit("SwitchNest launcher is missing. Restart manually.")
+            return
+        # Delay startup so the current instance releases its single-instance lock.
+        subprocess.Popen(
+            ["/bin/sh", "-c", 'sleep 2; exec "$1"', "sh", str(launcher)],
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL, start_new_session=True,
+        )
+        QGuiApplication.instance().quit()
+
     @Slot()
     def download_update(self):
         tag = self.latestUpdateTag
@@ -176,21 +215,31 @@ class Controller(QObject):
 
     def failed(self, error):
         if self.kind == "install_update":
+            self.updateLog.emit("Update process error: " + self.process.errorString() + "\n")
+        if self.kind == "install_update":
             self.installing_update = False
         self.message.emit(self.process.errorString())
         self.busyChanged.emit(False)
 
     def finished(self, code, status):
-        output = bytes(self.process.readAllStandardOutput()).decode(errors="replace")
-        errors = bytes(self.process.readAllStandardError()).decode(errors="replace")
-        if self.kind == "refresh" and code == 0:
+        self.read_stdout()
+        self.read_stderr()
+        output = "".join(self._process_output).strip()
+        kind = self.kind
+        self._process_output = []
+        if kind == "refresh" and code == 0:
             self.refreshed.emit(output)
         else:
-            self.message.emit(("Completed: " if code == 0 else "Failed: ") + (output + errors).strip())
+            self.message.emit(("Completed: " if code == 0 else "Failed: ") + output)
         self.busyChanged.emit(False)
-        if self.kind == "install_update":
+        if kind == "install_update":
             self.installing_update = False
-        if self.kind == "action":
+            if code == 0 and status == QProcess.NormalExit and "Installed v" in output:
+                self.update_installed = True
+                self.updateInstalled.emit(output.split("Installed v")[-1].split(". Close")[0].strip())
+            else:
+                self.updateLog.emit("\nUpdate failed. Check the output above.\n")
+        if kind == "action":
             QTimer.singleShot(0, self.refresh)
 
 def main():

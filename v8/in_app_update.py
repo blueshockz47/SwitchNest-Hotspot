@@ -44,7 +44,9 @@ def latest_stable():
 def install_latest():
     if os.geteuid() == 0:
         raise RuntimeError("Updater must run without sudo")
+    print("Checking latest stable release...", flush=True)
     tag, url, digest = latest_stable()
+    print("Downloading " + tag + "...", flush=True)
     with tempfile.TemporaryDirectory(prefix="switchnest-update-") as temp:
         folder = Path(temp)
         archive = folder / "update.zip"
@@ -56,10 +58,14 @@ def install_latest():
                 total += len(chunk)
                 if total > MAX_BYTES:
                     raise RuntimeError("Update exceeds size limit")
+                if total // (5 * 1024 * 1024) != (total - len(chunk)) // (5 * 1024 * 1024):
+                    print(f"Downloaded {total / (1024 * 1024):.1f} MiB", flush=True)
                 h.update(chunk)
                 dest.write(chunk)
+        print("Verifying SHA-256 checksum...", flush=True)
         if h.hexdigest() != digest:
             raise RuntimeError("Update checksum mismatch")
+        print("Checksum verified. Extracting release...", flush=True)
         target = folder / "source"
         target.mkdir()
         with zipfile.ZipFile(archive) as z:
@@ -86,6 +92,7 @@ def install_latest():
         if ("VERSION = \"" + tag.removeprefix("v") + "\"") not in expected.read_text():
             raise RuntimeError("Release version does not match its tag")
         # Run the installer only after the verified release is fully extracted.
+        print("Installing " + tag + " (this can take several minutes)...", flush=True)
         subprocess.run([sys.executable, "-m", "v8.install", "install"], cwd=roots[0], check=True, env={**os.environ, "PYTHONPATH": str(roots[0])})
     return "Installed " + tag + ". Close and reopen SwitchNest to use the update."
 
