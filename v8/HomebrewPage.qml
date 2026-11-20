@@ -114,22 +114,24 @@ ColumnLayout {
     Label { text: home.statusText; wrapMode: Text.Wrap; Layout.fillWidth: true }
     Label { text: home.selectedWarning; visible: home.selectedWarning.length > 0; color: "#f59e0b"; font.bold: true; wrapMode: Text.Wrap; Layout.fillWidth: true }
 
-    Label { text: "Right-click an app for download options"; font.pixelSize: 11; Layout.fillWidth: true }
+    Label { text: "Two-column app catalog • Right-click an app for download options"; font.pixelSize: 11; Layout.fillWidth: true }
     RowLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
-        ListView {
+        GridView {
             id: projectList
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            spacing: 2
+            cellWidth: width / 2
+            cellHeight: 52
             model: home.results
             delegate: ItemDelegate {
                 id: projectCard
                 required property var modelData
-                width: ListView.view.width
-                implicitHeight: 48
+                width: projectList.cellWidth - 6
+                height: projectList.cellHeight - 4
+                padding: 4
                 padding: 4
                 highlighted: home.selectedRepo !== "" && modelData.repo === home.selectedRepo
                 background: Rectangle {
