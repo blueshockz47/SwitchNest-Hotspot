@@ -65,6 +65,8 @@ def install_latest():
             names = z.infolist()
             if len(names) > 1000:
                 raise RuntimeError("Too many archive entries")
+            if sum(entry.file_size for entry in names) > MAX_BYTES * 3:
+                raise RuntimeError("Uncompressed archive exceeds size limit")
             for entry in names:
                 p = Path(entry.filename)
                 if p.is_absolute() or ".." in p.parts or not p.parts or (entry.external_attr >> 16) & 0o170000 == 0o120000:
@@ -82,3 +84,10 @@ def install_latest():
         # Run the installer only after the verified release is fully extracted.
         subprocess.run([sys.executable, "-m", "v8.install", "install"], cwd=roots[0], check=True, env={**os.environ, "PYTHONPATH": str(roots[0])})
     return "Installed " + tag + ". Close and reopen SwitchNest to use the update."
+
+if __name__ == "__main__":
+    try:
+        print(install_latest(), flush=True)
+    except Exception as exc:
+        print("Update failed: " + str(exc), file=sys.stderr, flush=True)
+        sys.exit(1)
