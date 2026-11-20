@@ -16,6 +16,8 @@ ColumnLayout {
     property string readyZip: ""
     property string previewText: ""
     property real transferPercent: 0
+    property bool transferActive: false
+    property bool transferComplete: false
     property string transferStatus: ""
     property bool installingZip: false
     property string statusText: "Loading the curated Switch 2 homebrew catalog..."
@@ -53,10 +55,12 @@ ColumnLayout {
     }
     Connections {
         target: controller
-        function onHomebrewBusy(value) { home.working = value; if (!value) home.installingZip = false }
+        function onHomebrewBusy(value) { home.working = value; if (!value) { home.installingZip = false; home.transferActive = false } }
         function onHomebrewProgress(raw) {
             let p = JSON.parse(raw)
-            if (p.total > 0) home.transferPercent = Math.min(100, Math.round(p.done * 100 / p.total))
+            if (p.total > 0) home.transferPercent = Math.min(99, Math.round(p.done * 100 / p.total))
+            home.transferActive = true
+            home.transferComplete = false
             home.transferStatus = (p.index ? p.index + "/" + p.count + " — " : "") + (p.status || "") + (p.name ? ": " + p.name : "")
         }
         function onHomebrewResult(raw) {
@@ -76,6 +80,8 @@ ColumnLayout {
                     else { home.statusText = "No SHA-256 verified " + (home.action === "zip" ? "official ZIP" : "compatible release asset") + " for " + home.actionName + ". No unverified downloads offered."; home.action = "" }
                 }
                 else if (data.kind === "download_only_ready") {
+                    home.transferPercent = 100
+                    home.transferComplete = true
                     home.downloadedDirectory = data.directory
                     home.statusText = data.message + " Saved: " + data.path
                     controller.homebrew_open_download_directory(data.directory)
@@ -85,6 +91,11 @@ ColumnLayout {
                     home.previewText = data.count + " files (" + Math.round(data.bytes / 1048576) + " MiB extracted)\\n" + data.sample.join("\\n")
                     home.statusText = "Download verified. Review files before installing."
                     home.statusText = "ZIP downloaded. Manual installation required."
+                }
+                else if (data.kind === "installed") {
+                    home.transferPercent = 100
+                    home.transferComplete = true
+                    home.statusText = data.message
                 }
                 else { home.statusText = data.message || "Unknown result" }
             } catch (e) { home.statusText = "Invalid homebrew response" }
@@ -222,16 +233,29 @@ ColumnLayout {
     }
     ColumnLayout {
         Layout.fillWidth: true
-        visible: home.installingZip || home.transferStatus.length > 0
-        Label { text: "Switch 2 ZIP FTP installation"; font.bold: true }
-        ProgressBar { Layout.fillWidth: true; from: 0; to: 100; value: home.transferPercent }
-        Label { text: home.transferPercent + "% — " + home.transferStatus; wrapMode: Text.WrapAnywhere; Layout.fillWidth: true }
-        Button {
-            text: "Cancel installation"
-            enabled: home.installingZip && home.working
-            onClicked: controller.homebrew_cancel_install()
+        spacing: 3
+        visible: home.transferActive || home.transferComplete || home.transferStatus.length > 0
+        Label {
+            text: home.transferComplete ? "Transfer complete" : home.transferActive ? "Homebrew transfer in progress" : "Last homebrew transfer"
+            font.bold: true
         }
-        Label { text: "To resume, select the same ZIP and confirm installation again. Completed files are checked before skipping; incomplete files require manual cleanup."; wrapMode: Text.Wrap; Layout.fillWidth: true }
+        ProgressBar {
+            Layout.fillWidth: true
+            from: 0
+            to: 100
+            value: home.transferPercent
+        }
+        Label {
+            text: home.transferPercent + "% complete · " + (100 - home.transferPercent) + "% remaining"
+            font.bold: true
+            Layout.fillWidth: true
+        }
+        Label {
+            text: home.transferStatus
+            wrapMode: Text.WrapAnywhere
+            Layout.fillWidth: true
+            color: "#aab7c6"
+        }
     }
     Dialog {
         id: assetPicker
@@ -270,7 +294,13 @@ ColumnLayout {
             Label { text: "Download " + home.selectedAsset + " to SteamOS and open its folder?"; wrapMode: Text.Wrap; Layout.preferredWidth: 380 }
             Label { text: "ZIP download only: no extraction or FTP upload. Follow the project’s manual installation instructions. SHA-256 verification is required."; color: "#f59e0b"; wrapMode: Text.Wrap; Layout.preferredWidth: 380 }
         }
-        onAccepted: controller.homebrew_download_only(home.selectedRepo, home.selectedAsset)
+        onAccepted: {
+            home.transferPercent = 0
+            home.transferStatus = "Preparing download: " + home.selectedAsset
+            home.transferActive = true
+            home.transferComplete = false
+            controller.homebrew_download_only(home.selectedRepo, home.selectedAsset)
+        }
     }
     Dialog {
         id: installDialog
@@ -282,7 +312,13 @@ ColumnLayout {
             Label { text: "Upload " + home.selectedAsset + " to /switch/ over your existing FTP connection?"; wrapMode: Text.Wrap; Layout.preferredWidth: 330 }
             Label { text: "The existing file will not be overwritten. FTP is unencrypted. Install only software you trust."; wrapMode: Text.Wrap; Layout.preferredWidth: 330 }
         }
-        onAccepted: controller.homebrew_install(home.selectedRepo, JSON.stringify({name: home.selectedAsset}), true)
+        onAccepted: {
+            home.transferPercent = 0
+            home.transferStatus = "Preparing download and installation: " + home.selectedAsset
+            home.transferActive = true
+            home.transferComplete = false
+            controller.homebrew_install(home.selectedRepo, JSON.stringify({name: home.selectedAsset}), true)
+        }
     }
 
 }
