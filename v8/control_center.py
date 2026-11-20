@@ -65,6 +65,19 @@ class Controller(QObject):
         threading.Thread(target=worker,daemon=True).start()
 
     @Slot()
+    def install_update(self):
+        if self.process.state() != QProcess.NotRunning or getattr(self, "installing_update", False):
+            return
+        if not self.latestUpdateTag or self.latestUpdateChannel != "stable":
+            self.message.emit("Check for a stable update first.")
+            return
+        self.installing_update = True
+        self.kind = "install_update"
+        self.busyChanged.emit(True)
+        self.process.setWorkingDirectory(str(Path(__file__).resolve().parent.parent))
+        self.process.start(sys.executable, ["-m", "v8.in_app_update"])
+        
+    @Slot()
     def download_update(self):
         tag = self.latestUpdateTag
         if not tag:
@@ -162,6 +175,8 @@ class Controller(QObject):
         self.message.emit("Use option 5 in the existing manager to change WPA2 settings." if ok else "Konsole launch failed.")
 
     def failed(self, error):
+        if self.kind == "install_update":
+            self.installing_update = False
         self.message.emit(self.process.errorString())
         self.busyChanged.emit(False)
 
@@ -173,6 +188,8 @@ class Controller(QObject):
         else:
             self.message.emit(("Completed: " if code == 0 else "Failed: ") + (output + errors).strip())
         self.busyChanged.emit(False)
+        if self.kind == "install_update":
+            self.installing_update = False
         if self.kind == "action":
             QTimer.singleShot(0, self.refresh)
 
