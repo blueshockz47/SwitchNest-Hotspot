@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 import subprocess
 import tempfile
+import shutil
 
 PROFILE = "SteamDeck-Switch2"
 BACKUP = Path.home() / ".local/share/switchnest/wifi-profile-backup.json"
@@ -82,6 +83,11 @@ def apply(ssid, password, channel):
         raise RuntimeError("Only existing WPA2-PSK hotspot profiles are supported")
     if read_field(identifier, "802-11-wireless.mode") != "ap":
         raise RuntimeError("Selected connection is not an access-point profile")
+    support = adapter_check()
+    if support["ap_supported"] is False:
+        raise RuntimeError("No AP support reported by Wi-Fi adapters")
+    if support["channels"] and channel not in support["channels"]:
+        raise RuntimeError("Requested channel not reported as usable")
     write_backup(identifier, previous)
     args = ["802-11-wireless.ssid", ssid,
             "802-11-wireless.band", "bg",
@@ -111,6 +117,26 @@ def restore():
     restore_fields(identifier, data["fields"])
     return {"ok": True, "message": "Previous Wi-Fi settings restored. Restart the hotspot using its existing ON/OFF controls."}
 
+def adapter_check():
+    if not shutil.which("iw"):
+        return {"ap_supported": None, "channels": [], "note": "iw unavailable"}
+    try:
+        p = subprocess.run(["iw", "list"], capture_output=True, text=True, timeout=8)
+    except (OSError, subprocess.TimeoutExpired):
+        return {"ap_supported": None, "channels": [], "note": "Adapter query failed"}
+    if p.returncode:
+        return {"ap_supported": None, "channels": [], "note": "Adapter query failed"}
+    modes = p.stdout.split("Supported interface modes:", 1)
+    mode_section = modes[1].split("Band ", 1)[0] if len(modes) > 1 else ""
+    ap = "* AP" in mode_section
+    channels = []
+    for number in sorted(ALLOWED_CHANNELS):
+        freq = 2407 + 5 * number
+        matches = [line for line in p.stdout.splitlines() if str(freq) + " MHz" in line]
+        if any("disabled" not in line.lower() and "no ir" not in line.lower() for line in matches):
+            channels.append(number)
+    return {"ap_supported": ap, "channels": channels, "note": "Capabilities may include multiple Wi-Fi adapters"}
+
 def capabilities():
     identifier = uuid()
     band = read_field(identifier, "802-11-wireless.band")
@@ -118,7 +144,7 @@ def capabilities():
     ssid = read_field(identifier, "802-11-wireless.ssid")
     mode = read_field(identifier, "802-11-wireless.mode")
     security = read_field(identifier, "802-11-wireless-security.key-mgmt")
-    return {"ssid": ssid, "band": band, "channel": channel, "ap_profile": mode == "ap",
+    return {"adapter": adapter_check(), "ssid": ssid, "band": band, "channel": channel, "ap_profile": mode == "ap",
             "wpa2": security == "wpa-psk", "backup": BACKUP.is_file() and not BACKUP.is_symlink(),
             "note": "Channels 1, 6, 11 are offered for 2.4 GHz. Actual adapter/regulatory support must be verified on the host before applying."}
 
