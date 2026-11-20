@@ -72,17 +72,43 @@ CATALOG = (
 CATALOG_SOURCE = "https://ouncebrew.github.io/hblist/"
 SWITCH2_CANDIDATES = frozenset(repo for _, _, repo in CATALOG if repo)
 
+# Conservative installation guidance; catalog membership never implies a safe install.
+# Download-only entries require checking the project's own installation guide.
+MANUAL_INSTALL_NAMES = frozenset({
+    "FTPD Plugin", "Force Internal Speaker", "PKSM", "Checkpoint",
+    "Super Smash Bros. Melee", "UnleashedRecomp", "Sonic 3 AIR",
+    "Sonic Robo Blast 2", "Dr. Robotnik's Ring Racers", "OpenRCT2",
+    "xStarbound", "pokeplatinum", "Chiaki-ng/Akira", "Moonlight",
+})
+
 def catalog_search(query="", category="All"):
     query = query.strip()[:90].casefold()
     if category not in {"All", "Tools", "Games", "Streaming", "Emulation", "Fun", "Media"}:
         raise ValueError("Invalid homebrew category")
-    return [{"name": name, "category": kind, "repo": repo or "",
-             "status": ("Release browsing" if repo and name != "FTPD Plugin" else "Browse-only"),
-             "source": CATALOG_SOURCE}
-            for name, kind, repo in CATALOG
-            if (category == "All" or kind == category)
-            and (not query or query in name.casefold() or query in kind.casefold()
-                 or (repo and query in repo.casefold()))]
+    rows = []
+    for name, kind, repo in CATALOG:
+        if category != "All" and kind != category:
+            continue
+        if query and not (query in name.casefold() or query in kind.casefold()
+                          or (repo and query in repo.casefold())):
+            continue
+        if name == "RetroArch":
+            mode = "ZIP installation (review required)"
+            warning = "Review the verified ZIP contents and destinations before FTP installation."
+        elif name in MANUAL_INSTALL_NAMES:
+            mode = "Download only / manual installation"
+            warning = "Manual installation or additional files/setup may be required. Follow the project's Switch 2 instructions; do not upload blindly to /switch/."
+        elif repo:
+            mode = "Release browser / conditional installation"
+            warning = "Only verified .nro or compatible ZIP release assets can use the installer. Other assets are download-only or unsupported."
+        else:
+            mode = "Browse only / manual download"
+            warning = "No reviewed release source is configured. Consult the linked community catalog and project documentation for download and manual installation."
+        rows.append({"name": name, "category": kind, "repo": repo or "",
+                     "status": mode, "warning": warning,
+                     "manual": name in MANUAL_INSTALL_NAMES or not repo,
+                     "source": CATALOG_SOURCE})
+    return rows
 
 # Discovery limit for displaying release packages (no downloads implied).
 MAX_LISTING_BYTES = 2 * 1024 * 1024 * 1024
