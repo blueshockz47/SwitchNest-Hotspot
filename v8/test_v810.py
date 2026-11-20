@@ -131,6 +131,47 @@ class ZipWorkflowTests(unittest.TestCase):
             homebrew_zip.download_zip({"name": "demo.zip", "size": 2**31,
                 "digest": "sha256:" + "a" * 64})
 
+    def test_cancel_before_ftp_write(self):
+        from v8 import homebrew_zip
+        with tempfile.TemporaryDirectory() as td:
+            path = self.make_zip(td, [("demo.nro", b"data")])
+            plan = homebrew_zip.inspect_zip(path)
+            class FakeTree:
+                def __init__(self, *args): pass
+                def entries(self, directory): return {}
+            with self.assertRaises(InterruptedError):
+                homebrew_zip.install_zip(path, plan, "10.42.60.99", 1337,
+                    confirmed=True, tree_factory=FakeTree, cancelled=lambda: True)
+
+    def test_upload_progress_and_verified_resume(self):
+        from v8 import homebrew_zip
+        with tempfile.TemporaryDirectory() as td:
+            path = self.make_zip(td, [("demo.nro", b"data")])
+            plan = homebrew_zip.inspect_zip(path)
+            remote = {}
+            updates = []
+            class FakeTree:
+                def __init__(self, *args):
+                    self.metric = lambda *_: None
+                def entries(self, directory):
+                    return {name: False for name in remote}
+                def sizes(self, directory):
+                    return {name: len(data) for name, data in remote.items()}
+                def upload(self, source, directory):
+                    remote[source.name] = source.read_bytes()
+                    self.metric(len(remote[source.name]), len(remote[source.name]), 100)
+                def run(self, path, args, size=None):
+                    if "--output" in args:
+                        Path(args[args.index("--output") + 1]).write_bytes(
+                            remote[path.rsplit("/", 1)[-1]])
+            for _ in range(2):
+                homebrew_zip.install_zip(path, plan, "10.42.60.99", 1337,
+                    confirmed=True, tree_factory=FakeTree,
+                    progress=lambda *args: updates.append(args))
+            self.assertEqual(remote["demo.nro"], b"data")
+            self.assertEqual(updates[-1][0], 4)
+            self.assertEqual(updates[-1][-1], "Verified existing file")
+
     def test_preflight_rejects_existing_remote_file(self):
         from v8 import homebrew_zip
         with tempfile.TemporaryDirectory() as td:
