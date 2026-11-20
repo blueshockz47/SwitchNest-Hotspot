@@ -45,10 +45,11 @@ ApplicationWindow {
         modal: true
         anchors.centerIn: parent
         width: Math.min(460, root.width - 50)
+        implicitHeight: 190
         closePolicy: Popup.NoAutoClose
         standardButtons: Dialog.NoButton
         ColumnLayout {
-            anchors.fill: parent
+            width: parent.width
             spacing: 14
             Label {
                 text: "The update was installed successfully. Restart SwitchNest to use the new version."
