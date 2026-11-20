@@ -160,6 +160,23 @@ For additional help, see [Troubleshooting](docs/TROUBLESHOOTING.md), [Security](
 - **v8.1.5 — stable:** Hotspot Control Center, FTP, Homebrew Manager, streaming controls, and settings.
 - **v8.1.6 — in development:** Maximized startup preference fix and six-hour GitHub/Reddit homebrew discovery, with notifications and user-confirmed installation. See [PR #24](https://github.com/blueshockz47/SwitchNest-Hotspot/pull/24).
 
+## SwitchNest Offline Hotspot vs. a normal hotspot
+
+Both create a Wi-Fi network, but they are designed for different purposes:
+
+| | **SwitchNest Offline Hotspot** | **Normal internet hotspot** |
+| --- | --- | --- |
+| **Main purpose** | Local connection between your Nintendo Switch 2 and SteamOS PC | Share an internet connection with other devices |
+| **Internet on the Switch 2** | **Not shared by design**; Nintendo online services are not provided | Usually available through the host's internet connection |
+| **Internet on the PC** | Can remain online through Ethernet while the Switch 2 uses the separate Wi-Fi hotspot | The PC typically stays online and forwards that connection to clients |
+| **Local file transfers** | Built-in FTP File Manager for a compatible FTP server running on the Switch 2 | Possible only if you set up suitable file-transfer software separately |
+| **Homebrew tools** | Includes a curated Homebrew Manager with supported download and confirmed FTP installation workflows | Not included |
+| **Streaming controls** | Integrates controls for an independently installed Sunshine server | Not included by default |
+
+**Why use SwitchNest?** It provides a dedicated local Wi-Fi link for Switch 2 file management, homebrew workflows, and compatible local streaming **without intentionally sharing the PC's internet connection with the console**.
+
+**Important:** “Offline” describes SwitchNest's intended network configuration, not a guarantee of isolation. Confirm your firewall and forwarding rules before relying on the hotspot to keep the Switch 2 offline. SwitchNest does not jailbreak the console, and the Homebrew Manager does not replace the console-side homebrew prerequisites.
+
 ## Credits
 
 SwitchNest's Pico-compatible local DNS/HTTP connectivity responses are based on work from [favas0's CivSwitch-Pico2W-SerialBridge](https://github.com/favas0/CivSwitch-Pico2W-SerialBridge), [Jack Spence's CivSwitch-SerialBridge](https://github.com/jackspence7/CivSwitch-SerialBridge), and related [Switch 2 bridge references](https://github.com/fernando-granco/switch2-homebrew). The project also acknowledges [90DNS](https://gitlab.com/a/90dns) and [Gezine's CivSwitch](https://github.com/Gezine/CivSwitch).
