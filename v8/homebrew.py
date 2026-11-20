@@ -36,7 +36,54 @@ def request_json(path, opener=urllib.request.urlopen):
 
 # Explicit Switch 2 / kaiHEN candidate catalog. A catalog entry does not
 # verify its binaries or authorize automatic installation.
-SWITCH2_CANDIDATES = frozenset({"NerdsMcGee/retroarch-s2"})
+# Names/categories from the community Switch 2 homebrew list. Catalog membership
+# is NOT a compatibility audit or permission to install arbitrary release assets.
+# Projects without an individually reviewed GitHub repository remain browse-only.
+CATALOG = (
+    ("RetroArch", "Emulation", "NerdsMcGee/retroarch-s2"),
+    ("OunceShell", "Tools", None),
+    ("90DNS Tester", "Tools", None),
+    ("Force Internal Speaker", "Tools", None),
+    ("FTPD Plugin", "Tools", None),
+    ("Checkpoint", "Tools", None),
+    ("PKSM", "Tools", None),
+    ("NXGallery", "Tools", None),
+    ("Donkey Kong Country 2", "Games", None),
+    ("Donkey Kong Country 3", "Games", None),
+    ("xStarbound", "Games", None),
+    ("Super Mario 64 EX", "Games", None),
+    ("Sonic 3 AIR", "Games", None),
+    ("Sonic Robo Blast 2", "Games", None),
+    ("Dr. Robotnik's Ring Racers", "Games", None),
+    ("UnleashedRecomp", "Games", None),
+    ("pokeplatinum", "Games", None),
+    ("Dusklight", "Games", None),
+    ("Nic Cage Eats Stuff", "Games", None),
+    ("Angry Birds Reloaded", "Games", None),
+    ("OpenRCT2", "Games", None),
+    ("Chiaki-ng/Akira", "Streaming", None),
+    ("Moonlight", "Streaming", None),
+    ("Donut", "Fun", None),
+    ("Bad Apple!", "Fun", None),
+    ("KaiTube", "Streaming", None),
+    ("Super Smash Bros. Melee", "Games", None),
+    ("KaiPlayer", "Media", None),
+)
+CATALOG_SOURCE = "https://ouncebrew.github.io/hblist/"
+SWITCH2_CANDIDATES = frozenset(repo for _, _, repo in CATALOG if repo)
+
+def catalog_search(query="", category="All"):
+    query = query.strip()[:90].casefold()
+    if category not in {"All", "Tools", "Games", "Streaming", "Emulation", "Fun", "Media"}:
+        raise ValueError("Invalid homebrew category")
+    return [{"name": name, "category": kind, "repo": repo or "",
+             "status": "Release browsing" if repo else "Browse-only",
+             "source": CATALOG_SOURCE}
+            for name, kind, repo in CATALOG
+            if (category == "All" or kind == category)
+            and (not query or query in name.casefold() or query in kind.casefold()
+                 or (repo and query in repo.casefold()))]
+
 # Discovery limit for displaying release packages (no downloads implied).
 MAX_LISTING_BYTES = 2 * 1024 * 1024 * 1024
 
