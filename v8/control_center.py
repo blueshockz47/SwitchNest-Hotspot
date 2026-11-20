@@ -23,6 +23,7 @@ class Controller(QObject):
     updateBusy = Signal(bool)
     updateLog = Signal(str)
     updateInstalled = Signal(str)
+    updateAvailable = Signal(str)
     autostartChanged = Signal()
 
     def __init__(self):
@@ -37,6 +38,7 @@ class Controller(QObject):
         self.kind = ""
         self.latestUpdateTag = None
         self.latestUpdateChannel = "stable"
+        self.notifiedUpdateTag = None
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.refresh)
         self.timer.start(10000)
@@ -66,6 +68,9 @@ class Controller(QObject):
             except Exception as exc: result=str(exc)
             if result.startswith("Update available: "):
                 self.latestUpdateTag = result.removeprefix("Update available: ").strip()
+            if channel == "stable" and self.latestUpdateTag and self.latestUpdateTag != self.notifiedUpdateTag:
+                self.notifiedUpdateTag = self.latestUpdateTag
+                self.updateAvailable.emit(self.latestUpdateTag)
             self.updateResult.emit(result)
             self.checking_updates=False
             self.updateBusy.emit(False)
