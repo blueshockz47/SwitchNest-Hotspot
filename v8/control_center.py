@@ -54,8 +54,10 @@ class Controller(QObject):
         self.wifi_restart_phase = None
         self.wifi_recovery_attempted = False
         self.wifi_pending_restore = False
+        self.wifi_expected_ssid = None
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.refresh)
+        self._last_health_state = None
         self.timer.start(10000)
 
     @Property(str, notify=preferencesChanged)
@@ -360,6 +362,7 @@ class Controller(QObject):
         except ValueError as exc:
             self.message.emit(str(exc))
             return
+        self.wifi_expected_ssid = ssid
         self.kind = "wifi_apply"
         self._process_output = []
         self.busyChanged.emit(True)
@@ -444,14 +447,20 @@ class Controller(QObject):
             self.refreshed.emit(output)
             try:
                 report = json.loads(output)
-                self.wifiHealth.emit(json.dumps(wifi_reliability.health(report)))
+                health = wifi_reliability.health(report)
+                self.wifiHealth.emit(json.dumps(health))
+                if health["state"] != self._last_health_state:
+                    if health["state"] == "attention":
+                        self.wifi_event("health_warning")
+                    self._last_health_state = health["state"]
                 if kind == "wifi_restart_verify":
                     self.wifi_restart_phase = None
                     expected = getattr(self, "wifi_expected_ssid", None)
                     active = report.get("hotspot", {})
                     if active.get("state") == "on" and (not expected or active.get("ssid") == expected):
-                        self.wifiRestartProgress.emit("Hotspot active with expected SSID. Restart SwitchNest to refresh the Control Center.")
+                        self.wifiRestartProgress.emit("Hotspot verified. Restarting SwitchNest Control Center...")
                         self.wifi_event("restart_verified", "ok")
+                        QTimer.singleShot(1500, self.restart_control_center)
                     else:
                         self._wifi_restart_failed("verification_failed")
             except (ValueError, TypeError):
@@ -473,7 +482,9 @@ class Controller(QObject):
                         self.wifiRestartSuggested.emit()
                     if kind == "wifi_restore" and self.wifi_pending_restore:
                         self.wifi_pending_restore = False
-                        self.wifiRestartProgress.emit("Previous Wi-Fi profile restored. Restart the hotspot manually to reactivate it.")
+                        self.wifi_expected_ssid = None
+                        self.wifiRestartProgress.emit("Previous Wi-Fi profile restored. Attempting one recovery restart...")
+                        QTimer.singleShot(1200, lambda: self._wifi_restart_step("off"))
                 else:
                     self.wifi_event("wifi_failed", "failed")
                     self.wifi_pending_restore = False
@@ -526,6 +537,8 @@ def main():
     if not engine.rootObjects():
         return 1
     QTimer.singleShot(0, controller.refresh)
+    QTimer.singleShot(300, controller.wifi_presets)
+    QTimer.singleShot(400, controller.wifi_events)
     if preferences.load()["check_at_startup"]:
         QTimer.singleShot(1500, lambda: controller.check_updates("stable" if preferences.load()["stable_only"] else "development"))
     return app.exec()
