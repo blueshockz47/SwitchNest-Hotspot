@@ -194,13 +194,16 @@ ColumnLayout {
                 }
                 Menu {
                     id: contextMenu
+                    width: Math.max(280, implicitWidth)
                     MenuItem {
                         text: "Download Only"
+                        width: contextMenu.width
                         enabled: !!home.actionRepo && !home.working
                         onTriggered: home.requestRelease("download")
                     }
                     MenuItem {
-                        text: "Download & Install (.nro via FTP)"
+                        text: "Download & Install"
+                        width: contextMenu.width
                         enabled: !!home.actionRepo && home.ftpState.connected && !home.working
                         onTriggered: home.requestRelease("install")
                     }
