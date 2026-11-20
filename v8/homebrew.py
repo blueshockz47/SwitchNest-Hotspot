@@ -5,6 +5,7 @@ NRO release assets with GitHub SHA-256 digests, and /switch/ destinations
 qualify for unattended installation. All other packages require confirmation.
 """
 import hashlib
+import urllib.error
 import ipaddress
 import json
 import os
@@ -141,7 +142,19 @@ def discover(query, fetch=request_json):
 def release_assets(repo, fetch=request_json):
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
         raise ValueError("Invalid repository")
-    release = fetch("/repos/" + repo + "/releases/latest")
+    try:
+        release = fetch("/repos/" + repo + "/releases/latest")
+    except urllib.error.HTTPError as exc:
+        if exc.code != 404:
+            raise
+        releases = fetch("/repos/" + repo + "/releases?per_page=20")
+        if not isinstance(releases, list):
+            raise ValueError("Unexpected GitHub releases response") from exc
+        release = next((entry for entry in releases
+                        if isinstance(entry, dict) and not entry.get("draft")
+                        and entry.get("assets")), None)
+        if release is None:
+            raise ValueError("No published GitHub release assets found for " + repo) from exc
     items = []
     for asset in release.get("assets", []):
         name = asset.get("name", "")
