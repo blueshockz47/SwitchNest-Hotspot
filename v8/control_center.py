@@ -9,7 +9,7 @@ import sys
 import subprocess
 import threading
 import time
-from v8 import updates, autostart, preferences, wifi_reliability, stability, homebrew
+from v8 import updates, autostart, preferences, wifi_reliability, stability, homebrew, homebrew_zip
 from pathlib import Path
 from v8.ftp_browser import Browser
 from PySide6.QtCore import QObject, Signal, Slot, Property, QLockFile, QStandardPaths, QProcess, QTimer, QUrl
@@ -177,6 +177,68 @@ class Controller(QObject):
                     raise RuntimeError("Connect the FTP browser and finish any active transfer first")
                 destination = "/switch/" + asset["name"]
                 message = homebrew.install_nro(asset, destination, state["host"], state["port"], confirmed=True)
+                self.homebrewResult.emit(json.dumps({"kind": "installed", "message": message}))
+            except Exception as exc:
+                self.homebrewResult.emit(json.dumps({"kind": "error", "message": str(exc)[:250]}))
+            finally:
+                self._homebrew_busy = False
+                self.homebrewBusy.emit(False)
+        threading.Thread(target=worker, daemon=True).start()
+
+    @Slot(str, str)
+    def homebrew_download_zip(self, repo, name):
+        if getattr(self, "_homebrew_busy", False):
+            return
+        self._homebrew_busy = True
+        self.homebrewBusy.emit(True)
+        def worker():
+            try:
+                if repo not in homebrew.SWITCH2_CANDIDATES:
+                    raise ValueError("Repository is not in the Switch 2 catalog")
+                asset = next(a for a in homebrew.release_assets(repo)["assets"]
+                             if a["name"] == name)
+                path = homebrew_zip.download_zip(asset)
+                plan = homebrew_zip.inspect_zip(path)
+                self._homebrew_zip = {"repo": repo, "name": name,
+                                      "digest": asset["digest"], "path": str(path),
+                                      "plan": plan}
+                self.homebrewResult.emit(json.dumps({
+                    "kind": "zip_ready", "repo": repo, "name": name,
+                    "count": plan["count"], "bytes": plan["bytes"],
+                    "sample": plan["sample"]}))
+            except Exception as exc:
+                self.homebrewResult.emit(json.dumps({"kind": "error", "message": str(exc)[:250]}))
+            finally:
+                self._homebrew_busy = False
+                self.homebrewBusy.emit(False)
+        threading.Thread(target=worker, daemon=True).start()
+
+    @Slot(str, str, bool)
+    def homebrew_install_zip(self, repo, name, confirmed):
+        if not confirmed or getattr(self, "_homebrew_busy", False):
+            return
+        pending = getattr(self, "_homebrew_zip", None)
+        if not pending or pending["repo"] != repo or pending["name"] != name:
+            self.homebrewResult.emit(json.dumps({"kind": "error",
+                "message": "Download and preview this ZIP before installing."}))
+            return
+        self._homebrew_busy = True
+        self.homebrewBusy.emit(True)
+        def worker():
+            try:
+                browser = self._homebrew_browser
+                state = json.loads(browser.state)
+                if not state.get("connected") or state.get("busy"):
+                    raise RuntimeError("Connect FTP and finish active transfers first")
+                # Confirm the cached file still matches the originally downloaded release.
+                path = Path(pending["path"])
+                import hashlib
+                with path.open("rb") as stream:
+                    digest = hashlib.file_digest(stream, "sha256").hexdigest()
+                if "sha256:" + digest != pending["digest"]:
+                    raise ValueError("Cached ZIP checksum mismatch")
+                message = homebrew_zip.install_zip(path, pending["plan"],
+                    state["host"], state["port"], confirmed=True)
                 self.homebrewResult.emit(json.dumps({"kind": "installed", "message": message}))
             except Exception as exc:
                 self.homebrewResult.emit(json.dumps({"kind": "error", "message": str(exc)[:250]}))
