@@ -211,7 +211,13 @@ def install_zip(path, plan, host, port, *, confirmed=False, tree_factory=None,
                 # Upload directly with existing curl/PASV transport. The
                 # remote size is checked by Tree.upload. An interrupted
                 # partial file is preserved for manual inspection/removal.
+                if progress:
+                    tree.expected_total = expected
+                    tree.finished_bytes = 0
+                    tree.metric = lambda transferred, _total, _speed: emit(
+                        done + min(expected, transferred), index, item["path"], "Uploading")
                 tree.upload(dest, directory)
+                tree.metric = lambda *_: None
                 existing[name] = False
                 sizes_cache.pop(directory, None)
                 state = "Uploaded and size-verified"
