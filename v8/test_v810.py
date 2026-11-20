@@ -95,6 +95,17 @@ class HomebrewTests(unittest.TestCase):
             homebrew.install_nro(asset, "/switch/demo.nro", "10.42.60.99", 1337, confirmed=True, fetcher=fetch, tree_factory=FakeTree)
 
 class ZipWorkflowTests(unittest.TestCase):
+    def test_smoketest_archive_is_isolated(self):
+        from v8 import ftp_install_smoketest, homebrew_zip
+        with tempfile.TemporaryDirectory() as td:
+            archive = Path(td) / "test.zip"
+            plan = ftp_install_smoketest.build(archive)
+            self.assertEqual(plan["count"], 3)
+            self.assertTrue(all(x["path"].startswith("switch/switchnest-ftp-test-v810/")
+                                for x in plan["files"]))
+            self.assertEqual(plan, homebrew_zip.inspect_zip(archive))
+
+
     def make_zip(self, root, entries):
         import zipfile
         path = Path(root) / "package.zip"
