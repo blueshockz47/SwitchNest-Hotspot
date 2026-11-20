@@ -1,6 +1,6 @@
 """Download and install a published SwitchNest release without opening a browser.
 
-Only signed-by-digest GitHub release assets are accepted; never run an installer
+Only SHA-256-verified GitHub release assets are accepted; never run an installer
 script from an archive. The existing unprivileged v8 installer handles rollback.
 """
 import hashlib
@@ -29,11 +29,12 @@ def latest_stable():
         raise RuntimeError("No newer stable release available")
     assets = data.get("assets", [])
     matches = [a for a in assets if a.get("name", "").endswith(".zip") and a.get("name", "").startswith("SwitchNest-Hotspot-Linux-")]
+    matches = [a for a in matches if a.get("name") == "SwitchNest-Hotspot-Linux-" + tag + ".zip"]
     if len(matches) != 1:
         raise RuntimeError("Expected exactly one Linux release ZIP asset")
     asset = matches[0]
     digest = asset.get("digest", "")
-    if not digest.startswith("sha256:") or len(digest) != 71:
+    if not digest.startswith("sha256:") or len(digest) != 71 or any(c not in "0123456789abcdefABCDEF" for c in digest[7:]):
         raise RuntimeError("Release asset lacks a verifiable SHA-256 digest")
     url = asset.get("browser_download_url", "")
     if not url.startswith("https://github.com/" + updates.REPO + "/releases/download/"):
@@ -81,6 +82,9 @@ def install_latest():
         roots = [p for p in target.iterdir() if p.is_dir()]
         if len(roots) != 1 or not (roots[0] / "v8" / "install.py").is_file():
             raise RuntimeError("Unexpected release structure")
+        expected = roots[0] / "v8" / "install.py"
+        if ("VERSION = \"" + tag.removeprefix("v") + "\"") not in expected.read_text():
+            raise RuntimeError("Release version does not match its tag")
         # Run the installer only after the verified release is fully extracted.
         subprocess.run([sys.executable, "-m", "v8.install", "install"], cwd=roots[0], check=True, env={**os.environ, "PYTHONPATH": str(roots[0])})
     return "Installed " + tag + ". Close and reopen SwitchNest to use the update."
