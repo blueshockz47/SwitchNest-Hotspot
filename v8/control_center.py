@@ -122,20 +122,15 @@ class Controller(QObject):
 
     @Slot(str, str)
     def homebrew_search(self, query, category):
-        if getattr(self, "_homebrew_busy", False):
-            return
-        self._homebrew_busy = True
-        self.homebrewBusy.emit(True)
-        def worker():
-            try:
-                rows = homebrew.catalog_search(query, category)
-                self.homebrewResult.emit(json.dumps({"kind": "search", "items": rows}))
-            except Exception as exc:
-                self.homebrewResult.emit(json.dumps({"kind": "error", "message": str(exc)[:200]}))
-            finally:
-                self._homebrew_busy = False
-                self.homebrewBusy.emit(False)
-        threading.Thread(target=worker, daemon=True).start()
+        """Local catalog filtering is immediate and must not be dropped during downloads."""
+        try:
+            rows = homebrew.catalog_search(query, category)
+            self.homebrewResult.emit(json.dumps({
+                "kind": "search", "items": rows, "category": category,
+                "query": query}))
+        except Exception as exc:
+            self.homebrewResult.emit(json.dumps({
+                "kind": "error", "message": str(exc)[:200]}))
 
     @Slot(str)
     def homebrew_releases(self, repo):
