@@ -22,14 +22,14 @@ class HomebrewTests(unittest.TestCase):
         self.assertEqual(names["KaiPlayer"]["repo"], "mizuiroame/kaiplayer")
         self.assertEqual(names["90DNS Tester"]["repo"], "souldbminerr/90DNS-Tester")
         self.assertEqual(names["FTPD Plugin"]["repo"], "")
-        self.assertEqual(names["FTPD Plugin"]["status"], "Browse-only")
+        self.assertEqual(names["FTPD Plugin"]["status"], "Download only / manual installation")
 
     def test_expanded_catalog_and_filters(self):
         rows = homebrew.catalog_search()
         self.assertGreaterEqual(len(rows), 25)
         self.assertEqual([x["name"] for x in homebrew.catalog_search("retroarch")], ["RetroArch"])
         self.assertEqual([x["name"] for x in homebrew.catalog_search("moonlight")], ["Moonlight"])
-        self.assertEqual(homebrew.catalog_search("moonlight")[0]["status"], "Browse-only")
+        self.assertEqual(homebrew.catalog_search("moonlight")[0]["status"], "Download only / manual installation")
         self.assertTrue(all(x["category"] == "Streaming" for x in homebrew.catalog_search(category="Streaming")))
         self.assertEqual(homebrew.catalog_search("unrelated-app"), [])
         with self.assertRaises(ValueError):
