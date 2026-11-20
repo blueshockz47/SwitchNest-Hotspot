@@ -11,6 +11,7 @@ ColumnLayout {
     property bool selectedManual: false
     property string selectedWarning: ""
     property string selectedAsset: ""
+    property string downloadedDirectory: ""
     property bool working: false
     property string readyZip: ""
     property string previewText: ""
@@ -37,6 +38,11 @@ ColumnLayout {
                 let data = JSON.parse(raw)
                 if (data.kind === "search") { home.results = data.items; home.assets = []; home.readyZip = ""; home.statusText = data.items.length + " community-listed Switch 2 projects. Browse-only entries cannot be installed automatically." }
                 else if (data.kind === "assets") { home.selectedRepo = data.repo; home.assets = data.assets; home.readyZip = ""; home.statusText = "Release " + data.version + " — select a ZIP to download and preview" }
+                else if (data.kind === "download_only_ready") {
+                    home.downloadedDirectory = data.directory
+                    home.statusText = data.message + " Saved: " + data.path
+                    controller.homebrew_open_download_directory(data.directory)
+                }
                 else if (data.kind === "zip_ready") {
                     home.readyZip = data.name
                     home.previewText = data.count + " files (" + Math.round(data.bytes / 1048576) + " MiB extracted)\\n" + data.sample.join("\\n")
@@ -102,7 +108,10 @@ ColumnLayout {
                 onClicked: {
                     home.selectedAsset = modelData.name
                     if (home.selectedManual) {
-                        home.statusText = "DOWNLOAD ONLY / MANUAL INSTALL: this package requires project-specific instructions. Automatic FTP installation is disabled."
+                        if (modelData.digest && (modelData.name.toLowerCase().endsWith(".zip") || modelData.name.toLowerCase().endsWith(".nro")))
+                            downloadOnlyDialog.open()
+                        else
+                            home.statusText = "MANUAL INSTALL: No supported SHA-256 verified ZIP/NRO available for automatic download. Check the official project release instructions."
                     }
                     else if (modelData.name.toLowerCase().endsWith(".zip") && modelData.digest)
                         downloadZipDialog.open()
@@ -113,6 +122,11 @@ ColumnLayout {
                 }
             }
         }
+    }
+    RowLayout {
+        visible: home.downloadedDirectory.length > 0
+        Label { text: "Downloaded locally — manual installation only"; color: "#f59e0b" }
+        Button { text: "Open download folder"; onClicked: controller.homebrew_open_download_directory(home.downloadedDirectory) }
     }
     ColumnLayout {
         Layout.fillWidth: true
@@ -126,6 +140,18 @@ ColumnLayout {
             onClicked: controller.homebrew_cancel_install()
         }
         Label { text: "To resume, select the same ZIP and confirm installation again. Completed files are checked before skipping; incomplete files require manual cleanup."; wrapMode: Text.Wrap; Layout.fillWidth: true }
+    }
+    Dialog {
+        id: downloadOnlyDialog
+        title: "Download only — manual installation"
+        modal: true
+        anchors.centerIn: Overlay.overlay
+        standardButtons: Dialog.Yes | Dialog.No
+        ColumnLayout {
+            Label { text: "Download " + home.selectedAsset + " to SteamOS and open its folder?"; wrapMode: Text.Wrap; Layout.preferredWidth: 380 }
+            Label { text: "This does NOT install or upload anything to your Switch 2. Follow the project’s manual installation instructions. SHA-256 verification is required."; color: "#f59e0b"; wrapMode: Text.Wrap; Layout.preferredWidth: 380 }
+        }
+        onAccepted: controller.homebrew_download_only(home.selectedRepo, home.selectedAsset)
     }
     Dialog {
         id: installDialog
