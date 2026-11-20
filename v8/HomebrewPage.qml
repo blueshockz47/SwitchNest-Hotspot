@@ -4,7 +4,7 @@ import QtQuick.Layouts
 
 ColumnLayout {
     id: home
-    property var ftpState: JSON.parse(ftpBrowser.state)
+    property var ftpState: ftpBrowser ? JSON.parse(ftpBrowser.state) : ({host: "", port: "", status: "Initializing FTP...", busy: false, connected: false})
     property var results: []
     property var assets: []
     property string selectedRepo: ""
