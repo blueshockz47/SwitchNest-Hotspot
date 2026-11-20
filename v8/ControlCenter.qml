@@ -6,7 +6,7 @@ import QtQuick.Layouts
 ApplicationWindow {
     id: root
     visible: true
-    Component.onCompleted: { if (root.updatePrefs.fullscreen_on_start) root.showFullScreen() }
+    Component.onCompleted: { if (root.updatePrefs.fullscreen_on_start) root.showMaximized() }
     width: 960
     height: 620
     minimumWidth: 620
@@ -448,8 +448,8 @@ ApplicationWindow {
                         }
                     }
                     Label { text: "Launches the app in Desktop Mode, not the hotspot. Gaming Mode is not supported."; wrapMode: Text.Wrap; Layout.fillWidth: true; color: root.muted }
-                    CheckBox { text: "Launch SwitchNest fullscreen"; checked: root.updatePrefs.fullscreen_on_start; onToggled: controller.set_update_preference("fullscreen_on_start", checked) }
-                    Label { text: "Applies on next launch. Press Alt+F4 to close fullscreen SwitchNest."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                    CheckBox { text: "Launch SwitchNest maximized"; checked: root.updatePrefs.fullscreen_on_start; onToggled: controller.set_update_preference("fullscreen_on_start", checked) }
+                    Label { text: "Applies on next launch. The title bar, minimize, restore, and close controls remain available."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Label { text: "Wi-Fi configuration (existing NetworkManager AP profile)"; font.bold: true }
                     Label { text: "Current SSID: " + (root.hotspot.ssid || "Unavailable"); color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
                     TextField { placeholderText: "Wi-Fi name (SSID)"; text: root.wifiName; onTextEdited: root.wifiName = text; Layout.fillWidth: true; maximumLength: 32 }
