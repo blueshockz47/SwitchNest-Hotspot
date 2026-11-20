@@ -20,6 +20,29 @@ ColumnLayout {
     property bool installingZip: false
     property string statusText: "Loading the curated Switch 2 homebrew catalog..."
     property string activeCategory: "All"
+    property string action: ""
+    property string actionRepo: ""
+    property string actionName: ""
+    property var choices: []
+    function selectApp(item) {
+        selectedRepo = item.repo
+        selectedManual = item.manual
+        selectedWarning = "⚠ " + item.warning
+        selectedAsset = ""
+    }
+    function requestRelease(actionName) {
+        if (!actionRepo || working) return
+        action = actionName
+        statusText = "Checking releases for " + actionName + "..."
+        controller.homebrew_releases(actionRepo)
+    }
+    function useAsset(asset) {
+        selectedRepo = actionRepo
+        selectedAsset = asset.name
+        if (action === "download") downloadOnlyDialog.open()
+        else if (ftpState.connected) installDialog.open()
+        else statusText = "Connect FTP before installing NRO."
+    }
     spacing: 8
     Component.onCompleted: controller.homebrew_search("", "All")
     Connections {
@@ -38,7 +61,18 @@ ColumnLayout {
             try {
                 let data = JSON.parse(raw)
                 if (data.kind === "search") { home.results = data.items; home.assets = []; home.readyZip = ""; home.activeCategory = data.category || "All"; home.statusText = data.items.length + " projects in " + home.activeCategory + ". NRO: FTP install; ZIP: manual download." }
-                else if (data.kind === "assets") { home.selectedRepo = data.repo; home.assets = data.assets; home.readyZip = ""; home.statusText = "Release " + data.version + " — verified NRO: install over FTP; verified ZIP: download only and open folder" }
+                else if (data.kind === "assets") {
+                    if (data.repo !== home.actionRepo || !home.action) return
+                    home.choices = data.assets.filter(function(asset) {
+                        let name = asset.name.toLowerCase()
+                        return !!asset.digest && (home.action === "install" ? name.endsWith(".nro") : (name.endsWith(".nro") || name.endsWith(".zip")))
+                    })
+                    if (home.choices.length === 1) {
+                        home.useAsset(home.choices[0])
+                        home.action = ""
+                    } else if (home.choices.length > 1) assetPicker.open()
+                    else { home.statusText = "No verified compatible release assets for " + home.actionName; home.action = "" }
+                }
                 else if (data.kind === "download_only_ready") {
                     home.downloadedDirectory = data.directory
                     home.statusText = data.message + " Saved: " + data.path
@@ -80,11 +114,7 @@ ColumnLayout {
     Label { text: home.statusText; wrapMode: Text.Wrap; Layout.fillWidth: true }
     Label { text: home.selectedWarning; visible: home.selectedWarning.length > 0; color: "#f59e0b"; font.bold: true; wrapMode: Text.Wrap; Layout.fillWidth: true }
     Label { text: "Catalog source: https://ouncebrew.github.io/hblist/ — listings are not security or compatibility verification."; wrapMode: Text.Wrap; Layout.fillWidth: true }
-    RowLayout {
-        Layout.fillWidth: true
-        Label { text: "Switch 2 projects"; font.bold: true; Layout.fillWidth: true }
-        Label { text: "Release assets"; font.bold: true; Layout.fillWidth: true }
-    }
+    Label { text: "Right-click a homebrew card for download options"; font.bold: true; Layout.fillWidth: true }
     RowLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
@@ -149,39 +179,30 @@ ColumnLayout {
                     }
                 }
                 onClicked: {
-                    home.selectedManual = modelData.manual
-                    home.selectedWarning = "⚠ " + modelData.warning
-                    home.selectedRepo = modelData.repo
-                    home.selectedAsset = ""
-                    home.assets = []
-                    if (modelData.repo)
-                        controller.homebrew_releases(modelData.repo)
-                    else
-                        home.statusText = modelData.name + " has no configured release source. Check the community catalog for manual installation instructions."
+                    home.selectApp(modelData)
+                    home.statusText = "Right-click " + modelData.name + " for actions."
                 }
-            }
-        }
-        ListView {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            clip: true
-            model: home.assets
-            delegate: ItemDelegate {
-                width: ListView.view.width
-                text: modelData.name + (modelData.digest ? " (SHA-256)" : " (no digest)")
-                onClicked: {
-                    home.selectedAsset = modelData.name
-                    if (!modelData.digest) {
-                        home.statusText = "SHA-256 unavailable: automatic installation and download are disabled."
-                    } else if (modelData.name.toLowerCase().endsWith(".nro")) {
-                        if (!home.ftpState.connected)
-                            home.statusText = "Connect to Switch 2 FTP before installing this NRO."
-                        else
-                            installDialog.open()
-                    } else if (modelData.name.toLowerCase().endsWith(".zip")) {
-                        downloadOnlyDialog.open()
-                    } else {
-                        home.statusText = "Unsupported asset format. Only verified NRO and ZIP packages are supported."
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.RightButton
+                    onPressed: function(mouse) {
+                        home.selectApp(projectCard.modelData)
+                        home.actionRepo = projectCard.modelData.repo
+                        home.actionName = projectCard.modelData.name
+                        contextMenu.popup()
+                    }
+                }
+                Menu {
+                    id: contextMenu
+                    MenuItem {
+                        text: "Download Only"
+                        enabled: !!home.actionRepo && !home.working
+                        onTriggered: home.requestRelease("download")
+                    }
+                    MenuItem {
+                        text: "Download & Install (.nro via FTP)"
+                        enabled: !!home.actionRepo && home.ftpState.connected && !home.working
+                        onTriggered: home.requestRelease("install")
                     }
                 }
             }
@@ -204,6 +225,33 @@ ColumnLayout {
             onClicked: controller.homebrew_cancel_install()
         }
         Label { text: "To resume, select the same ZIP and confirm installation again. Completed files are checked before skipping; incomplete files require manual cleanup."; wrapMode: Text.Wrap; Layout.fillWidth: true }
+    }
+    Dialog {
+        id: assetPicker
+        title: "Choose verified release asset"
+        modal: true
+        anchors.centerIn: Overlay.overlay
+        standardButtons: Dialog.Cancel
+        ColumnLayout {
+            Label { text: home.actionName; Layout.preferredWidth: 400 }
+            ListView {
+                Layout.preferredWidth: 400
+                Layout.preferredHeight: 240
+                clip: true
+                model: home.choices
+                delegate: ItemDelegate {
+                    required property var modelData
+                    width: ListView.view.width
+                    text: modelData.name
+                    onClicked: {
+                        assetPicker.close()
+                        home.useAsset(modelData)
+                        home.action = ""
+                    }
+                }
+            }
+        }
+        onRejected: home.action = ""
     }
     Dialog {
         id: downloadOnlyDialog
