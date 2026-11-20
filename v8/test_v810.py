@@ -28,7 +28,7 @@ class HomebrewTests(unittest.TestCase):
         self.assertEqual(names["Checkpoint"]["repo"], "wowilookgood/Checkpoint")
         self.assertEqual(names["KaiPlayer"]["repo"], "mizuiroame/kaiplayer")
         self.assertEqual(names["90DNS Tester"]["repo"], "souldbminerr/90DNS-Tester")
-        self.assertEqual(names["FTPD Plugin"]["repo"], "")
+        self.assertEqual(names["FTPD Plugin"]["repo"], "NerdsMcGee/kaihen-ftpd-plugin")
         self.assertEqual(names["FTPD Plugin"]["status"], "Download only / manual installation")
 
     def test_expanded_catalog_and_filters(self):
@@ -42,6 +42,17 @@ class HomebrewTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             homebrew.catalog_search(category="../invalid")
 
+
+    def test_linked_switch2_sources_preserve_manual_install_policy(self):
+        rows = {row["name"]: row for row in homebrew.catalog_search()}
+        self.assertEqual(rows["Chiaki-ng/Akira"]["repo"], "chiaki-ng/akira-ounce")
+        self.assertEqual(rows["PKSM"]["repo"], "wowilookgood/PKSM")
+        self.assertEqual(rows["Sonic 3 AIR"]["repo"], "NerdsMcGee/sonic3air-s2")
+        self.assertEqual(rows["OpenRCT2"]["repo"], "souldbminerr/OpenRCT2-Switch")
+        self.assertEqual(rows["Moonlight"]["repo"], "")
+        self.assertEqual(rows["OunceShell"]["repo"], "")
+        self.assertTrue(rows["FTPD Plugin"]["manual"])
+        self.assertTrue(rows["Super Smash Bros. Melee"]["manual"])
 
     def test_discovery_only_returns_switch2_candidates(self):
         seen = []
