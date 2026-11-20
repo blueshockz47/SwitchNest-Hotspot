@@ -21,6 +21,7 @@ ApplicationWindow {
     property string notice: "Waiting for diagnostics"
     property string activityLog: "Waiting for activity...\n"
     property bool updateInProgress: false
+    property string availableVersion: ""
     property var hotspot: report.hotspot || ({state: "unknown"})
     property string http: report.http_service ? report.http_service.output : "Unknown"
     property string dns: report.dns_service ? report.dns_service.output : "Unknown"
@@ -34,10 +35,46 @@ ApplicationWindow {
         }
         function onMessage(message) { root.notice = message; root.activityLog += message + "\n" }
         function onUpdateLog(chunk) { root.activityLog += chunk }
+        function onUpdateAvailable(version) { root.availableVersion = version; updateAvailableDialog.open() }
         function onUpdateInstalled(version) { root.updateInProgress = false; restartDialog.open() }
         function onBusyChanged(value) { root.busy = value }
         function onUpdateBusy(value) { root.updateBusy = value }
         function onUpdateResult(value) { root.updateStatus = value }
+    }
+    Dialog {
+        id: updateAvailableDialog
+        title: "SwitchNest update available"
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(470, root.width - 50)
+        implicitHeight: 230
+        standardButtons: Dialog.NoButton
+        ColumnLayout {
+            width: parent.width
+            spacing: 12
+            Label {
+                text: "A new SwitchNest version (" + root.availableVersion + ") is available. Would you like to install it now?"
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                Button { text: "Later"; onClicked: updateAvailableDialog.close() }
+                Button { text: "View on GitHub"; onClicked: { controller.download_update(); updateAvailableDialog.close() } }
+                Button {
+                    text: "Download & Install"
+                    highlighted: true
+                    enabled: !root.busy && !root.updateBusy
+                    onClicked: {
+                        updateAvailableDialog.close()
+                        pages.currentIndex = 6
+                        root.activityLog = "Preparing update...\n"
+                        root.updateInProgress = true
+                        controller.install_update()
+                    }
+                }
+            }
+        }
     }
     Dialog {
         id: restartDialog
@@ -98,7 +135,7 @@ ApplicationWindow {
                 NavButton { text: "Settings"; page: 5 }
                 NavButton { text: root.updateStatus.startsWith("Update available") ? "Updates •" : "Updates"; page: 6 }
                 Item { Layout.fillHeight: true }
-                Label { text: "v8.0.4"; color: root.accent }
+                Label { text: "v8.0.5"; color: root.accent }
                 Label { text: "Linux stable"; color: root.muted; font.pixelSize: 12 }
             }
         }
@@ -239,7 +276,7 @@ ApplicationWindow {
                 }
                 ColumnLayout {
                     Label { text: "Software updates"; font.pixelSize: 22 }
-                    Label { text: "Installed: v8.0.4"; color: root.accent }
+                    Label { text: "Installed: v8.0.5"; color: root.accent }
                     ComboBox { id: channel; model: ["Stable", "Development"]; enabled: !root.updateBusy }
                     Label { text: root.updateStatus; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Button { text: root.updateBusy ? "Checking..." : "Check for Updates"; enabled: !root.updateBusy; onClicked: controller.check_updates(channel.currentIndex===0?"stable":"development") }
