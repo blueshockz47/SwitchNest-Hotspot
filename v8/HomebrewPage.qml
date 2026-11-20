@@ -11,11 +11,19 @@ ColumnLayout {
     property bool working: false
     property string readyZip: ""
     property string previewText: ""
+    property real transferPercent: 0
+    property string transferStatus: ""
+    property bool installingZip: false
     property string statusText: "Search the curated Switch 2 homebrew catalog. Listings do not verify compatibility."
     spacing: 8
     Connections {
         target: controller
-        function onHomebrewBusy(value) { home.working = value }
+        function onHomebrewBusy(value) { home.working = value; if (!value) home.installingZip = false }
+        function onHomebrewProgress(raw) {
+            let p = JSON.parse(raw)
+            if (p.total > 0) home.transferPercent = Math.min(100, Math.round(p.done * 100 / p.total))
+            home.transferStatus = (p.index ? p.index + "/" + p.count + " — " : "") + (p.status || "") + (p.name ? ": " + p.name : "")
+        }
         function onHomebrewResult(raw) {
             try {
                 let data = JSON.parse(raw)
@@ -77,6 +85,19 @@ ColumnLayout {
             }
         }
     }
+    ColumnLayout {
+        Layout.fillWidth: true
+        visible: home.installingZip || home.transferStatus.length > 0
+        Label { text: "Switch 2 ZIP FTP installation"; font.bold: true }
+        ProgressBar { Layout.fillWidth: true; from: 0; to: 100; value: home.transferPercent }
+        Label { text: home.transferPercent + "% — " + home.transferStatus; wrapMode: Text.WrapAnywhere; Layout.fillWidth: true }
+        Button {
+            text: "Cancel installation"
+            enabled: home.installingZip && home.working
+            onClicked: controller.homebrew_cancel_install()
+        }
+        Label { text: "To resume, select the same ZIP and confirm installation again. Completed files are checked before skipping; incomplete files require manual cleanup."; wrapMode: Text.Wrap; Layout.fillWidth: true }
+    }
     Dialog {
         id: installDialog
         title: "Confirm homebrew installation"
@@ -116,7 +137,12 @@ ColumnLayout {
             }
             Label { text: "Preview shows up to 12 files. Existing remote files are not overwritten. FTP is unencrypted; interrupted transfers may leave partial files."; wrapMode: Text.Wrap; Layout.preferredWidth: 420 }
         }
-        onAccepted: controller.homebrew_install_zip(home.selectedRepo, home.readyZip, true)
+        onAccepted: {
+            home.transferPercent = 0
+            home.transferStatus = "Preparing installation..."
+            home.installingZip = true
+            controller.homebrew_install_zip(home.selectedRepo, home.readyZip, true)
+        }
     }
 
 }
