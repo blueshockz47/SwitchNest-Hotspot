@@ -172,7 +172,13 @@ class Controller(QObject):
                 if not state.get("connected") or state.get("busy"):
                     raise RuntimeError("Connect the FTP browser and finish any active transfer first")
                 destination = "/switch/" + asset["name"]
-                message = homebrew.install_nro(asset, destination, state["host"], state["port"], confirmed=True)
+                def report(stage, done, total):
+                    self.homebrewProgress.emit(json.dumps({
+                        "status": stage, "name": asset["name"],
+                        "done": done, "total": total}))
+                message = homebrew.install_nro(
+                    asset, destination, state["host"], state["port"],
+                    confirmed=True, progress=report)
                 self.homebrewResult.emit(json.dumps({"kind": "installed", "message": message}))
             except Exception as exc:
                 self.homebrewResult.emit(json.dumps({"kind": "error", "message": str(exc)[:250]}))
@@ -197,13 +203,13 @@ class Controller(QObject):
                 if not asset.get("digest"):
                     raise ValueError("Download disabled: GitHub SHA-256 digest unavailable")
                 if name.lower().endswith(".zip"):
-                    path = homebrew_zip.download_zip(asset)
+                    path = homebrew_zip.download_zip(asset, progress=lambda done, total: self.homebrewProgress.emit(json.dumps({"status": "Downloading", "name": name, "done": done, "total": total})))
                 elif name.lower().endswith(".nro"):
                     directory = Path.home() / ".cache" / "switchnest" / "homebrew" / "downloads"
                     directory.mkdir(parents=True, exist_ok=True)
                     import tempfile
                     with tempfile.TemporaryDirectory(prefix="download-", dir=directory) as temp:
-                        fetched = homebrew.download_asset(asset, temp)
+                        fetched = homebrew.download_asset(asset, temp, progress=lambda done, total: self.homebrewProgress.emit(json.dumps({"status": "Downloading", "name": name, "done": done, "total": total})))
                         target = directory / name
                         if target.exists():
                             import hashlib
