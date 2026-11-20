@@ -215,10 +215,11 @@ ApplicationWindow {
                     ComboBox { id: channel; model: ["Stable", "Development"]; enabled: !root.updateBusy }
                     Label { text: root.updateStatus; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Button { text: root.updateBusy ? "Checking..." : "Check for Updates"; enabled: !root.updateBusy; onClicked: controller.check_updates(channel.currentIndex===0?"stable":"development") }
-                    Button { text: "Download Update"; highlighted: true; visible: root.updateStatus.startsWith("Update available: "); enabled: !root.updateBusy; onClicked: controller.download_update() }
+                    Button { text: "Download & Install Update"; highlighted: true; visible: root.updateStatus.startsWith("Update available: ") && channel.currentIndex === 0; enabled: !root.updateBusy && !root.busy; onClicked: controller.install_update() }
+                    Button { text: "View Update on GitHub"; visible: root.updateStatus.startsWith("Update available: "); onClicked: controller.download_update() }
                     Button { text: "Open GitHub releases"; onClicked: controller.open_updates(false) }
                     Button { text: "Open development downloads"; onClicked: controller.open_updates(true) }
-                    Label { text: "Private repository: sign in using GitHub CLI for automatic lookup, or use your browser. The Download Update button opens the validated GitHub release page. Review the release and download its ZIP manually; installation is never automatic."; wrapMode: Text.Wrap; Layout.fillWidth: true; color: root.muted }
+                    Label { text: "Private repository: sign in using GitHub CLI for automatic lookup, or use your browser. Download & Install uses a GitHub release ZIP with a published SHA-256 digest. It installs without sudo and keeps the previous version for rollback. Restart SwitchNest after installation."; wrapMode: Text.Wrap; Layout.fillWidth: true; color: root.muted }
                     Item { Layout.fillHeight: true }
                 }
             }
