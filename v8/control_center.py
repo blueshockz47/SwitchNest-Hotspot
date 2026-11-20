@@ -271,43 +271,11 @@ class Controller(QObject):
 
     @Slot(str, str, bool)
     def homebrew_install_zip(self, repo, name, confirmed):
-        if not confirmed or getattr(self, "_homebrew_busy", False):
-            return
-        pending = getattr(self, "_homebrew_zip", None)
-        if not pending or pending["repo"] != repo or pending["name"] != name:
-            self.homebrewResult.emit(json.dumps({"kind": "error",
-                "message": "Download and preview this ZIP before installing."}))
-            return
-        self._homebrew_busy = True
-        self._homebrew_cancel = threading.Event()
-        self.homebrewBusy.emit(True)
-        def worker():
-            try:
-                browser = self._homebrew_browser
-                state = json.loads(browser.state)
-                if not state.get("connected") or state.get("busy"):
-                    raise RuntimeError("Connect FTP and finish active transfers first")
-                # Confirm the cached file still matches the originally downloaded release.
-                path = Path(pending["path"])
-                import hashlib
-                with path.open("rb") as stream:
-                    digest = hashlib.file_digest(stream, "sha256").hexdigest()
-                if "sha256:" + digest != pending["digest"]:
-                    raise ValueError("Cached ZIP checksum mismatch")
-                def report(done, total, index, count, filename, status):
-                    self.homebrewProgress.emit(json.dumps({
-                        "done": done, "total": total, "index": index,
-                        "count": count, "name": filename, "status": status}))
-                message = homebrew_zip.install_zip(path, pending["plan"],
-                    state["host"], state["port"], confirmed=True,
-                    progress=report, cancelled=self._homebrew_cancel.is_set)
-                self.homebrewResult.emit(json.dumps({"kind": "installed", "message": message}))
-            except Exception as exc:
-                self.homebrewResult.emit(json.dumps({"kind": "error", "message": str(exc)[:250]}))
-            finally:
-                self._homebrew_busy = False
-                self.homebrewBusy.emit(False)
-        threading.Thread(target=worker, daemon=True).start()
+        """ZIP installation is intentionally disabled; use manual download."""
+        self.homebrewResult.emit(json.dumps({
+            "kind": "error",
+            "message": "ZIP installation is manual-only. Download the ZIP and open its folder."
+        }))
 
     @Slot()
     def homebrew_cancel_install(self):
