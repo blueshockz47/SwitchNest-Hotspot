@@ -44,7 +44,7 @@ CATALOG = (
     ("OunceShell", "Tools", None),
     ("90DNS Tester", "Tools", "souldbminerr/90DNS-Tester"),
     ("Force Internal Speaker", "Tools", None),
-    ("FTPD Plugin", "Tools", "NerdsMcGee/kaihen-ftpd-plugin"),
+    ("FTPD Plugin", "Tools", None),
     ("Checkpoint", "Tools", "wowilookgood/Checkpoint"),
     ("PKSM", "Tools", None),
     ("NXGallery", "Tools", None),
