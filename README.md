@@ -152,19 +152,42 @@ Run these commands from the extracted project folder. Rollback works only if a p
 
 See [v8 release notes and verification requirements](v8/STABLE.md). **Final hardware validation is pending.** Windows is experimental and not included in this Linux release.
 
-## Control Center Preview
+## SwitchNest Control Center — v8.1.5 screenshots
 
-Actual SwitchNest Linux v8.0.1 running in SteamOS KDE Desktop Mode.
+The screenshots below were captured by the project maintainer on SteamOS KDE Desktop Mode using SwitchNest **v8.1.5**. They illustrate the current interface; connected devices, services, and paths depend on each installation.
 
-### Sunshine / Moonlight
+### Overview — hotspot and client status
 
-![SwitchNest v8.0.1 Control Center Streaming page showing Sunshine start, stop and web UI controls](docs/images/control-center-streaming.jpg)
+![SwitchNest v8.1.5 Overview: active hotspot, DNS service, connected Switch 2 station, isolation unverified](docs/images/Overview.png)
 
-### Files — Nintendo Switch 2 FTP
+The screenshot shows an active local hotspot, DNS service and one associated Wi-Fi station. **Isolation: Unverified** means the application has not confirmed firewall isolation; it is not a successful isolation test.
 
-![SwitchNest v8.0.1 Control Center Files page showing local SteamOS files alongside Switch 2 FTP folders](docs/images/control-center-files.jpg)
+### FTP File Manager
 
-*Screenshots supplied by the project maintainer. Device and network details shown are illustrative; features depend on the installed v7.1 backend and FTP service.*
+![SwitchNest v8.1.5 FTP File Manager: local files, remote FTP panel and transfer controls](docs/images/FTP%20Manager.png)
+
+Browse local files and connect to a compatible FTP server on the Switch 2. The remote panel is empty until the FTP connection is established.
+
+### Switch 2 Homebrew Manager
+
+![SwitchNest v8.1.5 Homebrew Manager: three-column curated catalog and contextual download options](docs/images/HomebrewManager.png)
+
+Browse a curated three-column homebrew catalog and view upstream GitHub repositories. Download and installation actions require compatible release assets and explicit confirmation. Listing an app does not guarantee compatibility or authorize automatic installation.
+
+### Settings
+
+![SwitchNest v8.1.5 Settings: maximized startup, Wi-Fi configuration, recovery and presets](docs/images/Settings.png)
+
+Configure startup behavior, Wi-Fi profiles, recovery and presets. **Known v8.1.5 issue:** toggling *Launch SwitchNest maximized* can report `Unable to save update setting: Invalid preference`. The preference registration fix is committed for the next development release; it is not included in the published v8.1.5 build.
+
+### Streaming — Sunshine / Moonlight
+
+![SwitchNest v8.1.5 Streaming: Sunshine status, start and stop buttons and web UI](docs/images/Streaming.png)
+
+Control an independently installed Sunshine service for local streaming. Moonlight must be configured separately on the client.
+
+**Release channels:** v8.1.5 remains stable. v8.1.6 homebrew release monitoring is under development in PR #24 and is not part of v8.1.5.
+
 
 ## Features
 
