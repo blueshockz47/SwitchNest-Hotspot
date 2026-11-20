@@ -8,7 +8,7 @@ import os
 import sys
 import subprocess
 import threading
-from v8 import updates, autostart, preferences
+from v8 import updates, autostart, preferences, wifi_reliability
 from pathlib import Path
 from v8.ftp_browser import Browser
 from PySide6.QtCore import QObject, Signal, Slot, Property, QLockFile, QStandardPaths, QProcess, QTimer, QUrl
@@ -30,6 +30,11 @@ class Controller(QObject):
     autostartChanged = Signal()
     wifiStatus = Signal(str)
     wifiResult = Signal(str)
+    wifiRestartSuggested = Signal()
+    wifiRestartProgress = Signal(str)
+    wifiPresets = Signal(str)
+    networkEvents = Signal(str)
+    wifiHealth = Signal(str)
 
     def __init__(self):
         super().__init__()
@@ -46,8 +51,13 @@ class Controller(QObject):
         self.latestUpdateTag = None
         self.latestUpdateChannel = "stable"
         self.notifiedUpdateTag = None
+        self.wifi_restart_phase = None
+        self.wifi_recovery_attempted = False
+        self.wifi_pending_restore = False
+        self.wifi_expected_ssid = None
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.refresh)
+        self._last_health_state = None
         self.timer.start(10000)
 
     @Property(str, notify=preferencesChanged)
@@ -193,7 +203,7 @@ class Controller(QObject):
 
     @Slot()
     def refresh(self):
-        if self.process.state() != QProcess.NotRunning:
+        if self.process.state() != QProcess.NotRunning or self.wifi_restart_phase:
             return
         self.kind = "refresh"
         self.busyChanged.emit(True)
@@ -202,7 +212,7 @@ class Controller(QObject):
 
     @Slot(str)
     def action(self, action):
-        if action not in ("on", "off") or self.process.state() != QProcess.NotRunning:
+        if action not in ("on", "off") or self.process.state() != QProcess.NotRunning or self.wifi_restart_phase:
             return
         helper = "/etc/steamdeck-switch2-panel-toggle"
         if not os.path.isfile(helper) or not os.path.isfile("/usr/bin/pkexec"):
@@ -253,9 +263,87 @@ class Controller(QObject):
         ok, _ = QProcess.startDetached(dolphin, [f"ftp://{address}:{number}/"])
         self.message.emit("Dolphin launch requested. FTP is unencrypted." if ok else "Dolphin launch failed.")
 
+    def wifi_event(self, kind, detail=""):
+        try:
+            wifi_reliability.event(kind, detail)
+            self.networkEvents.emit(json.dumps(wifi_reliability.history()))
+        except (OSError, ValueError, RuntimeError):
+            self.message.emit("Unable to record network event.")
+
+    @Slot()
+    def wifi_events(self):
+        self.networkEvents.emit(json.dumps(wifi_reliability.history()))
+
+    @Slot()
+    def wifi_presets(self):
+        self.wifiPresets.emit(json.dumps(wifi_reliability.presets()))
+
+    @Slot(str, str, int)
+    def wifi_save_preset(self, name, ssid, channel):
+        try:
+            wifi_reliability.save_preset(name, ssid, channel)
+            self.wifi_presets()
+            self.wifi_events()
+            self.message.emit("Preset saved (SSID and channel only; no password).")
+        except (ValueError, RuntimeError, OSError) as exc:
+            self.message.emit("Preset not saved: " + str(exc))
+
+    @Slot(str)
+    def wifi_select_preset(self, name):
+        try:
+            item = wifi_reliability.select_preset(name)
+            self.wifiStatus.emit(json.dumps({"ssid": item["ssid"], "channel": item["channel"],
+                                             "note": "Preset loaded for editing; click Apply to save it."}))
+            self.wifi_event("preset_applied")
+        except (ValueError, RuntimeError) as exc:
+            self.message.emit(str(exc))
+
+    @Slot()
+    def wifi_restart(self):
+        """One confirmed OFF/ON cycle through the existing v7.1 helper only."""
+        if self.process.state() != QProcess.NotRunning or self.wifi_restart_phase:
+            self.message.emit("Wait for the current operation to finish.")
+            return
+        helper = Path("/etc/steamdeck-switch2-panel-toggle")
+        try:
+            st = helper.lstat()
+            if not stat.S_ISREG(st.st_mode) or st.st_uid != 0 or st.st_mode & 0o022:
+                raise OSError("Untrusted existing helper")
+            if not Path("/usr/bin/pkexec").is_file():
+                raise OSError("pkexec unavailable")
+        except OSError as exc:
+            self.message.emit("Existing v7.1 helper unavailable: " + str(exc))
+            return
+        self.wifi_recovery_attempted = False
+        self._wifi_restart_step("off")
+
+    def _wifi_restart_step(self, step):
+        if self.process.state() != QProcess.NotRunning:
+            self.message.emit("Another process is active; restart halted.")
+            self.wifi_restart_phase = None
+            return
+        self.wifi_restart_phase = step
+        self.kind = "wifi_restart_" + step
+        self._process_output = []
+        self.busyChanged.emit(True)
+        self.wifiRestartProgress.emit("Stopping hotspot..." if step == "off" else "Starting hotspot...")
+        self.wifi_event("restart_off" if step == "off" else "restart_on")
+        self.process.start("/usr/bin/pkexec", ["/etc/steamdeck-switch2-panel-toggle", step])
+
+    def _wifi_restart_failed(self, detail="failed"):
+        self.wifi_restart_phase = None
+        self.wifiRestartProgress.emit("Hotspot restart failed. Check the existing backend and use manual ON/OFF if needed.")
+        self.wifi_event("restart_failed", detail)
+        self.busyChanged.emit(False)
+        # Only one automatic recovery attempt, and only after the user confirmed a restart.
+        if not self.wifi_recovery_attempted:
+            self.wifi_recovery_attempted = True
+            self.wifi_pending_restore = True
+            QTimer.singleShot(500, self.wifi_restore)
+
     @Slot()
     def wifi_status(self):
-        if self.process.state() != QProcess.NotRunning:
+        if self.process.state() != QProcess.NotRunning or self.wifi_restart_phase:
             return
         self.kind = "wifi_status"
         self._process_output = []
@@ -265,7 +353,7 @@ class Controller(QObject):
 
     @Slot(str, str, int)
     def wifi_apply(self, ssid, password, channel):
-        if self.process.state() != QProcess.NotRunning:
+        if self.process.state() != QProcess.NotRunning or self.wifi_restart_phase:
             self.message.emit("Another operation is in progress.")
             return
         from v8.wifi_config import validate
@@ -274,6 +362,7 @@ class Controller(QObject):
         except ValueError as exc:
             self.message.emit(str(exc))
             return
+        self.wifi_expected_ssid = ssid
         self.kind = "wifi_apply"
         self._process_output = []
         self.busyChanged.emit(True)
@@ -288,7 +377,7 @@ class Controller(QObject):
 
     @Slot()
     def wifi_restore(self):
-        if self.process.state() != QProcess.NotRunning:
+        if self.process.state() != QProcess.NotRunning or self.wifi_restart_phase:
             return
         self.kind = "wifi_restore"
         self._process_output = []
@@ -314,12 +403,37 @@ class Controller(QObject):
         ok, _ = QProcess.startDetached(konsole, ["--hold", "-e", "/usr/bin/sudo", "/usr/bin/bash", str(manager)])
         self.message.emit("Use option 5 in the existing manager to change WPA2 settings." if ok else "Konsole launch failed.")
 
+    def _wifi_verify(self):
+        if self.wifi_restart_phase != "verify" or self.process.state() != QProcess.NotRunning:
+            return
+        self.kind = "wifi_restart_verify"
+        self._process_output = []
+        self.wifiRestartProgress.emit("Verifying hotspot status...")
+        self.process.setWorkingDirectory(str(Path(__file__).resolve().parent.parent))
+        self.process.start(sys.executable, ["-m", "v8.diagnostics"])
+
+    @Slot()
+    def restart_control_center(self):
+        if self.process.state() != QProcess.NotRunning or self.wifi_restart_phase:
+            self.message.emit("Wait for hotspot restart to finish.")
+            return
+        launcher = Path.home() / ".local/share/switchnest/launch"
+        if not launcher.is_file():
+            self.message.emit("SwitchNest launcher missing.")
+            return
+        subprocess.Popen(["/bin/sh", "-c", 'sleep 2; exec "$1"', "sh", str(launcher)],
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL, start_new_session=True)
+        QGuiApplication.instance().quit()
+
     def failed(self, error):
         if self.kind == "install_update":
             self.updateLog.emit("Update process error: " + self.process.errorString() + "\n")
         if self.kind == "install_update":
             self.installing_update = False
         self.message.emit(self.process.errorString())
+        if self.kind.startswith("wifi_restart_"):
+            self._wifi_restart_failed()
         self.busyChanged.emit(False)
 
     def finished(self, code, status):
@@ -328,9 +442,30 @@ class Controller(QObject):
         output = "".join(self._process_output).strip()
         kind = self.kind
         self._process_output = []
-        if kind == "refresh" and code == 0:
+        if kind in ("refresh", "wifi_restart_verify") and code == 0:
             self.last_report = output
             self.refreshed.emit(output)
+            try:
+                report = json.loads(output)
+                health = wifi_reliability.health(report)
+                self.wifiHealth.emit(json.dumps(health))
+                if health["state"] != self._last_health_state:
+                    if health["state"] == "attention":
+                        self.wifi_event("health_warning")
+                    self._last_health_state = health["state"]
+                if kind == "wifi_restart_verify":
+                    self.wifi_restart_phase = None
+                    expected = getattr(self, "wifi_expected_ssid", None)
+                    active = report.get("hotspot", {})
+                    if active.get("state") == "on" and (not expected or active.get("ssid") == expected):
+                        self.wifiRestartProgress.emit("Hotspot verified. Restarting SwitchNest Control Center...")
+                        self.wifi_event("restart_verified", "ok")
+                        QTimer.singleShot(1500, self.restart_control_center)
+                    else:
+                        self._wifi_restart_failed("verification_failed")
+            except (ValueError, TypeError):
+                if kind == "wifi_restart_verify":
+                    self._wifi_restart_failed("verification_failed")
         elif kind in ("wifi_status", "wifi_apply", "wifi_restore"):
             try:
                 result = json.loads(output)
@@ -341,9 +476,34 @@ class Controller(QObject):
             else:
                 self.wifiResult.emit(json.dumps(result))
                 self.message.emit(result.get("message", result.get("error", "Wi-Fi operation failed")))
+                if result.get("ok"):
+                    self.wifi_event("wifi_saved" if kind == "wifi_apply" else "wifi_restored", "ok")
+                    if kind == "wifi_apply":
+                        self.wifiRestartSuggested.emit()
+                    if kind == "wifi_restore" and self.wifi_pending_restore:
+                        self.wifi_pending_restore = False
+                        self.wifi_expected_ssid = None
+                        self.wifiRestartProgress.emit("Previous Wi-Fi profile restored. Attempting one recovery restart...")
+                        QTimer.singleShot(1200, lambda: self._wifi_restart_step("off"))
+                else:
+                    self.wifi_event("wifi_failed", "failed")
+                    self.wifi_pending_restore = False
         else:
             self.message.emit(("Completed: " if code == 0 else "Failed: ") + output)
         self.busyChanged.emit(False)
+        if kind == "wifi_restart_off":
+            if code == 0 and status == QProcess.NormalExit:
+                QTimer.singleShot(1200, lambda: self._wifi_restart_step("on"))
+            else:
+                self._wifi_restart_failed("authorization_required" if code != 0 else "failed")
+        elif kind == "wifi_restart_on":
+            if code == 0 and status == QProcess.NormalExit:
+                self.wifi_restart_phase = "verify"
+                QTimer.singleShot(2500, self._wifi_verify)
+            else:
+                self._wifi_restart_failed("authorization_required" if code != 0 else "failed")
+        elif kind == "wifi_restart_verify" and code != 0:
+            self._wifi_restart_failed("verification_failed")
         if kind == "install_update":
             self.installing_update = False
             if code == 0 and status == QProcess.NormalExit and "Installed v" in output:
@@ -377,6 +537,8 @@ def main():
     if not engine.rootObjects():
         return 1
     QTimer.singleShot(0, controller.refresh)
+    QTimer.singleShot(300, controller.wifi_presets)
+    QTimer.singleShot(400, controller.wifi_events)
     if preferences.load()["check_at_startup"]:
         QTimer.singleShot(1500, lambda: controller.check_updates("stable" if preferences.load()["stable_only"] else "development"))
     return app.exec()
