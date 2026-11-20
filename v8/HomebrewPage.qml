@@ -4,6 +4,7 @@ import QtQuick.Layouts
 
 ColumnLayout {
     id: home
+    property var ftpState: JSON.parse(ftpBrowser.state)
     property var results: []
     property var assets: []
     property string selectedRepo: ""
@@ -17,6 +18,10 @@ ColumnLayout {
     property string statusText: "Loading the curated Switch 2 homebrew catalog..."
     spacing: 8
     Component.onCompleted: controller.homebrew_search("", "All")
+    Connections {
+        target: ftpBrowser
+        function onChanged() { home.ftpState = JSON.parse(ftpBrowser.state) }
+    }
     Connections {
         target: controller
         function onHomebrewBusy(value) { home.working = value; if (!value) home.installingZip = false }
@@ -42,6 +47,15 @@ ColumnLayout {
     }
     Label { text: "Switch 2 Homebrew Manager"; font.pixelSize: 22; font.bold: true }
     Label { text: "Only Switch 2 candidate projects are listed. NRO installation requires a GitHub SHA-256 digest and explicit confirmation. ZIPs require a verified download followed by separate installation confirmation."; wrapMode: Text.Wrap; Layout.fillWidth: true }
+    RowLayout {
+        Layout.fillWidth: true
+        Label { text: "Switch 2 FTP"; font.bold: true }
+        TextField { id: ftpHost; text: home.ftpState.host; placeholderText: "Switch 2 IP"; Layout.fillWidth: true; enabled: !home.ftpState.busy && !home.working }
+        TextField { id: ftpPort; text: home.ftpState.port; placeholderText: "Port"; Layout.preferredWidth: 80; enabled: !home.ftpState.busy && !home.working }
+        Button { text: "Connect"; enabled: !home.ftpState.busy && !home.working; onClicked: ftpBrowser.connect_to(ftpHost.text, ftpPort.text) }
+        Button { text: "Disconnect"; enabled: home.ftpState.connected && !home.ftpState.busy && !home.working; onClicked: ftpBrowser.disconnect() }
+    }
+    Label { text: (home.ftpState.busy ? "Connecting / FTP operation in progress" : home.ftpState.connected ? "Connected to " + home.ftpState.host + ":" + home.ftpState.port : "Not connected") + " — " + home.ftpState.status; wrapMode: Text.Wrap; Layout.fillWidth: true }
     RowLayout {
         TextField { id: searchBox; placeholderText: "Search Switch 2 homebrew"; Layout.fillWidth: true; onAccepted: controller.homebrew_search(text, categoryBox.currentText) }
         ComboBox { id: categoryBox; model: ["All", "Tools", "Games", "Streaming", "Emulation", "Fun", "Media"]; onActivated: controller.homebrew_search(searchBox.text, currentText) }
