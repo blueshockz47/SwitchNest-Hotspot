@@ -355,7 +355,7 @@ ApplicationWindow {
                                     model: root.clients
                                     delegate: Label {
                                         required property var modelData
-                                        text: modelData.mac + "  •  " + (modelData.ip || "IP unavailable") + "  •  " + modelData.status + (modelData.signal !== undefined ? "  •  " + modelData.signal + " dBm" : "") + (modelData.connected_seconds !== undefined ? "  •  " + modelData.connected_seconds + "s" : "")
+                                        text: modelData.mac + "  •  " + (modelData.ip || "IP unavailable") + "  •  " + modelData.status + (modelData.signal !== undefined ? "  •  " + modelData.signal + " dBm" : "") + (modelData.connected_seconds !== undefined ? "  •  " + modelData.connected_seconds + "s" : "") + (modelData.rx_bytes !== undefined ? "  •  RX " + modelData.rx_bytes + " B" : "") + (modelData.tx_bytes !== undefined ? "  •  TX " + modelData.tx_bytes + " B" : "")
                                         color: root.muted
                                         wrapMode: Text.Wrap
                                         Layout.fillWidth: true
