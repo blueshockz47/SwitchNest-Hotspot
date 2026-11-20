@@ -39,7 +39,7 @@ ColumnLayout {
     function useAsset(asset) {
         selectedRepo = actionRepo
         selectedAsset = asset.name
-        if (action === "download") downloadOnlyDialog.open()
+        if (action === "download" || action === "zip") downloadOnlyDialog.open()
         else if (ftpState.connected) installDialog.open()
         else statusText = "Connect FTP before installing NRO."
     }
@@ -65,13 +65,13 @@ ColumnLayout {
                     if (data.repo !== home.actionRepo || !home.action) return
                     home.choices = data.assets.filter(function(asset) {
                         let name = asset.name.toLowerCase()
-                        return !!asset.digest && (home.action === "install" ? name.endsWith(".nro") : (name.endsWith(".nro") || name.endsWith(".zip")))
+                        return !!asset.digest && (home.action === "install" ? name.endsWith(".nro") : home.action === "zip" ? name.endsWith(".zip") : (name.endsWith(".nro") || name.endsWith(".zip")))
                     })
                     if (home.choices.length === 1) {
                         home.useAsset(home.choices[0])
                         home.action = ""
                     } else if (home.choices.length > 1) assetPicker.open()
-                    else { home.statusText = "No verified compatible release assets for " + home.actionName; home.action = "" }
+                    else { home.statusText = "No SHA-256 verified " + (home.action === "zip" ? "official ZIP" : "compatible release asset") + " for " + home.actionName + ". No unverified downloads offered."; home.action = "" }
                 }
                 else if (data.kind === "download_only_ready") {
                     home.downloadedDirectory = data.directory
@@ -190,13 +190,19 @@ ColumnLayout {
                     id: contextMenu
                     width: Math.max(280, implicitWidth)
                     MenuItem {
-                        text: "Download Only"
+                        text: "Download Verified NRO / ZIP"
                         width: contextMenu.width
                         enabled: !!home.actionRepo && !home.working
                         onTriggered: home.requestRelease("download")
                     }
                     MenuItem {
-                        text: "Download & Install"
+                        text: "Download Official ZIP (Manual)"
+                        width: contextMenu.width
+                        enabled: !!home.actionRepo && !home.working
+                        onTriggered: home.requestRelease("zip")
+                    }
+                    MenuItem {
+                        text: "Download & Install NRO"
                         width: contextMenu.width
                         enabled: !!home.actionRepo && home.ftpState.connected && !home.working
                         onTriggered: home.requestRelease("install")
