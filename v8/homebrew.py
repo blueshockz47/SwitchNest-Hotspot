@@ -41,6 +41,10 @@ def request_json(path, opener=urllib.request.urlopen):
 # Projects without an individually reviewed GitHub repository remain browse-only.
 CATALOG = (
     ("RetroArch", "Emulation", "NerdsMcGee/retroarch-s2"),
+    ("SW2NES", "Emulation", "Rodpad/SW2NES"),
+    ("SW2SNES", "Emulation", "Rodpad/SW2SNES"),
+    ("SW2PS2", "Emulation", "Rodpad/SW2PS2"),
+    ("Toronja (3DS)", "Emulation", "Olmectron/toronja"),
     ("OunceShell", "Tools", None),
     ("90DNS Tester", "Tools", "souldbminerr/90DNS-Tester"),
     ("Force Internal Speaker", "Tools", None),
@@ -76,6 +80,7 @@ SWITCH2_CANDIDATES = frozenset(repo for _, _, repo in CATALOG if repo)
 # Download-only entries require checking the project's own installation guide.
 MANUAL_INSTALL_NAMES = frozenset({
     "FTPD Plugin", "Force Internal Speaker", "PKSM", "Checkpoint",
+    "SW2NES", "SW2SNES", "SW2PS2", "Toronja (3DS)",
     "Super Smash Bros. Melee", "UnleashedRecomp", "Sonic 3 AIR",
     "Sonic Robo Blast 2", "Dr. Robotnik's Ring Racers", "OpenRCT2",
     "xStarbound", "pokeplatinum", "Chiaki-ng/Akira", "Moonlight",
