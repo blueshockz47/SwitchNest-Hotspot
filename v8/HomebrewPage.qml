@@ -47,7 +47,7 @@ ColumnLayout {
                     home.readyZip = data.name
                     home.previewText = data.count + " files (" + Math.round(data.bytes / 1048576) + " MiB extracted)\\n" + data.sample.join("\\n")
                     home.statusText = "Download verified. Review files before installing."
-                    installZipDialog.open()
+                    home.statusText = "ZIP downloaded. Manual installation required."
                 }
                 else { home.statusText = data.message || "Unknown result" }
             } catch (e) { home.statusText = "Invalid homebrew response" }
@@ -164,40 +164,6 @@ ColumnLayout {
             Label { text: "The existing file will not be overwritten. FTP is unencrypted. Install only software you trust."; wrapMode: Text.Wrap; Layout.preferredWidth: 330 }
         }
         onAccepted: controller.homebrew_install(home.selectedRepo, JSON.stringify({name: home.selectedAsset}), true)
-    }
-    Dialog {
-        id: downloadZipDialog
-        title: "Download Switch 2 homebrew?"
-        modal: true
-        anchors.centerIn: Overlay.overlay
-        standardButtons: Dialog.Yes | Dialog.No
-        ColumnLayout {
-            Label { text: "Download " + home.selectedAsset + " to the SteamOS cache and verify SHA-256?"; wrapMode: Text.Wrap; Layout.preferredWidth: 380 }
-            Label { text: "This does not install anything on the Switch 2. Large downloads may take several minutes."; wrapMode: Text.Wrap; Layout.preferredWidth: 380 }
-        }
-        onAccepted: controller.homebrew_download_zip(home.selectedRepo, home.selectedAsset)
-    }
-    Dialog {
-        id: installZipDialog
-        title: "Install downloaded ZIP to Switch 2?"
-        modal: true
-        anchors.centerIn: Overlay.overlay
-        standardButtons: Dialog.Yes | Dialog.No
-        ColumnLayout {
-            Label { text: "Download complete and SHA-256 verified. Install these files to the Switch 2 SD card via FTP?"; wrapMode: Text.Wrap; Layout.preferredWidth: 420 }
-            ScrollView {
-                Layout.preferredWidth: 420
-                Layout.preferredHeight: 220
-                TextArea { readOnly: true; text: home.previewText; wrapMode: Text.WrapAnywhere }
-            }
-            Label { text: "Preview shows up to 12 files. Existing remote files are not overwritten. FTP is unencrypted; interrupted transfers may leave partial files."; wrapMode: Text.Wrap; Layout.preferredWidth: 420 }
-        }
-        onAccepted: {
-            home.transferPercent = 0
-            home.transferStatus = "Preparing installation..."
-            home.installingZip = true
-            controller.homebrew_install_zip(home.selectedRepo, home.readyZip, true)
-        }
     }
 
 }
