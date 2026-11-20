@@ -27,6 +27,11 @@ ApplicationWindow {
     property string wifiName: ""
     property string wifiPassword: ""
     property int wifiChannel: 1
+    property string presetName: ""
+    property var wifiPresetMap: ({})
+    property var wifiEventsList: []
+    property var wifiHealthInfo: ({state: "unknown", issues: []})
+    property string wifiRestartMessage: ""
     property string wifiFeedback: "Select Check Compatibility to inspect the existing hotspot profile."
     property string updateStage: "idle"
     property real downloadPercent: -1
@@ -54,12 +59,23 @@ ApplicationWindow {
                 root.wifiFeedback = root.wifiInfo.error || "Profile information loaded. Verify the adapter before applying."
             } catch (e) { root.wifiFeedback = "Unable to read Wi-Fi profile" }
         }
+        function onWifiRestartSuggested() { wifiRestartDialog.open() }
+        function onWifiRestartProgress(message) { root.wifiRestartMessage = message; root.activityLog += message + "\\n" }
+        function onWifiPresets(raw) {
+            try { root.wifiPresetMap = JSON.parse(raw) } catch(e) { root.wifiPresetMap = ({}) }
+        }
+        function onNetworkEvents(raw) {
+            try { root.wifiEventsList = JSON.parse(raw) } catch(e) { root.wifiEventsList = [] }
+        }
+        function onWifiHealth(raw) {
+            try { root.wifiHealthInfo = JSON.parse(raw) } catch(e) { root.wifiHealthInfo = ({state: "unknown", issues: []}) }
+        }
         function onWifiResult(raw) {
             try {
                 var result = JSON.parse(raw)
                 root.wifiPassword = ""
                 root.wifiFeedback = result.message || result.error || "Unknown result"
-                controller.wifi_status()
+                Qt.callLater(function() { controller.wifi_status(); controller.wifi_events() })
             } catch (e) { root.wifiFeedback = "Invalid Wi-Fi response" }
         }
         function onPreferencesChanged() { root.updatePrefs = JSON.parse(controller.updatePreferences) }
@@ -138,6 +154,24 @@ ApplicationWindow {
                 Layout.alignment: Qt.AlignRight
                 Button { text: "Later"; onClicked: restartDialog.close() }
                 Button { text: "Restart SwitchNest"; highlighted: true; onClicked: controller.restart_after_update() }
+            }
+        }
+    }
+    Dialog {
+        id: wifiRestartDialog
+        title: "Wi-Fi settings saved — restart hotspot?"
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(480, root.width - 40)
+        implicitHeight: 230
+        standardButtons: Dialog.NoButton
+        ColumnLayout {
+            width: parent.width
+            Label { text: "The saved SSID or Wi-Fi settings will take effect when the hotspot is restarted. This disconnects your Switch 2. SwitchNest will use the existing v7.1 OFF/ON helper and verify the result. If the restart fails, it will attempt one recovery using the previous profile."; Layout.fillWidth: true; wrapMode: Text.Wrap }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                Button { text: "Later"; onClicked: wifiRestartDialog.close() }
+                Button { text: "Restart Hotspot"; highlighted: true; onClicked: { wifiRestartDialog.close(); controller.wifi_restart() } }
             }
         }
     }
@@ -230,7 +264,7 @@ ApplicationWindow {
                 NavButton { text: "Settings"; page: 5 }
                 NavButton { text: root.updateStatus.startsWith("Update available") ? "Updates •" : "Updates"; page: 6 }
                 Item { Layout.fillHeight: true }
-                Label { text: "v8.0.7"; color: root.accent }
+                Label { text: "v8.0.8"; color: root.accent }
                 Label { text: "Linux stable"; color: root.muted; font.pixelSize: 12 }
             }
         }
@@ -316,7 +350,7 @@ ApplicationWindow {
                                     model: root.clients
                                     delegate: Label {
                                         required property var modelData
-                                        text: modelData.mac + "  •  " + (modelData.ip || "IP unavailable") + "  •  " + modelData.status
+                                        text: modelData.mac + "  •  " + (modelData.ip || "IP unavailable") + "  •  " + modelData.status + (modelData.signal !== undefined ? "  •  " + modelData.signal + " dBm" : "") + (modelData.connected_seconds !== undefined ? "  •  " + modelData.connected_seconds + "s" : "")
                                         color: root.muted
                                         wrapMode: Text.Wrap
                                         Layout.fillWidth: true
@@ -368,6 +402,9 @@ ApplicationWindow {
                         Label { text: "DNS: " + root.dns; color: root.accent }
                         Label { text: "Clients: " + root.clients.length; color: root.accent }
                     }
+                    Label { text: "Health: " + root.wifiHealthInfo.state; color: root.wifiHealthInfo.state === "healthy" ? root.accent : "#f2bf69" }
+                    Label { text: root.wifiHealthInfo.issues.join("; ") || "No service alerts (isolation remains unverified)"; color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                    Button { text: "Refresh Health"; enabled: !root.busy; onClicked: controller.refresh() }
                     Label { text: "Isolation: unverified; active services do not prove traffic is blocked."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     ScrollView {
                         Layout.fillWidth: true; Layout.fillHeight: true
@@ -410,6 +447,36 @@ ApplicationWindow {
                     }
                     Button { text: "Restore Previous Wi-Fi Settings"; enabled: !root.busy && root.wifiInfo.backup === true; onClicked: wifiRestoreDialog.open() }
                     Label { text: "Only Wi-Fi profile fields are changed. IP, DHCP, DNS, firewall, FTP and the existing hotspot ON/OFF backend are untouched. NetworkManager authorization is required. Restart the hotspot with its existing controls after changes."; color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                    Label { text: "Hotspot restart and recovery"; font.bold: true }
+                    Label { text: root.wifiRestartMessage || "After changing SSID, restart the hotspot to activate it."; color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                    RowLayout {
+                        Button { text: "Restart Hotspot"; enabled: !root.busy; onClicked: wifiRestartDialog.open() }
+                        Button { text: "Restart SwitchNest"; enabled: !root.busy; onClicked: controller.restart_control_center() }
+                    }
+                    Label { text: "Wi-Fi presets (SSID + channel only; no passwords)"; font.bold: true }
+                    TextField { placeholderText: "Preset name"; text: root.presetName; onTextEdited: root.presetName = text; Layout.fillWidth: true }
+                    RowLayout {
+                        Button { text: "Save Preset"; onClicked: controller.wifi_save_preset(root.presetName, root.wifiName, root.wifiChannel) }
+                        Button { text: "Refresh Presets"; onClicked: controller.wifi_presets() }
+                    }
+                    ComboBox {
+                        id: presetChoice
+                        Layout.fillWidth: true
+                        model: Object.keys(root.wifiPresetMap)
+                        onActivated: controller.wifi_select_preset(currentText)
+                    }
+                    Label { text: "Network event history (most recent 100 events)"; font.bold: true }
+                    Button { text: "Refresh Events"; onClicked: controller.wifi_events() }
+                    Repeater {
+                        model: root.wifiEventsList.slice(-12).reverse()
+                        delegate: Label {
+                            required property var modelData
+                            text: modelData.time + "  " + modelData.event + "  " + modelData.detail
+                            color: root.muted
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                        }
+                    }
                     Label { text: "Advanced v7.1 manager (legacy)"; color: root.muted }
                     Button { text: "Change Wi-Fi password"; enabled: !root.busy; onClicked: controller.wifi_settings() }
                     Label { text: "Use the legacy manager only when the profile editor is unavailable."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
@@ -423,7 +490,7 @@ ApplicationWindow {
                 }
                 ColumnLayout {
                     Label { text: "Software updates"; font.pixelSize: 22 }
-                    Label { text: "Installed: v8.0.7"; color: root.accent }
+                    Label { text: "Installed: v8.0.8"; color: root.accent }
                     ComboBox { id: channel; model: ["Stable", "Development"]; enabled: !root.updateBusy }
                     Label { text: root.updateStatus; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Button { text: root.updateBusy ? "Checking..." : "Check for Updates"; enabled: !root.updateBusy; onClicked: controller.check_updates(channel.currentIndex===0?"stable":"development") }
