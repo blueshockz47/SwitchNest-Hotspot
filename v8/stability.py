@@ -10,7 +10,7 @@ import tempfile
 import time
 from datetime import datetime, timezone
 
-from v8 import wifi_reliability
+from v8 import wifi_reliability, updates
 
 MAX_EXPORT_BYTES = 256 * 1024
 RETRY_LIMIT = 1
@@ -90,7 +90,7 @@ def export_report(report, destination, profile=None, history=None):
     if not parent.is_dir() or parent.is_symlink():
         raise ValueError("Invalid report directory")
     payload = {
-        "version": "8.0.9",
+        "version": updates.VERSION,
         "time": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "checks": self_test(report, profile)["checks"],
         "hotspot": redact(report.get("hotspot", {})),
