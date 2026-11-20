@@ -91,7 +91,7 @@ def hotspot():
 
 def collect():
     return {
-        "version": "8.0.9",
+        "version": "8.1.0",
         "sunshine_installed": probe(["flatpak", "info", "dev.lizardbyte.app.Sunshine"]),
         "sunshine_processes": probe(["flatpak", "ps", "--columns=application"]),
         "hotspot_service": probe(["systemctl", "is-active", "steamdeck-switch2-hotspot.service"]),
