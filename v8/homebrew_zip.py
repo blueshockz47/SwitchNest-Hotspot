@@ -111,7 +111,15 @@ def inspect_zip(path):
     return {"files": files, "count": len(files), "bytes": total,
             "sample": ["/" + f["path"] for f in files[:12]]}
 
-def install_zip(path, plan, host, port, *, confirmed=False, tree_factory=None, progress=None):
+def install_zip(path, plan, host, port, *, confirmed=False, tree_factory=None,
+                progress=None, cancelled=None):
+    """Resume safely: compare remote bytes against archive SHA-256 before skipping.
+
+    Incomplete/unverified remote files are never overwritten. The user must
+    remove those files manually before retrying; this avoids destructive FTP
+    operations. Files completed during earlier attempts are verified by
+    downloading them and comparing SHA-256 against the ZIP entry.
+    """
     if not confirmed:
         raise PermissionError("Explicit install confirmation required")
     current = inspect_zip(path)
@@ -119,42 +127,95 @@ def install_zip(path, plan, host, port, *, confirmed=False, tree_factory=None, p
         raise ValueError("ZIP content changed since preview")
     from v8.ftp_tree import Tree
     factory = tree_factory or Tree
-    tree = factory(host, port, "skip", lambda: False, lambda *_: None)
-    # Preflight every remote destination, rejecting any file/folder conflict
-    # before writing. This also avoids silently skipping existing files.
-    dirs = {""}
-    for item in current["files"]:
-        parts = item["path"].split("/")
-        for i in range(1, len(parts)):
-            dirs.add("/".join(parts[:i]))
-    # Only query directories that already exist. Missing parents are expected
-    # for a fresh install and will be created by the FTP upload engine.
-    known = {"": tree.entries("/")}
-    for directory in sorted(dirs - {""}, key=lambda p: (p.count("/"), p)):
-        parent, name = directory.rsplit("/", 1) if "/" in directory else ("", directory)
-        siblings = known.get(parent)
-        if siblings is None or name not in siblings:
-            known[directory] = None
-            continue
-        if not siblings[name]:
-            raise FileExistsError("Remote path conflicts with file: /" + directory)
-        known[directory] = tree.entries("/" + directory + "/")
-    for item in current["files"]:
-        parts = item["path"].split("/")
-        parent = "/".join(parts[:-1])
-        siblings = known.get(parent)
-        if siblings is not None and parts[-1] in siblings:
-            raise FileExistsError("Remote file exists: /" + item["path"])
-    with tempfile.TemporaryDirectory(prefix="switchnest-zip-") as td:
+    stop = cancelled or (lambda: False)
+    tree = factory(host, port, "skip", stop, lambda *_: None)
+    entries_cache = {}
+    sizes_cache = {}
+    def check():
+        if stop():
+            raise InterruptedError("Installation cancelled; completed files can be resumed")
+    def listing(directory):
+        if directory not in entries_cache:
+            entries_cache[directory] = tree.entries(directory)
+        return entries_cache[directory]
+    def sizes(directory):
+        if directory not in sizes_cache:
+            sizes_cache[directory] = tree.sizes(directory)
+        return sizes_cache[directory]
+    def emit(done, index, name, state):
+        if progress:
+            progress(done, current["bytes"], index, current["count"], name, state)
+    done = 0
+    emit(0, 0, "", "Preparing")
+    with zipfile.ZipFile(path) as z, tempfile.TemporaryDirectory(prefix="switchnest-zip-") as td:
         root = Path(td)
-        with zipfile.ZipFile(path) as z:
-            for item in current["files"]:
-                dest = root.joinpath(*item["path"].split("/"))
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                with z.open(item["path"]) as src, open(dest, "xb") as out:
-                    shutil.copyfileobj(src, out, 256 * 1024)
-                if dest.stat().st_size != item["size"]:
-                    raise ValueError("Extracted file size mismatch")
-        for child in sorted(root.iterdir()):
-            tree.upload(child, "/")
-        return "Uploaded " + str(current["count"]) + " files to Switch 2 (FTP size-verified)"
+        for index, item in enumerate(current["files"], 1):
+            check()
+            parts = item["path"].split("/")
+            name = parts[-1]
+            directory = "/"
+            for part in parts[:-1]:
+                check()
+                existing = listing(directory)
+                if part in existing:
+                    if not existing[part]:
+                        raise FileExistsError("Directory conflicts with file: " + directory + part)
+                else:
+                    tree.run(directory, ["--quote", "MKD " + directory + part,
+                                         "--output", os.devnull])
+                    existing[part] = True
+                directory += part + "/"
+            check()
+            expected = item["size"]
+            dest = root / name
+            # Extract only the current member to avoid requiring 1.3 GiB
+            # of temporary space and to make cancellation responsive.
+            h = hashlib.sha256()
+            with z.open(item["path"]) as src, dest.open("wb") as out:
+                written = 0
+                while True:
+                    check()
+                    chunk = src.read(256 * 1024)
+                    if not chunk:
+                        break
+                    written += len(chunk)
+                    if written > expected:
+                        raise ValueError("ZIP member expanded beyond declared size")
+                    out.write(chunk)
+                    h.update(chunk)
+            if written != expected:
+                raise ValueError("ZIP member size mismatch")
+            existing = listing(directory)
+            if name in existing:
+                if existing[name]:
+                    raise FileExistsError("File conflicts with directory: " + directory + name)
+                if sizes(directory).get(name) != expected:
+                    raise FileExistsError("Incomplete remote file: " + directory + name +
+                                          ". Remove it using FTP File Manager to resume.")
+                # Verify actual remote bytes, not just the size. Existing
+                # user data with the same name must never be trusted.
+                remote = root / ("remote-" + str(index))
+                tree.run(directory + name, ["--output", str(remote)], size=expected)
+                remote_hash = hashlib.sha256()
+                with remote.open("rb") as stream:
+                    for chunk in iter(lambda: stream.read(256 * 1024), b""):
+                        check()
+                        remote_hash.update(chunk)
+                remote.unlink()
+                if remote_hash.digest() != h.digest():
+                    raise FileExistsError("Different remote file: " + directory + name +
+                                          ". Back it up or remove it manually.")
+                state = "Verified existing file"
+            else:
+                emit(done, index, item["path"], "Uploading")
+                # Upload directly with existing curl/PASV transport. The
+                # remote size is checked by Tree.upload. An interrupted
+                # partial file is preserved for manual inspection/removal.
+                tree.upload(dest, directory)
+                existing[name] = False
+                sizes_cache.pop(directory, None)
+                state = "Uploaded and size-verified"
+            done += expected
+            emit(done, index, item["path"], state)
+            dest.unlink()
+    return "Completed " + str(current["count"]) + " files (verified or uploaded)"
