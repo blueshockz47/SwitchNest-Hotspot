@@ -413,12 +413,17 @@ ApplicationWindow {
                         }
                         TabButton {
                             text: "Homebrew Manager"
-                            contentItem: Row {
-                                spacing: 0
-                                anchors.centerIn: parent
-                                Label { text: "Home"; color: "#ef4444"; font.bold: true; font.pixelSize: 16 }
-                                Label { text: "brew"; color: "#3b82f6"; font.bold: true; font.pixelSize: 16 }
-                                Label { text: " Manager"; color: "#facc15"; font.bold: true; font.pixelSize: 16 }
+                            contentItem: Item {
+                                implicitWidth: homebrewTitle.implicitWidth
+                                implicitHeight: homebrewTitle.implicitHeight
+                                Row {
+                                    id: homebrewTitle
+                                    anchors.centerIn: parent
+                                    spacing: 0
+                                    Label { text: "Home"; color: "#ef4444"; font.bold: true; font.pixelSize: 16 }
+                                    Label { text: "brew"; color: "#3b82f6"; font.bold: true; font.pixelSize: 16 }
+                                    Label { text: " Manager"; color: "#facc15"; font.bold: true; font.pixelSize: 16 }
+                                }
                             }
                         }
                     }
