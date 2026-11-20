@@ -114,7 +114,7 @@ ColumnLayout {
     Label { text: home.statusText; wrapMode: Text.Wrap; Layout.fillWidth: true }
     Label { text: home.selectedWarning; visible: home.selectedWarning.length > 0; color: "#f59e0b"; font.bold: true; wrapMode: Text.Wrap; Layout.fillWidth: true }
 
-    Label { text: "Two-column app catalog • Right-click an app for download options"; font.pixelSize: 11; Layout.fillWidth: true }
+    Label { text: "Three-column app catalog • Right-click an app for download options"; font.pixelSize: 11; Layout.fillWidth: true }
     RowLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
@@ -123,7 +123,7 @@ ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            cellWidth: width / 2
+            cellWidth: width / 3
             cellHeight: 64
             model: home.results
             delegate: ItemDelegate {
