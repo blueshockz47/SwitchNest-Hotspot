@@ -124,14 +124,14 @@ ColumnLayout {
             Layout.fillHeight: true
             clip: true
             cellWidth: width / 2
-            cellHeight: 52
+            cellHeight: 64
             model: home.results
             delegate: ItemDelegate {
                 id: projectCard
                 required property var modelData
                 width: projectList.cellWidth - 6
                 height: projectList.cellHeight - 4
-                padding: 4
+                padding: 6
                 highlighted: home.selectedRepo !== "" && modelData.repo === home.selectedRepo
                 background: Rectangle {
                     radius: 7
@@ -142,14 +142,14 @@ ColumnLayout {
                 contentItem: RowLayout {
                     spacing: 8
                     Rectangle {
-                        Layout.preferredWidth: 36
-                        Layout.preferredHeight: 36
+                        Layout.preferredWidth: 46
+                        Layout.preferredHeight: 46
                         radius: 7
                         color: modelData.category === "Emulation" ? "#233b62" : modelData.category === "Games" ? "#513451" : modelData.category === "Streaming" ? "#284c4b" : modelData.category === "Tools" ? "#554329" : "#353b50"
                         Label {
                             anchors.centerIn: parent
                             text: modelData.category === "Emulation" ? "🎮" : modelData.category === "Games" ? "🕹️" : modelData.category === "Streaming" ? "📺" : modelData.category === "Tools" ? "🛠️" : modelData.category === "Media" ? "🎵" : "✨"
-                            font.pixelSize: 19
+                            font.pixelSize: 24
                         }
                     }
                     ColumnLayout {
@@ -157,7 +157,7 @@ ColumnLayout {
                         spacing: 1
                         Label {
                             text: modelData.name
-                            font.pixelSize: 13
+                            font.pixelSize: 15
                             font.bold: true
                             color: "#f2f6fa"
                             elide: Text.ElideRight
