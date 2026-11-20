@@ -23,6 +23,11 @@ ApplicationWindow {
     property bool updateInProgress: false
     property string availableVersion: ""
     property var updatePrefs: JSON.parse(controller.updatePreferences)
+    property var wifiInfo: ({})
+    property string wifiName: ""
+    property string wifiPassword: ""
+    property int wifiChannel: 1
+    property string wifiFeedback: "Select Check Compatibility to inspect the existing hotspot profile."
     property string updateStage: "idle"
     property real downloadPercent: -1
     property real downloadedMB: 0
@@ -41,6 +46,22 @@ ApplicationWindow {
         }
         function onMessage(message) { root.notice = message; root.activityLog += message + "\n" }
         function onUpdateLog(chunk) { root.activityLog += chunk }
+        function onWifiStatus(raw) {
+            try {
+                root.wifiInfo = JSON.parse(raw)
+                if (root.wifiInfo.ssid) root.wifiName = root.wifiInfo.ssid
+                if (root.wifiInfo.channel) root.wifiChannel = Number(root.wifiInfo.channel)
+                root.wifiFeedback = root.wifiInfo.error || "Profile information loaded. Verify the adapter before applying."
+            } catch (e) { root.wifiFeedback = "Unable to read Wi-Fi profile" }
+        }
+        function onWifiResult(raw) {
+            try {
+                var result = JSON.parse(raw)
+                root.wifiPassword = ""
+                root.wifiFeedback = result.message || result.error || "Unknown result"
+                controller.wifi_status()
+            } catch (e) { root.wifiFeedback = "Invalid Wi-Fi response" }
+        }
         function onPreferencesChanged() { root.updatePrefs = JSON.parse(controller.updatePreferences) }
         function onRollbackCompleted() { restartDialog.open() }
         function onUpdateProgress(raw) {
@@ -121,6 +142,42 @@ ApplicationWindow {
         }
     }
     Dialog {
+        id: wifiConfirmDialog
+        title: "Apply Wi-Fi changes?"
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(470, root.width - 40)
+        implicitHeight: 210
+        standardButtons: Dialog.NoButton
+        ColumnLayout {
+            width: parent.width
+            Label { text: "The Wi-Fi name, password or channel may change. Existing clients may disconnect when the hotspot is restarted using its normal controls. A backup will be saved before applying."; Layout.fillWidth: true; wrapMode: Text.Wrap }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                Button { text: "Cancel"; onClicked: wifiConfirmDialog.close() }
+                Button { text: "Apply Profile"; highlighted: true; onClicked: { wifiConfirmDialog.close(); controller.wifi_apply(root.wifiName, root.wifiPassword, root.wifiChannel) } }
+            }
+        }
+    }
+    Dialog {
+        id: wifiRestoreDialog
+        title: "Restore previous Wi-Fi settings?"
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(440, root.width - 40)
+        implicitHeight: 190
+        standardButtons: Dialog.NoButton
+        ColumnLayout {
+            width: parent.width
+            Label { text: "Restore the backed-up Wi-Fi name, channel and WPA2 password. Restart the hotspot afterward."; Layout.fillWidth: true; wrapMode: Text.Wrap }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                Button { text: "Cancel"; onClicked: wifiRestoreDialog.close() }
+                Button { text: "Restore"; highlighted: true; onClicked: { wifiRestoreDialog.close(); controller.wifi_restore() } }
+            }
+        }
+    }
+    Dialog {
         id: rollbackDialog
         title: "Restore previous version?"
         modal: true
@@ -173,7 +230,7 @@ ApplicationWindow {
                 NavButton { text: "Settings"; page: 5 }
                 NavButton { text: root.updateStatus.startsWith("Update available") ? "Updates •" : "Updates"; page: 6 }
                 Item { Layout.fillHeight: true }
-                Label { text: "v8.0.6"; color: root.accent }
+                Label { text: "v8.0.7"; color: root.accent }
                 Label { text: "Linux stable"; color: root.muted; font.pixelSize: 12 }
             }
         }
@@ -317,8 +374,12 @@ ApplicationWindow {
                         TextArea { readOnly: true; text: JSON.stringify(root.report, null, 2); wrapMode: TextEdit.Wrap; selectByMouse: true }
                     }
                 }
-                ColumnLayout {
-                    Label { text: "Settings"; font.pixelSize: 22 }
+                ScrollView {
+                    clip: true
+                    contentWidth: availableWidth
+                    ColumnLayout {
+                        width: parent.width
+                        Label { text: "Settings"; font.pixelSize: 22 }
                     CheckBox {
                         id: launchAtLogin
                         text: "Start SwitchNest on desktop login"
@@ -330,19 +391,39 @@ ApplicationWindow {
                         }
                     }
                     Label { text: "Launches the app in Desktop Mode, not the hotspot. Gaming Mode is not supported."; wrapMode: Text.Wrap; Layout.fillWidth: true; color: root.muted }
-                    Label { text: "Wi-Fi settings use the existing v7.1 manager."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                    Label { text: "Wi-Fi configuration (existing NetworkManager AP profile)"; font.bold: true }
+                    Label { text: "Current SSID: " + (root.hotspot.ssid || "Unavailable"); color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                    TextField { placeholderText: "Wi-Fi name (SSID)"; text: root.wifiName; onTextEdited: root.wifiName = text; Layout.fillWidth: true; maximumLength: 32 }
+                    TextField { placeholderText: "New WPA2 password (leave blank to keep current)"; text: root.wifiPassword; echoMode: TextInput.Password; onTextEdited: root.wifiPassword = text; Layout.fillWidth: true }
+                    Label { text: "2.4 GHz Wi-Fi channel"; color: root.muted }
+                    ComboBox {
+                        id: wifiChannelChoice
+                        model: ["Channel 1", "Channel 6", "Channel 11"]
+                        currentIndex: root.wifiChannel === 6 ? 1 : root.wifiChannel === 11 ? 2 : 0
+                        onActivated: root.wifiChannel = [1, 6, 11][currentIndex]
+                    }
+                    Label { text: root.wifiFeedback; color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                    Label { text: "Adapter AP support: " + (root.wifiInfo.adapter ? String(root.wifiInfo.adapter.ap_supported) : "Not checked") + " | Supported channels reported: " + (root.wifiInfo.adapter ? root.wifiInfo.adapter.channels.join(", ") : "Unknown"); Layout.fillWidth: true; wrapMode: Text.Wrap; color: root.muted }
+                    RowLayout {
+                        Button { text: "Check Compatibility"; enabled: !root.busy; onClicked: controller.wifi_status() }
+                        Button { text: "Apply Wi-Fi Settings"; highlighted: true; enabled: !root.busy && root.wifiName.length > 0; onClicked: wifiConfirmDialog.open() }
+                    }
+                    Button { text: "Restore Previous Wi-Fi Settings"; enabled: !root.busy && root.wifiInfo.backup === true; onClicked: wifiRestoreDialog.open() }
+                    Label { text: "Only Wi-Fi profile fields are changed. IP, DHCP, DNS, firewall, FTP and the existing hotspot ON/OFF backend are untouched. NetworkManager authorization is required. Restart the hotspot with its existing controls after changes."; color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                    Label { text: "Advanced v7.1 manager (legacy)"; color: root.muted }
                     Button { text: "Change Wi-Fi password"; enabled: !root.busy; onClicked: controller.wifi_settings() }
-                    Label { text: "Select option 5 in Konsole. SSID changes are not supported in this preview."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                    Label { text: "Use the legacy manager only when the profile editor is unavailable."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Label { text: "Refresh interval: 10 seconds"; color: root.muted }
                     Label { text: "Update notifications"; font.bold: true }
                     CheckBox { text: "Check for updates at startup"; checked: root.updatePrefs.check_at_startup; onToggled: controller.set_update_preference("check_at_startup", checked) }
                     CheckBox { text: "Show update available popup"; checked: root.updatePrefs.show_update_popup; onToggled: controller.set_update_preference("show_update_popup", checked) }
                     CheckBox { text: "Stable releases only for startup checks"; checked: root.updatePrefs.stable_only; onToggled: controller.set_update_preference("stable_only", checked) }
                     Item { Layout.fillHeight: true }
+                    }
                 }
                 ColumnLayout {
                     Label { text: "Software updates"; font.pixelSize: 22 }
-                    Label { text: "Installed: v8.0.6"; color: root.accent }
+                    Label { text: "Installed: v8.0.7"; color: root.accent }
                     ComboBox { id: channel; model: ["Stable", "Development"]; enabled: !root.updateBusy }
                     Label { text: root.updateStatus; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Button { text: root.updateBusy ? "Checking..." : "Check for Updates"; enabled: !root.updateBusy; onClicked: controller.check_updates(channel.currentIndex===0?"stable":"development") }
