@@ -132,7 +132,6 @@ ColumnLayout {
                 width: projectList.cellWidth - 6
                 height: projectList.cellHeight - 4
                 padding: 4
-                padding: 4
                 highlighted: home.selectedRepo !== "" && modelData.repo === home.selectedRepo
                 background: Rectangle {
                     radius: 7
