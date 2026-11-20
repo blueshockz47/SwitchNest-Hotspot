@@ -42,10 +42,10 @@ def request_json(path, opener=urllib.request.urlopen):
 CATALOG = (
     ("RetroArch", "Emulation", "NerdsMcGee/retroarch-s2"),
     ("OunceShell", "Tools", None),
-    ("90DNS Tester", "Tools", None),
+    ("90DNS Tester", "Tools", "souldbminerr/90DNS-Tester"),
     ("Force Internal Speaker", "Tools", None),
-    ("FTPD Plugin", "Tools", None),
-    ("Checkpoint", "Tools", None),
+    ("FTPD Plugin", "Tools", "NerdsMcGee/kaihen-ftpd-plugin"),
+    ("Checkpoint", "Tools", "wowilookgood/Checkpoint"),
     ("PKSM", "Tools", None),
     ("NXGallery", "Tools", None),
     ("Donkey Kong Country 2", "Games", None),
@@ -65,9 +65,9 @@ CATALOG = (
     ("Moonlight", "Streaming", None),
     ("Donut", "Fun", None),
     ("Bad Apple!", "Fun", None),
-    ("KaiTube", "Streaming", None),
+    ("KaiTube", "Streaming", "Sank-kab/KaiTube"),
     ("Super Smash Bros. Melee", "Games", None),
-    ("KaiPlayer", "Media", None),
+    ("KaiPlayer", "Media", "mizuiroame/kaiplayer"),
 )
 CATALOG_SOURCE = "https://ouncebrew.github.io/hblist/"
 SWITCH2_CANDIDATES = frozenset(repo for _, _, repo in CATALOG if repo)
@@ -77,7 +77,7 @@ def catalog_search(query="", category="All"):
     if category not in {"All", "Tools", "Games", "Streaming", "Emulation", "Fun", "Media"}:
         raise ValueError("Invalid homebrew category")
     return [{"name": name, "category": kind, "repo": repo or "",
-             "status": "Release browsing" if repo else "Browse-only",
+             "status": ("Release browsing" if repo and name != "FTPD Plugin" else "Browse-only"),
              "source": CATALOG_SOURCE}
             for name, kind, repo in CATALOG
             if (category == "All" or kind == category)
