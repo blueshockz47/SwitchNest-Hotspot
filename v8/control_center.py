@@ -39,6 +39,7 @@ class Controller(QObject):
     selfTestResult = Signal(str)
     homebrewResult = Signal(str)
     homebrewBusy = Signal(bool)
+    homebrewProgress = Signal(str)
 
     def __init__(self):
         super().__init__()
@@ -223,6 +224,7 @@ class Controller(QObject):
                 "message": "Download and preview this ZIP before installing."}))
             return
         self._homebrew_busy = True
+        self._homebrew_cancel = threading.Event()
         self.homebrewBusy.emit(True)
         def worker():
             try:
@@ -237,8 +239,13 @@ class Controller(QObject):
                     digest = hashlib.file_digest(stream, "sha256").hexdigest()
                 if "sha256:" + digest != pending["digest"]:
                     raise ValueError("Cached ZIP checksum mismatch")
+                def report(done, total, index, count, filename, status):
+                    self.homebrewProgress.emit(json.dumps({
+                        "done": done, "total": total, "index": index,
+                        "count": count, "name": filename, "status": status}))
                 message = homebrew_zip.install_zip(path, pending["plan"],
-                    state["host"], state["port"], confirmed=True)
+                    state["host"], state["port"], confirmed=True,
+                    progress=report, cancelled=self._homebrew_cancel.is_set)
                 self.homebrewResult.emit(json.dumps({"kind": "installed", "message": message}))
             except Exception as exc:
                 self.homebrewResult.emit(json.dumps({"kind": "error", "message": str(exc)[:250]}))
@@ -246,6 +253,13 @@ class Controller(QObject):
                 self._homebrew_busy = False
                 self.homebrewBusy.emit(False)
         threading.Thread(target=worker, daemon=True).start()
+
+    @Slot()
+    def homebrew_cancel_install(self):
+        event = getattr(self, "_homebrew_cancel", None)
+        if event is not None and getattr(self, "_homebrew_busy", False):
+            event.set()
+            self.homebrewProgress.emit(json.dumps({"status": "Cancelling after current FTP operation..."}))
 
     @Slot()
     def copy_diagnostics(self):
