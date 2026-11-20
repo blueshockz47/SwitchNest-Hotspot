@@ -6,6 +6,15 @@ from unittest.mock import patch
 from v8 import homebrew
 
 class HomebrewTests(unittest.TestCase):
+    def test_curated_release_sources_and_plugin_exclusion(self):
+        names = {row["name"]: row for row in homebrew.catalog_search()}
+        self.assertEqual(names["KaiTube"]["repo"], "Sank-kab/KaiTube")
+        self.assertEqual(names["Checkpoint"]["repo"], "wowilookgood/Checkpoint")
+        self.assertEqual(names["KaiPlayer"]["repo"], "mizuiroame/kaiplayer")
+        self.assertEqual(names["90DNS Tester"]["repo"], "souldbminerr/90DNS-Tester")
+        self.assertEqual(names["FTPD Plugin"]["repo"], "")
+        self.assertEqual(names["FTPD Plugin"]["status"], "Browse-only")
+
     def test_expanded_catalog_and_filters(self):
         rows = homebrew.catalog_search()
         self.assertGreaterEqual(len(rows), 25)
