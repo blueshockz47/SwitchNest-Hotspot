@@ -28,6 +28,8 @@ class Controller(QObject):
         self.process.finished.connect(self.finished)
         self.process.errorOccurred.connect(self.failed)
         self.kind = ""
+        self.latestUpdateTag = None
+        self.latestUpdateChannel = "stable"
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.refresh)
         self.timer.start(10000)
@@ -50,13 +52,30 @@ class Controller(QObject):
         if getattr(self,"checking_updates",False): return
         self.checking_updates=True
         self.updateBusy.emit(True)
+        self.latestUpdateTag = None
+        self.latestUpdateChannel = channel
         def worker():
             try: result=updates.check(channel)
             except Exception as exc: result=str(exc)
+            if result.startswith("Update available: "):
+                self.latestUpdateTag = result.removeprefix("Update available: ").strip()
             self.updateResult.emit(result)
             self.checking_updates=False
             self.updateBusy.emit(False)
         threading.Thread(target=worker,daemon=True).start()
+
+    @Slot()
+    def download_update(self):
+        tag = self.latestUpdateTag
+        if not tag:
+            self.message.emit("Check for updates first.")
+            return
+        try:
+            url = updates.release_url(tag)
+        except ValueError:
+            self.message.emit("Invalid release version.")
+            return
+        QDesktopServices.openUrl(QUrl(url))
 
     @Slot(bool)
     def open_updates(self, development):
@@ -177,6 +196,7 @@ def main():
     if not engine.rootObjects():
         return 1
     QTimer.singleShot(0, controller.refresh)
+    QTimer.singleShot(1500, lambda: controller.check_updates("stable"))
     return app.exec()
 
 if __name__ == "__main__":
