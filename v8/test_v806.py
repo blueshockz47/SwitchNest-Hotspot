@@ -25,6 +25,14 @@ class PreferenceTests(unittest.TestCase):
             self.assertFalse(preferences.load()["show_update_popup"])
             self.assertTrue(preferences.load()["stable_only"])
 
+    def test_maximized_startup_preference_round_trip(self):
+        with tempfile.TemporaryDirectory() as folder, patch.object(preferences, "PATH", Path(folder) / "prefs.json"):
+            self.assertFalse(preferences.load()["fullscreen_on_start"])
+            preferences.save("fullscreen_on_start", True)
+            self.assertTrue(preferences.load()["fullscreen_on_start"])
+            preferences.save("fullscreen_on_start", False)
+            self.assertFalse(preferences.load()["fullscreen_on_start"])
+
     def test_invalid_preference_rejected(self):
         with self.assertRaises(ValueError):
             preferences.save("unknown", True)
