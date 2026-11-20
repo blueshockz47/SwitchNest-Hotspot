@@ -94,5 +94,54 @@ class HomebrewTests(unittest.TestCase):
         with self.assertRaises(FileExistsError):
             homebrew.install_nro(asset, "/switch/demo.nro", "10.42.60.99", 1337, confirmed=True, fetcher=fetch, tree_factory=FakeTree)
 
+class ZipWorkflowTests(unittest.TestCase):
+    def make_zip(self, root, entries):
+        import zipfile
+        path = Path(root) / "package.zip"
+        with zipfile.ZipFile(path, "w") as z:
+            for name, payload in entries:
+                z.writestr(name, payload)
+        return path
+
+    def test_safe_preview_and_confirmation(self):
+        from v8 import homebrew_zip
+        with tempfile.TemporaryDirectory() as td:
+            path = self.make_zip(td, [("switch/demo.nro", b"data")])
+            plan = homebrew_zip.inspect_zip(path)
+            self.assertEqual(plan["sample"], ["/switch/demo.nro"])
+            with self.assertRaises(PermissionError):
+                homebrew_zip.install_zip(path, plan, "10.42.60.99", 1337)
+
+    def test_rejects_traversal_symlinks_and_duplicate_names(self):
+        from v8 import homebrew_zip
+        with tempfile.TemporaryDirectory() as td:
+            for name in ("../evil.nro", "/evil.nro", "switch/../../evil.nro"):
+                path = self.make_zip(td, [(name, b"x")])
+                with self.assertRaises(ValueError):
+                    homebrew_zip.inspect_zip(path)
+            path = self.make_zip(td, [("switch/DEMO.nro", b"a"), ("switch/demo.nro", b"b")])
+            with self.assertRaises(ValueError):
+                homebrew_zip.inspect_zip(path)
+
+    def test_rejects_unverified_or_oversized_download(self):
+        from v8 import homebrew_zip
+        with self.assertRaises(ValueError):
+            homebrew_zip.download_zip({"name": "demo.zip", "size": 10, "digest": ""})
+        with self.assertRaises(ValueError):
+            homebrew_zip.download_zip({"name": "demo.zip", "size": 2**31,
+                "digest": "sha256:" + "a" * 64})
+
+    def test_preflight_rejects_existing_remote_file(self):
+        from v8 import homebrew_zip
+        with tempfile.TemporaryDirectory() as td:
+            path = self.make_zip(td, [("demo.nro", b"data")])
+            plan = homebrew_zip.inspect_zip(path)
+            class FakeTree:
+                def __init__(self, *args): pass
+                def entries(self, path): return {"demo.nro": False}
+            with self.assertRaises(FileExistsError):
+                homebrew_zip.install_zip(path, plan, "10.42.60.99", 1337,
+                                         confirmed=True, tree_factory=FakeTree)
+
 if __name__ == "__main__":
     unittest.main()
