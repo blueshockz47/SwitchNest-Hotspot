@@ -17,7 +17,7 @@ ApplicationWindow {
     property var report: ({})
     property bool busy: false
     property bool updateBusy: false
-    property string updateStatus: "Check for published GitHub releases."
+    property string updateStatus: "Checking for published GitHub releases..."
     property string notice: "Waiting for diagnostics"
     property var hotspot: report.hotspot || ({state: "unknown"})
     property string http: report.http_service ? report.http_service.output : "Unknown"
@@ -70,7 +70,7 @@ ApplicationWindow {
                 NavButton { text: "Settings"; page: 5 }
                 NavButton { text: root.updateStatus.startsWith("Update available") ? "Updates •" : "Updates"; page: 6 }
                 Item { Layout.fillHeight: true }
-                Label { text: "v8.0.0"; color: root.accent }
+                Label { text: "v8.0.2"; color: root.accent }
                 Label { text: "Linux stable"; color: root.muted; font.pixelSize: 12 }
             }
         }
@@ -211,13 +211,14 @@ ApplicationWindow {
                 }
                 ColumnLayout {
                     Label { text: "Software updates"; font.pixelSize: 22 }
-                    Label { text: "Installed: v8.0.0"; color: root.accent }
-                    ComboBox { id: channel; model: ["Development", "Stable"]; enabled: !root.updateBusy }
+                    Label { text: "Installed: v8.0.2"; color: root.accent }
+                    ComboBox { id: channel; model: ["Stable", "Development"]; enabled: !root.updateBusy }
                     Label { text: root.updateStatus; wrapMode: Text.Wrap; Layout.fillWidth: true }
-                    Button { text: root.updateBusy ? "Checking..." : "Check for Updates"; enabled: !root.updateBusy; onClicked: controller.check_updates(channel.currentIndex===0?"development":"stable") }
+                    Button { text: root.updateBusy ? "Checking..." : "Check for Updates"; enabled: !root.updateBusy; onClicked: controller.check_updates(channel.currentIndex===0?"stable":"development") }
+                    Button { text: "Download Update"; highlighted: true; visible: root.updateStatus.startsWith("Update available: "); enabled: !root.updateBusy; onClicked: controller.download_update() }
                     Button { text: "Open GitHub releases"; onClicked: controller.open_updates(false) }
                     Button { text: "Open development downloads"; onClicked: controller.open_updates(true) }
-                    Label { text: "Private repository: sign in using GitHub CLI for automatic lookup, or use your browser. Download a trusted ZIP and run the installer to update."; wrapMode: Text.Wrap; Layout.fillWidth: true; color: root.muted }
+                    Label { text: "Private repository: sign in using GitHub CLI for automatic lookup, or use your browser. The Download Update button opens the validated GitHub release page. Review the release and download its ZIP manually; installation is never automatic."; wrapMode: Text.Wrap; Layout.fillWidth: true; color: root.muted }
                     Item { Layout.fillHeight: true }
                 }
             }
