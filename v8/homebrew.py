@@ -185,7 +185,7 @@ def validate_destination(name, destination):
         raise ValueError("Only single-file NRO installs in /switch/ are supported")
     return destination
 
-def download_asset(asset, directory, opener=urllib.request.urlopen):
+def download_asset(asset, directory, opener=urllib.request.urlopen, progress=None):
     if not asset["url"].startswith("https://github.com/"):
         raise ValueError("Untrusted download host")
     expected = asset.get("digest", "")
@@ -212,6 +212,8 @@ def download_asset(asset, directory, opener=urllib.request.urlopen):
                         raise ValueError("Download exceeds declared size")
                     digest.update(block)
                     out.write(block)
+                    if progress:
+                        progress(total, asset["size"])
         if total != asset["size"] or digest.hexdigest() != expected.split(":")[1].lower():
             raise ValueError("Download integrity verification failed")
         return Path(path)
@@ -220,7 +222,7 @@ def download_asset(asset, directory, opener=urllib.request.urlopen):
         raise
 
 def install_nro(asset, destination, host, port, *, confirmed=False, repo_id=None,
-                fetcher=download_asset, tree_factory=None):
+                fetcher=download_asset, tree_factory=None, progress=None):
     """Upload verified NRO; reject overwrite. No root or networking changes."""
     validate_destination(asset["name"], destination)
     if not (confirmed or automatic_allowed(repo_id, asset, destination)):
@@ -233,13 +235,20 @@ def install_nro(asset, destination, host, port, *, confirmed=False, repo_id=None
     from v8.ftp_tree import Tree
     factory = tree_factory or Tree
     with tempfile.TemporaryDirectory(prefix="switchnest-homebrew-") as temp:
-        path = fetcher(asset, temp)
+        if progress and fetcher is download_asset:
+            path = fetcher(asset, temp, progress=lambda done, total: progress("Downloading", done, total))
+        else:
+            path = fetcher(asset, temp)
         target = Path(temp) / asset["name"]
         os.replace(path, target)
         tree = factory(str(address), int(port), "skip", lambda: False, lambda *_: None)
+        if progress:
+            tree.metric = lambda done, total, speed: progress("Uploading", done, total)
         existing = tree.entries("/switch/")
         if asset["name"] in existing:
             raise FileExistsError("Existing homebrew file; backup or remove it manually")
+        if progress:
+            progress("Uploading", 0, asset["size"])
         tree.upload(target, "/switch/")
         if tree.sizes("/switch/").get(asset["name"]) != asset["size"]:
             raise OSError("Remote file verification failed")
