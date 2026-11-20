@@ -65,6 +65,10 @@ class Controller(QObject):
         self._last_health_state = None
         self.timer.start(10000)
 
+    @Property(str, constant=True)
+    def version(self):
+        return updates.VERSION
+
     @Property(str, notify=preferencesChanged)
     def updatePreferences(self):
         return json.dumps(preferences.load())
@@ -95,7 +99,7 @@ class Controller(QObject):
             self.message.emit("Refresh diagnostics first.")
             return
         try:
-            destination = Path.home()/"Downloads"/"switchnest-diagnostics-v8.0.9.json"
+            destination = Path.home()/"Downloads"/f"switchnest-diagnostics-v{updates.VERSION}.json"
             destination.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
             stability.export_report(json.loads(self.last_report), destination)
             self.message.emit("Redacted report saved to " + str(destination) + ". Review before sharing.")
