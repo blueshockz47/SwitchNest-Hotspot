@@ -67,11 +67,31 @@ def hotspot():
         result["stations"] = sorted(set(re.findall(
             r"^Station ([0-9a-fA-F:]{17})\s", stations["output"], re.M)))
     result["clients"] = connected_clients(iface, result["stations"])
+    # Read-only association metadata; fields may be unavailable on some drivers.
+    if stations["ok"]:
+        details = {}
+        current = None
+        for line in stations["output"].splitlines():
+            match = re.match(r"^Station ([0-9a-fA-F:]{17})\\s", line)
+            if match:
+                current = match.group(1).lower()
+                details[current] = {}
+                continue
+            if current:
+                for key, pattern in (("signal", r"^\\s*signal:\\s*(-?\\d+)\\s*dBm"),
+                                     ("connected_seconds", r"^\\s*connected time:\\s*(\\d+)\\s*seconds"),
+                                     ("rx_bytes", r"^\\s*rx bytes:\\s*(\\d+)"),
+                                     ("tx_bytes", r"^\\s*tx bytes:\\s*(\\d+)")):
+                    value = re.match(pattern, line)
+                    if value:
+                        details[current][key] = int(value.group(1))
+        for client in result["clients"]:
+            client.update(details.get(client["mac"].lower(), {}))
     return result
 
 def collect():
     return {
-        "version": "8.0.7",
+        "version": "8.0.8",
         "sunshine_installed": probe(["flatpak", "info", "dev.lizardbyte.app.Sunshine"]),
         "sunshine_processes": probe(["flatpak", "ps", "--columns=application"]),
         "hotspot_service": probe(["systemctl", "is-active", "steamdeck-switch2-hotspot.service"]),
