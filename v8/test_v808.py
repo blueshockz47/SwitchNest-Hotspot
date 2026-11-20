@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 from v8 import wifi_reliability as wr
+from v8 import diagnostics
 
 class ReliabilityTests(unittest.TestCase):
     def setUp(self):
@@ -49,6 +50,28 @@ class ReliabilityTests(unittest.TestCase):
         healthy["dns_service"]["output"] = "inactive"
         self.assertEqual(wr.health(healthy)["state"], "attention")
         self.assertEqual(wr.health({"hotspot": {"state": "off"}})["state"], "inactive")
+
+    def test_live_station_metrics_are_read_only(self):
+        station = ("Station aa:bb:cc:dd:ee:ff (on wlan0)\\n"
+                   "  signal: -52 dBm\\n"
+                   "  connected time: 31 seconds\\n"
+                   "  rx bytes: 2048\\n"
+                   "  tx bytes: 1024\\n")
+        def fake_probe(argv):
+            if argv[:3] == ["nmcli", "-g", "connection.uuid"]:
+                return {"ok": True, "output": "12345678-1234-1234-1234-123456789012"}
+            if argv[:4] == ["nmcli", "-g", "UUID", "connection"]:
+                return {"ok": True, "output": "12345678-1234-1234-1234-123456789012"}
+            if "GENERAL.DEVICES" in argv:
+                return {"ok": True, "output": "wlan0"}
+            if argv[:2] == ["iw", "dev"]:
+                return {"ok": True, "output": station}
+            return {"ok": True, "output": "active"}
+        with patch.object(diagnostics, "probe", side_effect=fake_probe), patch.object(diagnostics, "connected_clients", return_value=[{"mac": "aa:bb:cc:dd:ee:ff", "ip": None, "status": "Associated"}]):
+            client = diagnostics.hotspot()["clients"][0]
+        self.assertEqual(client["signal"], -52)
+        self.assertEqual(client["connected_seconds"], 31)
+        self.assertEqual(client["rx_bytes"], 2048)
 
     def test_client_view(self):
         report = {"hotspot": {"clients": [{"mac": "aa:bb", "signal": -50, "rx_bytes": 1024}]}}
