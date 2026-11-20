@@ -35,8 +35,9 @@ def download_zip(asset, cache=CACHE, opener=None, progress=None):
     os.chmod(cache, 0o700)
     target = cache / asset["digest"].split(":")[1].lower() / asset["name"]
     if target.is_file() and target.stat().st_size == asset["size"]:
-        if hashlib.file_digest(target.open("rb"), "sha256").hexdigest() == asset["digest"][7:].lower():
-            return target
+        with target.open("rb") as stream:
+            if hashlib.file_digest(stream, "sha256").hexdigest() == asset["digest"][7:].lower():
+                return target
     target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     fd, tmp = tempfile.mkstemp(prefix=".download-", dir=target.parent)
     os.close(fd)
@@ -126,22 +127,23 @@ def install_zip(path, plan, host, port, *, confirmed=False, tree_factory=None, p
         parts = item["path"].split("/")
         for i in range(1, len(parts)):
             dirs.add("/".join(parts[:i]))
-    for directory in sorted(dirs, key=lambda s: (s.count("/"), s)):
-        if not directory:
-            continue
+    # Only query directories that already exist. Missing parents are expected
+    # for a fresh install and will be created by the FTP upload engine.
+    known = {"": tree.entries("/")}
+    for directory in sorted(dirs - {""}, key=lambda p: (p.count("/"), p)):
         parent, name = directory.rsplit("/", 1) if "/" in directory else ("", directory)
-        existing = tree.entries("/" + parent + "/" if parent else "/")
-        if name in existing and not existing[name]:
+        siblings = known.get(parent)
+        if siblings is None or name not in siblings:
+            known[directory] = None
+            continue
+        if not siblings[name]:
             raise FileExistsError("Remote path conflicts with file: /" + directory)
+        known[directory] = tree.entries("/" + directory + "/")
     for item in current["files"]:
         parts = item["path"].split("/")
-        parent = "/" + "/".join(parts[:-1]) + "/" if len(parts) > 1 else "/"
-        try:
-            existing = tree.entries(parent)
-        except OSError:
-            # Parent may not yet exist; checked when uploading.
-            existing = {}
-        if parts[-1] in existing:
+        parent = "/".join(parts[:-1])
+        siblings = known.get(parent)
+        if siblings is not None and parts[-1] in siblings:
             raise FileExistsError("Remote file exists: /" + item["path"])
     with tempfile.TemporaryDirectory(prefix="switchnest-zip-") as td:
         root = Path(td)
