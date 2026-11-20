@@ -39,7 +39,7 @@ class StabilityTests(unittest.TestCase):
             for secret in ("PrivateSSID", "aa:bb:cc:dd:ee:ff", "10.42.60.1", "password123"):
                 self.assertNotIn(secret, raw)
             self.assertEqual(path.stat().st_mode & 0o777, 0o600)
-            self.assertEqual(json.loads(raw)["version"], "8.0.9")
+            self.assertEqual(json.loads(raw)["version"], updates.VERSION)
 
     def test_export_rejects_symlink(self):
         with tempfile.TemporaryDirectory() as d:
@@ -65,8 +65,8 @@ class StabilityTests(unittest.TestCase):
                 self.assertFalse(install.verify_installation(release)["ok"])
 
     def test_telemetry_and_version(self):
-        self.assertEqual(updates.VERSION, "8.0.9")
-        self.assertEqual(install.VERSION, "8.0.9")
+        self.assertEqual(updates.VERSION, "8.1.0")
+        self.assertEqual(install.VERSION, updates.VERSION)
         self.assertEqual(diagnostics.collect.__module__, "v8.diagnostics")
 
 if __name__ == "__main__":
