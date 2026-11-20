@@ -99,8 +99,9 @@ def download_asset(asset, directory, opener=urllib.request.urlopen):
         with os.fdopen(fd, "wb") as out:
             req = urllib.request.Request(asset["url"], headers={"User-Agent": USER_AGENT})
             with opener(req, timeout=30) as response:
-                if urllib.parse.urlsplit(response.geturl()).scheme != "https":
-                    raise ValueError("Insecure redirect")
+                final_url = urllib.parse.urlsplit(response.geturl())
+                if final_url.scheme != "https" or final_url.hostname not in ("github.com", "release-assets.githubusercontent.com", "objects.githubusercontent.com"):
+                    raise ValueError("Untrusted download redirect")
                 while True:
                     block = response.read(65536)
                     if not block:
