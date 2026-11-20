@@ -38,6 +38,7 @@ class Controller(QObject):
         self._process_output = []
         self._update_line_buffer = ""
         self.update_installed = False
+        self.rollback_completed = False
         self.process.errorOccurred.connect(self.failed)
         self.kind = ""
         self.latestUpdateTag = None
@@ -156,7 +157,7 @@ class Controller(QObject):
 
     @Slot()
     def restart_after_update(self):
-        if not self.update_installed or self.process.state() != QProcess.NotRunning:
+        if not (self.update_installed or self.rollback_completed) or self.process.state() != QProcess.NotRunning:
             self.message.emit("No completed update is ready to restart.")
             return
         launcher = Path.home() / ".local/share/switchnest/launch"
@@ -296,6 +297,7 @@ class Controller(QObject):
             else:
                 self.updateLog.emit("\nUpdate failed. Check the output above.\n")
         if kind == "rollback" and code == 0 and status == QProcess.NormalExit:
+            self.rollback_completed = True
             self.rollbackCompleted.emit()
         if kind == "action":
             QTimer.singleShot(0, self.refresh)
