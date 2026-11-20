@@ -203,6 +203,14 @@ ColumnLayout {
                         enabled: !!home.actionRepo && !home.working
                         onTriggered: home.requestRelease("install")
                     }
+                    MenuSeparator {}
+                    MenuItem {
+                        text: home.actionRepo ? "View GitHub Repository" : "View Homebrew Project Directory"
+                        width: contextMenu.width
+                        onTriggered: Qt.openUrlExternally(home.actionRepo
+                            ? "https://github.com/" + home.actionRepo
+                            : "https://ouncebrew.github.io/hblist/")
+                    }
                 }
             }
         }
