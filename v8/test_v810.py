@@ -10,6 +10,18 @@ class HomebrewTests(unittest.TestCase):
         def fetch(_):
             return {"items": [{"full_name": "owner/valid", "id": 1}, {"full_name": "../../evil", "id": 2}]}
         self.assertEqual([x["repo"] for x in homebrew.discover("retroarch", fetch)], ["owner/valid"])
+    def test_discovery_uses_user_query_without_extra_required_terms(self):
+        seen = []
+        def fetch(path):
+            seen.append(path)
+            return {"items": [{"full_name": "owner/retroarch", "id": 42}]}
+        result = homebrew.discover("retroarch", fetch)
+        self.assertEqual([item["repo"] for item in result], ["owner/retroarch"])
+        from urllib.parse import parse_qs, urlsplit
+        params = parse_qs(urlsplit(seen[0]).query)
+        self.assertEqual(params["q"], ["retroarch"])
+        self.assertEqual(params["per_page"], ["25"])
+
     def test_release_asset_filter(self):
         def fetch(_):
             return {"tag_name": "v1", "assets": [
