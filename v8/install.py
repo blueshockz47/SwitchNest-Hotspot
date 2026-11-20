@@ -8,7 +8,7 @@ import subprocess
 import sys
 import uuid
 
-VERSION = "8.0.8"
+VERSION = "8.0.9"
 ROOT = Path.home()/".local/share/switchnest"
 SOURCE = Path(__file__).resolve().parent.parent
 
@@ -29,6 +29,33 @@ def current(name):
 def run(*args):
     subprocess.run([str(a) for a in args],check=True)
 
+def verify_installation(release=None):
+    """Check managed application files only; no network changes."""
+    release = release or current("current")
+    if release is None:
+        return {"ok": False, "issues": ["No active managed release"]}
+    required = [release/"v8/control_center.py", release/"v8/ControlCenter.qml",
+                release/"venv/bin/python", ROOT/"launch"]
+    issues = [str(path.name) + " missing" for path in required if not path.is_file()]
+    if not (ROOT/"launch").is_file() or not os.access(ROOT/"launch", os.X_OK):
+        issues.append("Launcher not executable")
+    return {"ok": not issues, "issues": issues}
+
+def repair_application():
+    """Repair the user-local launcher only."""
+    active = current("current")
+    if active is None:
+        raise RuntimeError("No managed release to repair")
+    required = [active/"v8/control_center.py", active/"v8/ControlCenter.qml",
+                active/"venv/bin/python"]
+    if not all(path.is_file() for path in required):
+        raise RuntimeError("Application files missing; use rollback instead")
+    launcher()
+    result = verify_installation(active)
+    if not result["ok"]:
+        raise RuntimeError("Repair verification failed: " + ", ".join(result["issues"]))
+    return result
+
 def install():
     if not shutil.which("curl"):
         raise RuntimeError("curl is required")
@@ -47,14 +74,23 @@ def install():
         python=release/"venv/bin/python"
         run(python,"-m","pip","install","PySide6>=6.7,<7")
         run(python,"-m","compileall","-q",release/"v8")
-        subprocess.run([str(python),"-m","unittest","-v","v8.test_ftp_tree","v8.test_install","v8.test_updates","v8.test_autostart","v8.test_v806","v8.test_v807","v8.test_v808"],cwd=release,check=True)
+        subprocess.run([str(python),"-m","unittest","-v","v8.test_ftp_tree","v8.test_install","v8.test_updates","v8.test_autostart","v8.test_v806","v8.test_v807","v8.test_v808","v8.test_v809"],cwd=release,check=True)
         run(python,"-c","from PySide6 import QtCore, QtGui, QtQml; print(QtCore.qVersion())")
         old=current("current")
         launcher()
         if old: point("previous",old)
         point("current",release)
+        verification = verify_installation(release)
+        if not verification["ok"]:
+            if old:
+                point("current", old)
+                launcher()
+            else:
+                (ROOT/"current").unlink(missing_ok=True)
+            raise RuntimeError("Post-install verification failed: " + ", ".join(verification["issues"]))
     except BaseException:
-        if not (ROOT/"current").is_symlink() or (ROOT/"current").resolve()!=release: shutil.rmtree(release,ignore_errors=True)
+        if not (ROOT/"current").is_symlink() or (ROOT/"current").resolve()!=release:
+            shutil.rmtree(release,ignore_errors=True)
         raise
     print("Installed release:",release.name)
 
@@ -83,7 +119,7 @@ def launcher():
 def main():
     if os.geteuid()==0: raise SystemExit("Run without sudo")
     parser=argparse.ArgumentParser()
-    parser.add_argument("action",choices=["install","rollback","status"],default="install",nargs="?")
+    parser.add_argument("action",choices=["install","rollback","status","verify","repair"],default="install",nargs="?")
     action=parser.parse_args().action
     ROOT.mkdir(parents=True,exist_ok=True)
     if ROOT.is_symlink() or ROOT.stat().st_uid!=os.getuid(): raise SystemExit("Invalid installation directory")
@@ -98,6 +134,14 @@ def main():
             point("previous",old)
             launcher()
             print("Rolled back to",previous.name)
+        elif action=="verify":
+            import json
+            result = verify_installation()
+            print(json.dumps(result))
+            if not result["ok"]: raise SystemExit(1)
+        elif action=="repair":
+            import json
+            print(json.dumps(repair_application()))
         else:
             for key in ("current","previous"):
                 print(key, current(key) or "not installed")
