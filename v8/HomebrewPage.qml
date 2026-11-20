@@ -97,7 +97,13 @@ ColumnLayout {
                     home.transferComplete = true
                     home.statusText = data.message
                 }
-                else { home.statusText = data.message || "Unknown result" }
+                else {
+                    home.statusText = data.message || "Unknown result"
+                    if (data.kind === "error") {
+                        home.transferActive = false
+                        if (home.transferStatus.length > 0) home.transferStatus = "Failed: " + home.statusText
+                    }
+                }
             } catch (e) { home.statusText = "Invalid homebrew response" }
         }
     }
