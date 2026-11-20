@@ -14,8 +14,9 @@ ColumnLayout {
     property real transferPercent: 0
     property string transferStatus: ""
     property bool installingZip: false
-    property string statusText: "Search the curated Switch 2 homebrew catalog. Listings do not verify compatibility."
+    property string statusText: "Loading the curated Switch 2 homebrew catalog..."
     spacing: 8
+    Component.onCompleted: controller.homebrew_search("", "All")
     Connections {
         target: controller
         function onHomebrewBusy(value) { home.working = value; if (!value) home.installingZip = false }
@@ -45,6 +46,7 @@ ColumnLayout {
         TextField { id: searchBox; placeholderText: "Search Switch 2 homebrew"; Layout.fillWidth: true; onAccepted: controller.homebrew_search(text, categoryBox.currentText) }
         ComboBox { id: categoryBox; model: ["All", "Tools", "Games", "Streaming", "Emulation", "Fun", "Media"]; onActivated: controller.homebrew_search(searchBox.text, currentText) }
         Button { text: "Search"; enabled: !home.working; onClicked: controller.homebrew_search(searchBox.text, categoryBox.currentText) }
+        Button { text: "Show all"; enabled: !home.working; onClicked: { searchBox.text = ""; categoryBox.currentIndex = 0; controller.homebrew_search("", "All") } }
     }
     Label { text: home.statusText; wrapMode: Text.Wrap; Layout.fillWidth: true }
     Label { text: "Catalog source: https://ouncebrew.github.io/hblist/ — listings are not security or compatibility verification."; wrapMode: Text.Wrap; Layout.fillWidth: true }
