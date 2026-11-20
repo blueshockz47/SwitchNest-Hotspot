@@ -6,6 +6,54 @@ from unittest.mock import patch
 from v8 import homebrew
 
 class HomebrewTests(unittest.TestCase):
+    def test_new_reddit_emulator_catalog(self):
+        entries = {item["name"]: item for item in homebrew.catalog_search(category="Emulation")}
+        for name, repo in {"SW2NES": "Rodpad/SW2NES", "SW2SNES": "Rodpad/SW2SNES", "SW2PS2": "Rodpad/SW2PS2", "Toronja (3DS)": "Olmectron/toronja"}.items():
+            self.assertEqual(entries[name]["repo"], repo)
+            self.assertTrue(entries[name]["manual"])
+            self.assertIn("manual", entries[name]["status"].lower())
+
+    def test_manual_install_warnings(self):
+        entries = {item["name"]: item for item in homebrew.catalog_search()}
+        self.assertEqual(len(entries), 32)
+        self.assertTrue(entries["FTPD Plugin"]["manual"])
+        self.assertIn("manual", entries["FTPD Plugin"]["status"].lower())
+        self.assertFalse(entries["RetroArch"]["manual"])
+        self.assertIn("ZIP", entries["RetroArch"]["status"])
+        self.assertTrue(all(item["warning"] for item in entries.values()))
+
+    def test_curated_release_sources_and_plugin_exclusion(self):
+        names = {row["name"]: row for row in homebrew.catalog_search()}
+        self.assertEqual(names["KaiTube"]["repo"], "Sank-kab/KaiTube")
+        self.assertEqual(names["Checkpoint"]["repo"], "wowilookgood/Checkpoint")
+        self.assertEqual(names["KaiPlayer"]["repo"], "mizuiroame/kaiplayer")
+        self.assertEqual(names["90DNS Tester"]["repo"], "souldbminerr/90DNS-Tester")
+        self.assertEqual(names["FTPD Plugin"]["repo"], "NerdsMcGee/kaihen-ftpd-plugin")
+        self.assertEqual(names["FTPD Plugin"]["status"], "Download only / manual installation")
+
+    def test_expanded_catalog_and_filters(self):
+        rows = homebrew.catalog_search()
+        self.assertGreaterEqual(len(rows), 25)
+        self.assertEqual([x["name"] for x in homebrew.catalog_search("retroarch")], ["RetroArch"])
+        self.assertEqual([x["name"] for x in homebrew.catalog_search("moonlight")], ["Moonlight"])
+        self.assertEqual(homebrew.catalog_search("moonlight")[0]["status"], "Download only / manual installation")
+        self.assertTrue(all(x["category"] == "Streaming" for x in homebrew.catalog_search(category="Streaming")))
+        self.assertEqual(homebrew.catalog_search("unrelated-app"), [])
+        with self.assertRaises(ValueError):
+            homebrew.catalog_search(category="../invalid")
+
+
+    def test_linked_switch2_sources_preserve_manual_install_policy(self):
+        rows = {row["name"]: row for row in homebrew.catalog_search()}
+        self.assertEqual(rows["Chiaki-ng/Akira"]["repo"], "chiaki-ng/akira-ounce")
+        self.assertEqual(rows["PKSM"]["repo"], "wowilookgood/PKSM")
+        self.assertEqual(rows["Sonic 3 AIR"]["repo"], "NerdsMcGee/sonic3air-s2")
+        self.assertEqual(rows["OpenRCT2"]["repo"], "souldbminerr/OpenRCT2-Switch")
+        self.assertEqual(rows["Moonlight"]["repo"], "")
+        self.assertEqual(rows["OunceShell"]["repo"], "")
+        self.assertTrue(rows["FTPD Plugin"]["manual"])
+        self.assertTrue(rows["Super Smash Bros. Melee"]["manual"])
+
     def test_discovery_only_returns_switch2_candidates(self):
         seen = []
         def fetch(path):
@@ -50,6 +98,32 @@ class HomebrewTests(unittest.TestCase):
                                  "/switch/retroarch-switch2-v0.5.0.zip",
                                  "10.42.60.99", 1337, confirmed=True)
 
+    def test_release_latest_404_falls_back_to_published_prerelease(self):
+        import urllib.error
+        paths = []
+        def fetch(path):
+            paths.append(path)
+            if path.endswith("/releases/latest"):
+                raise urllib.error.HTTPError("https://api.github.com" + path, 404, "Not Found", {}, None)
+            return [{"tag_name": "v0.1-preview", "prerelease": True, "assets": [{
+                "name": "demo.zip",
+                "browser_download_url": "https://github.com/a/b/releases/download/v0.1-preview/demo.zip",
+                "size": 20, "digest": "sha256:" + "a" * 64
+            }]}]
+        result = homebrew.release_assets("a/b", fetch)
+        self.assertEqual(result["version"], "v0.1-preview")
+        self.assertEqual(result["assets"][0]["name"], "demo.zip")
+        self.assertEqual(paths, ["/repos/a/b/releases/latest", "/repos/a/b/releases?per_page=20"])
+
+    def test_release_latest_404_no_published_assets(self):
+        import urllib.error
+        def fetch(path):
+            if path.endswith("/releases/latest"):
+                raise urllib.error.HTTPError("https://api.github.com" + path, 404, "Not Found", {}, None)
+            return [{"draft": True, "assets": [{"name": "secret.zip"}]}]
+        with self.assertRaisesRegex(ValueError, "No published GitHub release assets"):
+            homebrew.release_assets("a/b", fetch)
+
     def test_release_asset_filter(self):
         def fetch(_):
             return {"tag_name": "v1", "assets": [
@@ -93,6 +167,108 @@ class HomebrewTests(unittest.TestCase):
             return p
         with self.assertRaises(FileExistsError):
             homebrew.install_nro(asset, "/switch/demo.nro", "10.42.60.99", 1337, confirmed=True, fetcher=fetch, tree_factory=FakeTree)
+
+class ZipWorkflowTests(unittest.TestCase):
+    def test_smoketest_archive_is_isolated(self):
+        from v8 import ftp_install_smoketest, homebrew_zip
+        with tempfile.TemporaryDirectory() as td:
+            archive = Path(td) / "test.zip"
+            plan = ftp_install_smoketest.build(archive)
+            self.assertEqual(plan["count"], 3)
+            self.assertTrue(all(x["path"].startswith("switch/switchnest-ftp-test-v810/")
+                                for x in plan["files"]))
+            self.assertEqual(plan, homebrew_zip.inspect_zip(archive))
+
+
+    def make_zip(self, root, entries):
+        import zipfile
+        path = Path(root) / "package.zip"
+        with zipfile.ZipFile(path, "w") as z:
+            for name, payload in entries:
+                z.writestr(name, payload)
+        return path
+
+    def test_safe_preview_and_confirmation(self):
+        from v8 import homebrew_zip
+        with tempfile.TemporaryDirectory() as td:
+            path = self.make_zip(td, [("switch/demo.nro", b"data")])
+            plan = homebrew_zip.inspect_zip(path)
+            self.assertEqual(plan["sample"], ["/switch/demo.nro"])
+            with self.assertRaises(PermissionError):
+                homebrew_zip.install_zip(path, plan, "10.42.60.99", 1337)
+
+    def test_rejects_traversal_symlinks_and_duplicate_names(self):
+        from v8 import homebrew_zip
+        with tempfile.TemporaryDirectory() as td:
+            for name in ("../evil.nro", "/evil.nro", "switch/../../evil.nro"):
+                path = self.make_zip(td, [(name, b"x")])
+                with self.assertRaises(ValueError):
+                    homebrew_zip.inspect_zip(path)
+            path = self.make_zip(td, [("switch/DEMO.nro", b"a"), ("switch/demo.nro", b"b")])
+            with self.assertRaises(ValueError):
+                homebrew_zip.inspect_zip(path)
+
+    def test_rejects_unverified_or_oversized_download(self):
+        from v8 import homebrew_zip
+        with self.assertRaises(ValueError):
+            homebrew_zip.download_zip({"name": "demo.zip", "size": 10, "digest": ""})
+        with self.assertRaises(ValueError):
+            homebrew_zip.download_zip({"name": "demo.zip", "size": 2**31,
+                "digest": "sha256:" + "a" * 64})
+
+    def test_cancel_before_ftp_write(self):
+        from v8 import homebrew_zip
+        with tempfile.TemporaryDirectory() as td:
+            path = self.make_zip(td, [("demo.nro", b"data")])
+            plan = homebrew_zip.inspect_zip(path)
+            class FakeTree:
+                def __init__(self, *args): pass
+                def entries(self, directory): return {}
+            with self.assertRaises(InterruptedError):
+                homebrew_zip.install_zip(path, plan, "10.42.60.99", 1337,
+                    confirmed=True, tree_factory=FakeTree, cancelled=lambda: True)
+
+    def test_upload_progress_and_verified_resume(self):
+        from v8 import homebrew_zip
+        with tempfile.TemporaryDirectory() as td:
+            path = self.make_zip(td, [("demo.nro", b"data")])
+            plan = homebrew_zip.inspect_zip(path)
+            remote = {}
+            updates = []
+            class FakeTree:
+                def __init__(self, *args):
+                    self.metric = lambda *_: None
+                def entries(self, directory):
+                    return {name: False for name in remote}
+                def sizes(self, directory):
+                    return {name: len(data) for name, data in remote.items()}
+                def upload(self, source, directory):
+                    remote[source.name] = source.read_bytes()
+                    self.metric(len(remote[source.name]), len(remote[source.name]), 100)
+                def run(self, path, args, size=None):
+                    if "--output" in args:
+                        Path(args[args.index("--output") + 1]).write_bytes(
+                            remote[path.rsplit("/", 1)[-1]])
+            for _ in range(2):
+                homebrew_zip.install_zip(path, plan, "10.42.60.99", 1337,
+                    confirmed=True, tree_factory=FakeTree,
+                    progress=lambda *args: updates.append(args))
+            self.assertEqual(remote["demo.nro"], b"data")
+            self.assertEqual(updates[-1][0], 4)
+            self.assertEqual(updates[-1][-1], "Verified existing file")
+
+    def test_preflight_rejects_existing_remote_file(self):
+        from v8 import homebrew_zip
+        with tempfile.TemporaryDirectory() as td:
+            path = self.make_zip(td, [("demo.nro", b"data")])
+            plan = homebrew_zip.inspect_zip(path)
+            class FakeTree:
+                def __init__(self, *args): pass
+                def entries(self, path): return {"demo.nro": False}
+                def sizes(self, path): return {"demo.nro": 999}
+            with self.assertRaises(FileExistsError):
+                homebrew_zip.install_zip(path, plan, "10.42.60.99", 1337,
+                                         confirmed=True, tree_factory=FakeTree)
 
 if __name__ == "__main__":
     unittest.main()

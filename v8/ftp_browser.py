@@ -149,6 +149,21 @@ class Browser(QObject):
         self.forward_paths["remote"].clear()
         self.list_remote()
 
+    @Slot()
+    def disconnect(self):
+        """Forget the active FTP session without touching the Switch 2 server."""
+        if self.busy:
+            self.status = "Wait for the active FTP operation before disconnecting."
+            self.changed.emit()
+            return
+        self.connected = False
+        self.remote_rows = []
+        self.remote = "/"
+        self.navigation["remote"].clear()
+        self.forward_paths["remote"].clear()
+        self.status = "Disconnected from FTP. The Switch 2 FTP server remains running."
+        self.changed.emit()
+
     def list_remote(self):
         try:
             ip=ipaddress.IPv4Address(self.host)

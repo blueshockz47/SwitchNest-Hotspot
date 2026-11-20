@@ -65,8 +65,8 @@ class StabilityTests(unittest.TestCase):
                 self.assertFalse(install.verify_installation(release)["ok"])
 
     def test_telemetry_and_version(self):
-        self.assertEqual(updates.VERSION, "8.0.9")
-        self.assertEqual(install.VERSION, "8.0.9")
+        self.assertEqual(updates.VERSION, "8.1.0")
+        self.assertEqual(install.VERSION, updates.VERSION)
         self.assertEqual(diagnostics.collect.__module__, "v8.diagnostics")
 
 if __name__ == "__main__":

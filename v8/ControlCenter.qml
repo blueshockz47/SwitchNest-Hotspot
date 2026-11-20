@@ -6,6 +6,7 @@ import QtQuick.Layouts
 ApplicationWindow {
     id: root
     visible: true
+    Component.onCompleted: { if (root.updatePrefs.fullscreen_on_start) root.showMaximized() }
     width: 960
     height: 620
     minimumWidth: 620
@@ -22,7 +23,7 @@ ApplicationWindow {
     property string activityLog: "Waiting for activity...\n"
     property bool updateInProgress: false
     property string availableVersion: ""
-    property var updatePrefs: JSON.parse(controller.updatePreferences)
+    property var updatePrefs: controller ? JSON.parse(controller.updatePreferences) : ({fullscreen_on_start: false})
     property var wifiInfo: ({})
     property string wifiName: ""
     property string wifiPassword: ""
@@ -399,8 +400,32 @@ ApplicationWindow {
                     TabBar {
                         id: fileTabs
                         Layout.fillWidth: true
-                        TabButton { text: "FTP File Manager" }
-                        TabButton { text: "Homebrew Manager" }
+                        TabButton {
+                            text: "FTP File Manager"
+                            contentItem: Label {
+                                text: "FTP File Manager"
+                                color: "#22c55e"
+                                font.bold: true
+                                font.pixelSize: 16
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+                        TabButton {
+                            text: "Homebrew Manager"
+                            contentItem: Item {
+                                implicitWidth: homebrewTitle.implicitWidth
+                                implicitHeight: homebrewTitle.implicitHeight
+                                Row {
+                                    id: homebrewTitle
+                                    anchors.centerIn: parent
+                                    spacing: 0
+                                    Label { text: "Home"; color: "#ef4444"; font.bold: true; font.pixelSize: 16 }
+                                    Label { text: "brew"; color: "#3b82f6"; font.bold: true; font.pixelSize: 16 }
+                                    Label { text: " Manager"; color: "#facc15"; font.bold: true; font.pixelSize: 16 }
+                                }
+                            }
+                        }
                     }
                     StackLayout {
                         Layout.fillWidth: true
@@ -439,7 +464,7 @@ ApplicationWindow {
                     CheckBox {
                         id: launchAtLogin
                         text: "Start SwitchNest on desktop login"
-                        checked: controller.startOnLogin
+                        checked: controller ? controller.startOnLogin : false
                         onToggled: controller.set_autostart(checked)
                         Connections {
                             target: controller
@@ -447,6 +472,8 @@ ApplicationWindow {
                         }
                     }
                     Label { text: "Launches the app in Desktop Mode, not the hotspot. Gaming Mode is not supported."; wrapMode: Text.Wrap; Layout.fillWidth: true; color: root.muted }
+                    CheckBox { text: "Launch SwitchNest maximized"; checked: root.updatePrefs.fullscreen_on_start; onToggled: controller.set_update_preference("fullscreen_on_start", checked) }
+                    Label { text: "Applies on next launch. The title bar, minimize, restore, and close controls remain available."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Label { text: "Wi-Fi configuration (existing NetworkManager AP profile)"; font.bold: true }
                     Label { text: "Current SSID: " + (root.hotspot.ssid || "Unavailable"); color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
                     TextField { placeholderText: "Wi-Fi name (SSID)"; text: root.wifiName; onTextEdited: root.wifiName = text; Layout.fillWidth: true; maximumLength: 32 }
@@ -540,7 +567,7 @@ ApplicationWindow {
                     Label { text: "Stage: " + root.updateStage; color: root.muted }
                     ProgressBar { Layout.fillWidth: true; visible: root.updateInProgress && root.updateStage === "download"; from: 0; to: 100; value: root.downloadPercent < 0 ? 0 : root.downloadPercent; indeterminate: root.downloadPercent < 0 }
                     Label { visible: root.updateInProgress && root.updateStage === "download"; text: root.downloadedMB.toFixed(1) + " MB" + (root.totalMB > 0 ? " / " + root.totalMB.toFixed(1) + " MB (" + root.downloadPercent.toFixed(0) + "%)" : " downloaded"); color: root.muted }
-                    Button { text: "Restore Previous Version"; enabled: !root.busy && !root.updateBusy && controller.rollbackAvailable; onClicked: rollbackDialog.open() }
+                    Button { text: "Restore Previous Version"; enabled: !root.busy && !root.updateBusy && controller && controller.rollbackAvailable; onClicked: rollbackDialog.open() }
                     Button { text: "Open GitHub releases"; onClicked: controller.open_updates(false) }
                     Button { text: "Open development downloads"; onClicked: controller.open_updates(true) }
                     Label { text: "Private repository: sign in using GitHub CLI for automatic lookup, or use your browser. Download & Install uses a GitHub release ZIP with a published SHA-256 digest. It installs without sudo and keeps the previous version for rollback. Restart SwitchNest after installation."; wrapMode: Text.Wrap; Layout.fillWidth: true; color: root.muted }
