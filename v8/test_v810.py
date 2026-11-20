@@ -6,6 +6,18 @@ from unittest.mock import patch
 from v8 import homebrew
 
 class HomebrewTests(unittest.TestCase):
+    def test_expanded_catalog_and_filters(self):
+        rows = homebrew.catalog_search()
+        self.assertGreaterEqual(len(rows), 25)
+        self.assertEqual([x["name"] for x in homebrew.catalog_search("retroarch")], ["RetroArch"])
+        self.assertEqual([x["name"] for x in homebrew.catalog_search("moonlight")], ["Moonlight"])
+        self.assertEqual(homebrew.catalog_search("moonlight")[0]["status"], "Browse-only")
+        self.assertTrue(all(x["category"] == "Streaming" for x in homebrew.catalog_search(category="Streaming")))
+        self.assertEqual(homebrew.catalog_search("unrelated-app"), [])
+        with self.assertRaises(ValueError):
+            homebrew.catalog_search(category="../invalid")
+
+
     def test_discovery_only_returns_switch2_candidates(self):
         seen = []
         def fetch(path):
