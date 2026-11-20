@@ -9,7 +9,7 @@ import sys
 import subprocess
 import threading
 import time
-from v8 import updates, autostart, preferences, wifi_reliability, stability
+from v8 import updates, autostart, preferences, wifi_reliability, stability, homebrew
 from pathlib import Path
 from v8.ftp_browser import Browser
 from PySide6.QtCore import QObject, Signal, Slot, Property, QLockFile, QStandardPaths, QProcess, QTimer, QUrl
@@ -37,6 +37,8 @@ class Controller(QObject):
     networkEvents = Signal(str)
     wifiHealth = Signal(str)
     selfTestResult = Signal(str)
+    homebrewResult = Signal(str)
+    homebrewBusy = Signal(bool)
 
     def __init__(self):
         super().__init__()
@@ -115,6 +117,73 @@ class Controller(QObject):
         self.busyChanged.emit(True)
         self.process.setWorkingDirectory(str(Path(__file__).resolve().parent.parent))
         self.process.start(sys.executable, ["-m", "v8.install", "repair"])
+
+
+    @Slot(str)
+    def homebrew_search(self, query):
+        if getattr(self, "_homebrew_busy", False):
+            return
+        self._homebrew_busy = True
+        self.homebrewBusy.emit(True)
+        def worker():
+            try:
+                rows = homebrew.discover(query)
+                self.homebrewResult.emit(json.dumps({"kind": "search", "items": rows}))
+            except Exception as exc:
+                self.homebrewResult.emit(json.dumps({"kind": "error", "message": str(exc)[:200]}))
+            finally:
+                self._homebrew_busy = False
+                self.homebrewBusy.emit(False)
+        threading.Thread(target=worker, daemon=True).start()
+
+    @Slot(str)
+    def homebrew_releases(self, repo):
+        if getattr(self, "_homebrew_busy", False):
+            return
+        self._homebrew_busy = True
+        self.homebrewBusy.emit(True)
+        def worker():
+            try:
+                result = homebrew.release_assets(repo)
+                self.homebrewResult.emit(json.dumps({"kind": "assets", "repo": repo, **result}))
+            except Exception as exc:
+                self.homebrewResult.emit(json.dumps({"kind": "error", "message": str(exc)[:200]}))
+            finally:
+                self._homebrew_busy = False
+                self.homebrewBusy.emit(False)
+        threading.Thread(target=worker, daemon=True).start()
+
+    @Slot(str, str, bool)
+    def homebrew_install(self, repo, raw_asset, confirmed):
+        if getattr(self, "_homebrew_busy", False):
+            return
+        # Only assets freshly obtained from GitHub are trusted; never accept a
+        # QML-supplied download URL or checksum as the source of truth.
+        if not confirmed:
+            self.homebrewResult.emit(json.dumps({"kind": "error", "message": "Confirm the installation first."}))
+            return
+        self._homebrew_busy = True
+        self.homebrewBusy.emit(True)
+        def worker():
+            try:
+                name = json.loads(raw_asset)["name"]
+                result = homebrew.release_assets(repo)
+                asset = next(a for a in result["assets"] if a["name"] == name)
+                if not asset["name"].lower().endswith(".nro"):
+                    raise ValueError("Plugins and system packages are not supported for automatic FTP installation")
+                browser = self._homebrew_browser
+                state = json.loads(browser.state)
+                if not state.get("connected") or state.get("busy"):
+                    raise RuntimeError("Connect the FTP browser and finish any active transfer first")
+                destination = "/switch/" + asset["name"]
+                message = homebrew.install_nro(asset, destination, state["host"], state["port"], confirmed=True)
+                self.homebrewResult.emit(json.dumps({"kind": "installed", "message": message}))
+            except Exception as exc:
+                self.homebrewResult.emit(json.dumps({"kind": "error", "message": str(exc)[:250]}))
+            finally:
+                self._homebrew_busy = False
+                self.homebrewBusy.emit(False)
+        threading.Thread(target=worker, daemon=True).start()
 
     @Slot()
     def copy_diagnostics(self):
@@ -581,6 +650,7 @@ def main():
     controller = Controller()
     engine.rootContext().setContextProperty("controller", controller)
     browser = Browser()
+    controller._homebrew_browser = browser
     engine.rootContext().setContextProperty("ftpBrowser", browser)
     app.aboutToQuit.connect(browser.cancel)
     engine.load(QUrl.fromLocalFile(str(Path(__file__).with_name("ControlCenter.qml"))))
