@@ -89,18 +89,75 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
         ListView {
+            id: projectList
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
+            spacing: 6
             model: home.results
             delegate: ItemDelegate {
+                id: projectCard
+                required property var modelData
                 width: ListView.view.width
-                text: modelData.name + " [" + modelData.category + "] — " + modelData.status
+                implicitHeight: 84
+                padding: 8
+                highlighted: home.selectedRepo !== "" && modelData.repo === home.selectedRepo
+                background: Rectangle {
+                    radius: 12
+                    color: projectCard.highlighted ? "#193d43" : projectCard.hovered ? "#252f3b" : "#1a222c"
+                    border.width: projectCard.highlighted ? 2 : 1
+                    border.color: projectCard.highlighted ? "#52e0ae" : "#33404d"
+                }
+                contentItem: RowLayout {
+                    spacing: 12
+                    Rectangle {
+                        Layout.preferredWidth: 58
+                        Layout.preferredHeight: 58
+                        radius: 12
+                        color: modelData.category === "Emulation" ? "#233b62" : modelData.category === "Games" ? "#513451" : modelData.category === "Streaming" ? "#284c4b" : modelData.category === "Tools" ? "#554329" : "#353b50"
+                        Label {
+                            anchors.centerIn: parent
+                            text: modelData.category === "Emulation" ? "🎮" : modelData.category === "Games" ? "🕹️" : modelData.category === "Streaming" ? "📺" : modelData.category === "Tools" ? "🛠️" : modelData.category === "Media" ? "🎵" : "✨"
+                            font.pixelSize: 28
+                        }
+                    }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 3
+                        Label {
+                            text: modelData.name
+                            font.pixelSize: 15
+                            font.bold: true
+                            color: "#f2f6fa"
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                        }
+                        Label {
+                            text: modelData.category + "  •  " + (modelData.repo ? "GitHub releases" : "Community listing")
+                            font.pixelSize: 11
+                            color: "#aab7c6"
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                        }
+                        Label {
+                            text: modelData.manual ? "Manual setup may be required" : "Verified NRO: FTP • ZIP: manual"
+                            font.pixelSize: 11
+                            color: modelData.manual ? "#fbbf24" : "#52e0ae"
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                        }
+                    }
+                }
                 onClicked: {
                     home.selectedManual = modelData.manual
                     home.selectedWarning = "⚠ " + modelData.warning
-                    if (modelData.repo) { home.selectedRepo = modelData.repo; controller.homebrew_releases(modelData.repo) }
-                    else { home.assets = []; home.statusText = modelData.name + " is browse-only. See the community Switch 2 Homebrew List for its official download link; no FTP installation is enabled." }
+                    home.selectedRepo = modelData.repo
+                    home.selectedAsset = ""
+                    home.assets = []
+                    if (modelData.repo)
+                        controller.homebrew_releases(modelData.repo)
+                    else
+                        home.statusText = modelData.name + " has no configured release source. Check the community catalog for manual installation instructions."
                 }
             }
         }
