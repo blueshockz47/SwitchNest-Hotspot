@@ -28,6 +28,8 @@ class Controller(QObject):
     preferencesChanged = Signal()
     rollbackCompleted = Signal()
     autostartChanged = Signal()
+    wifiStatus = Signal(str)
+    wifiResult = Signal(str)
 
     def __init__(self):
         super().__init__()
@@ -252,6 +254,49 @@ class Controller(QObject):
         self.message.emit("Dolphin launch requested. FTP is unencrypted." if ok else "Dolphin launch failed.")
 
     @Slot()
+    def wifi_status(self):
+        if self.process.state() != QProcess.NotRunning:
+            return
+        self.kind = "wifi_status"
+        self._process_output = []
+        self.busyChanged.emit(True)
+        self.process.setWorkingDirectory(str(Path(__file__).resolve().parent.parent))
+        self.process.start(sys.executable, ["-m", "v8.wifi_config", "status"])
+
+    @Slot(str, str, int)
+    def wifi_apply(self, ssid, password, channel):
+        if self.process.state() != QProcess.NotRunning:
+            self.message.emit("Another operation is in progress.")
+            return
+        from v8.wifi_config import validate
+        try:
+            validate(ssid, password, channel)
+        except ValueError as exc:
+            self.message.emit(str(exc))
+            return
+        self.kind = "wifi_apply"
+        self._process_output = []
+        self.busyChanged.emit(True)
+        self.process.setWorkingDirectory(str(Path(__file__).resolve().parent.parent))
+        self.process.start(sys.executable, ["-m", "v8.wifi_config", "apply", "stdin"])
+        if not self.process.waitForStarted(5000):
+            self.message.emit("Wi-Fi editor could not start.")
+            self.busyChanged.emit(False)
+            return
+        self.process.write(json.dumps({"ssid": ssid, "password": password, "channel": channel}).encode())
+        self.process.closeWriteChannel()
+
+    @Slot()
+    def wifi_restore(self):
+        if self.process.state() != QProcess.NotRunning:
+            return
+        self.kind = "wifi_restore"
+        self._process_output = []
+        self.busyChanged.emit(True)
+        self.process.setWorkingDirectory(str(Path(__file__).resolve().parent.parent))
+        self.process.start(sys.executable, ["-m", "v8.wifi_config", "restore"])
+
+    @Slot()
     def wifi_settings(self):
         manager = Path("/etc/steamdeck-switch2/manager.sh")
         try:
@@ -286,6 +331,16 @@ class Controller(QObject):
         if kind == "refresh" and code == 0:
             self.last_report = output
             self.refreshed.emit(output)
+        elif kind in ("wifi_status", "wifi_apply", "wifi_restore"):
+            try:
+                result = json.loads(output)
+            except ValueError:
+                result = {"ok": False, "error": "Wi-Fi editor returned an invalid response"}
+            if kind == "wifi_status":
+                self.wifiStatus.emit(json.dumps(result))
+            else:
+                self.wifiResult.emit(json.dumps(result))
+                self.message.emit(result.get("message", result.get("error", "Wi-Fi operation failed")))
         else:
             self.message.emit(("Completed: " if code == 0 else "Failed: ") + output)
         self.busyChanged.emit(False)
