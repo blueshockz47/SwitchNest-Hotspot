@@ -6,7 +6,7 @@
 
 SwitchNest turns your SteamOS PC or Steam Deck into a Wi-Fi hotspot for a Nintendo Switch 2. Use the desktop Control Center to manage the hotspot, transfer files over FTP, browse Switch 2 homebrew releases, and control Sunshine streaming.
 
-**Current stable version: v8.1.5** · [Download releases](https://github.com/blueshockz47/SwitchNest-Hotspot/releases) · [Report an issue](https://github.com/blueshockz47/SwitchNest-Hotspot/issues)
+**Current stable version: v8.1.5** · **[Download SwitchNest v8.1.5 for Linux (ZIP)](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/download/v8.1.5/SwitchNest-Hotspot-Linux-v8.1.5.zip)** · [Release notes](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/tag/v8.1.5) · [Report an issue](https://github.com/blueshockz47/SwitchNest-Hotspot/issues)
 
 > **Important:** The default hotspot is **local-only**, not a Nintendo online connection. The PC can remain online through Ethernet while hotspot clients are intended to remain offline. Verify firewall isolation on your system; an *Isolation: Unverified* indicator is not proof of isolation. SwitchNest does not jailbreak your console or install kaiHEN.
 
@@ -68,7 +68,7 @@ Install in this order: **hotspot backend → control helper → Control Center**
 
 ### 1. Download the project
 
-Download the [stable v8.1.5 release](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/tag/v8.1.5) and extract its Linux source package, or download the [repository ZIP](https://github.com/blueshockz47/SwitchNest-Hotspot/archive/refs/heads/main.zip) if you are deliberately using the current development source.
+Download the **[SwitchNest Hotspot Linux v8.1.5 ZIP](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/download/v8.1.5/SwitchNest-Hotspot-Linux-v8.1.5.zip)** and extract it. Use this stable release package rather than the development branch ZIP.
 
 Open **Konsole** inside the extracted project folder. Run the commands below from that folder.
 
