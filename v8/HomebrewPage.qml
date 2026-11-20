@@ -9,6 +9,8 @@ ColumnLayout {
     property string selectedRepo: ""
     property string selectedAsset: ""
     property bool working: false
+    property string readyZip: ""
+    property string previewText: ""
     property string statusText: "Search the curated Switch 2 homebrew catalog. Listings do not verify compatibility."
     spacing: 8
     Connections {
@@ -17,14 +19,20 @@ ColumnLayout {
         function onHomebrewResult(raw) {
             try {
                 let data = JSON.parse(raw)
-                if (data.kind === "search") { home.results = data.items; home.assets = []; home.statusText = data.items.length + " Switch 2 candidate repositories found (not compatibility-verified)" }
-                else if (data.kind === "assets") { home.selectedRepo = data.repo; home.assets = data.assets; home.statusText = "Release " + data.version + " — ZIP packages are listed but not installable yet" }
+                if (data.kind === "search") { home.results = data.items; home.assets = []; home.readyZip = ""; home.statusText = data.items.length + " Switch 2 candidate repositories found (not compatibility-verified)" }
+                else if (data.kind === "assets") { home.selectedRepo = data.repo; home.assets = data.assets; home.readyZip = ""; home.statusText = "Release " + data.version + " — select a ZIP to download and preview" }
+                else if (data.kind === "zip_ready") {
+                    home.readyZip = data.name
+                    home.previewText = data.count + " files (" + Math.round(data.bytes / 1048576) + " MiB extracted)\\n" + data.sample.join("\\n")
+                    home.statusText = "Download verified. Review files before installing."
+                    installZipDialog.open()
+                }
                 else { home.statusText = data.message || "Unknown result" }
             } catch (e) { home.statusText = "Invalid homebrew response" }
         }
     }
     Label { text: "Switch 2 Homebrew Manager"; font.pixelSize: 22; font.bold: true }
-    Label { text: "Only Switch 2 candidate projects are listed. NRO installation requires a GitHub SHA-256 digest and explicit confirmation. ZIPs and system packages are display-only."; wrapMode: Text.Wrap; Layout.fillWidth: true }
+    Label { text: "Only Switch 2 candidate projects are listed. NRO installation requires a GitHub SHA-256 digest and explicit confirmation. ZIPs require a verified download followed by separate installation confirmation."; wrapMode: Text.Wrap; Layout.fillWidth: true }
     RowLayout {
         TextField { id: searchBox; placeholderText: "Search Switch 2 homebrew"; Layout.fillWidth: true; onAccepted: controller.homebrew_search(text) }
         Button { text: "Search"; enabled: !home.working; onClicked: controller.homebrew_search(searchBox.text) }
@@ -59,10 +67,12 @@ ColumnLayout {
                 text: modelData.name + (modelData.digest ? " (SHA-256)" : " (no digest)")
                 onClicked: {
                     home.selectedAsset = modelData.name
-                    if (modelData.name.toLowerCase().endsWith(".nro") && modelData.digest)
+                    if (modelData.name.toLowerCase().endsWith(".zip") && modelData.digest)
+                        downloadZipDialog.open()
+                    else if (modelData.name.toLowerCase().endsWith(".nro") && modelData.digest)
                         installDialog.open()
                     else
-                        home.statusText = "This package is display-only. ZIP installation is not supported; only verified individual NRO files can be installed."
+                        home.statusText = "Unsupported package. ZIP and NRO require a valid SHA-256; other assets are display-only."
                 }
             }
         }
@@ -79,4 +89,34 @@ ColumnLayout {
         }
         onAccepted: controller.homebrew_install(home.selectedRepo, JSON.stringify({name: home.selectedAsset}), true)
     }
+    Dialog {
+        id: downloadZipDialog
+        title: "Download Switch 2 homebrew?"
+        modal: true
+        anchors.centerIn: Overlay.overlay
+        standardButtons: Dialog.Yes | Dialog.No
+        ColumnLayout {
+            Label { text: "Download " + home.selectedAsset + " to the SteamOS cache and verify SHA-256?"; wrapMode: Text.Wrap; Layout.preferredWidth: 380 }
+            Label { text: "This does not install anything on the Switch 2. Large downloads may take several minutes."; wrapMode: Text.Wrap; Layout.preferredWidth: 380 }
+        }
+        onAccepted: controller.homebrew_download_zip(home.selectedRepo, home.selectedAsset)
+    }
+    Dialog {
+        id: installZipDialog
+        title: "Install downloaded ZIP to Switch 2?"
+        modal: true
+        anchors.centerIn: Overlay.overlay
+        standardButtons: Dialog.Yes | Dialog.No
+        ColumnLayout {
+            Label { text: "Download complete and SHA-256 verified. Install these files to the Switch 2 SD card via FTP?"; wrapMode: Text.Wrap; Layout.preferredWidth: 420 }
+            ScrollView {
+                Layout.preferredWidth: 420
+                Layout.preferredHeight: 220
+                TextArea { readOnly: true; text: home.previewText; wrapMode: Text.WrapAnywhere }
+            }
+            Label { text: "Preview shows up to 12 files. Existing remote files are not overwritten. FTP is unencrypted; interrupted transfers may leave partial files."; wrapMode: Text.Wrap; Layout.preferredWidth: 420 }
+        }
+        onAccepted: controller.homebrew_install_zip(home.selectedRepo, home.readyZip, true)
+    }
+
 }
