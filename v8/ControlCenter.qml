@@ -6,7 +6,20 @@ import QtQuick.Layouts
 ApplicationWindow {
     id: root
     visible: true
-    Component.onCompleted: { if (root.updatePrefs.fullscreen_on_start) root.showMaximized() }
+    // Defer the window-state request until the native window is mapped by KDE/KWin.
+    Timer {
+        id: startupMaximize
+        interval: 250
+        repeat: false
+        onTriggered: {
+            if (root.updatePrefs.fullscreen_on_start)
+                root.showMaximized()
+        }
+    }
+    Component.onCompleted: {
+        if (root.updatePrefs.fullscreen_on_start)
+            startupMaximize.start()
+    }
     width: 960
     height: 620
     minimumWidth: 620
