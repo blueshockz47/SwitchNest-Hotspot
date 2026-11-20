@@ -8,7 +8,7 @@ import subprocess
 import sys
 import uuid
 
-VERSION = "8.1.3"
+VERSION = "8.1.4"
 ROOT = Path.home()/".local/share/switchnest"
 SOURCE = Path(__file__).resolve().parent.parent
 
@@ -70,6 +70,11 @@ def install():
         for name in ("LICENSE","THIRD_PARTY_NOTICES.md"):
             if (SOURCE/name).is_file(): shutil.copy2(SOURCE/name,release/name)
         if (SOURCE/"licenses").is_dir(): shutil.copytree(SOURCE/"licenses",release/"licenses")
+        # Catch missing packaged test dependencies before installing Qt wheels.
+        required_modules = ("ftp_install_smoketest.py", "homebrew_zip.py", "HomebrewPage.qml")
+        missing = [name for name in required_modules if not (release/"v8"/name).is_file()]
+        if missing:
+            raise RuntimeError("Incomplete Homebrew Manager release: " + ", ".join(missing))
         run(sys.executable,"-m","venv",release/"venv")
         python=release/"venv/bin/python"
         run(python,"-m","pip","install","PySide6>=6.7,<7")
