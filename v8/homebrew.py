@@ -39,7 +39,7 @@ def discover(query, fetch=request_json):
     if not query:
         return []
     data = fetch("/search/repositories?" + urllib.parse.urlencode({
-        "q": query + " switch2 homebrew", "per_page": 25}))
+        "q": query, "per_page": 25}))
     result = []
     for item in data.get("items", []):
         name = item.get("full_name", "")
