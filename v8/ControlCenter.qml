@@ -396,8 +396,16 @@ ApplicationWindow {
                     Item { Layout.fillHeight: true }
                 }
                 ColumnLayout {
-                    TabBar { id: fileTabs; Layout.fillWidth: true; TabButton { text: "FTP File Manager" }; TabButton { text: "Homebrew Manager" } }
-                    StackLayout { Layout.fillWidth: true; Layout.fillHeight: true; currentIndex: fileTabs.currentIndex
+                    TabBar {
+                        id: fileTabs
+                        Layout.fillWidth: true
+                        TabButton { text: "FTP File Manager" }
+                        TabButton { text: "Homebrew Manager" }
+                    }
+                    StackLayout {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        currentIndex: fileTabs.currentIndex
                         FtpPage {}
                         HomebrewPage {}
                     }
