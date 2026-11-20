@@ -4,7 +4,7 @@ import QtQuick.Layouts
 
 ColumnLayout {
     id: page
-    property var dataState: JSON.parse(ftpBrowser.state)
+    property var dataState: ftpBrowser ? JSON.parse(ftpBrowser.state) : ({host: "", port: "", localRows: [], remoteRows: [], status: "Initializing FTP...", busy: false, connected: false, history: [], bookmarks: [], local: "", remote: "/", localFree: 0})
     property var localSelected: []
     property var remoteSelected: []
     property var uploadName: []
