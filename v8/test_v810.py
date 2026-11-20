@@ -87,6 +87,32 @@ class HomebrewTests(unittest.TestCase):
                                  "/switch/retroarch-switch2-v0.5.0.zip",
                                  "10.42.60.99", 1337, confirmed=True)
 
+    def test_release_latest_404_falls_back_to_published_prerelease(self):
+        import urllib.error
+        paths = []
+        def fetch(path):
+            paths.append(path)
+            if path.endswith("/releases/latest"):
+                raise urllib.error.HTTPError("https://api.github.com" + path, 404, "Not Found", {}, None)
+            return [{"tag_name": "v0.1-preview", "prerelease": True, "assets": [{
+                "name": "demo.zip",
+                "browser_download_url": "https://github.com/a/b/releases/download/v0.1-preview/demo.zip",
+                "size": 20, "digest": "sha256:" + "a" * 64
+            }]}]
+        result = homebrew.release_assets("a/b", fetch)
+        self.assertEqual(result["version"], "v0.1-preview")
+        self.assertEqual(result["assets"][0]["name"], "demo.zip")
+        self.assertEqual(paths, ["/repos/a/b/releases/latest", "/repos/a/b/releases?per_page=20"])
+
+    def test_release_latest_404_no_published_assets(self):
+        import urllib.error
+        def fetch(path):
+            if path.endswith("/releases/latest"):
+                raise urllib.error.HTTPError("https://api.github.com" + path, 404, "Not Found", {}, None)
+            return [{"draft": True, "assets": [{"name": "secret.zip"}]}]
+        with self.assertRaisesRegex(ValueError, "No published GitHub release assets"):
+            homebrew.release_assets("a/b", fetch)
+
     def test_release_asset_filter(self):
         def fetch(_):
             return {"tag_name": "v1", "assets": [
