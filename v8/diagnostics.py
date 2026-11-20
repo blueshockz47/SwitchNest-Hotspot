@@ -72,16 +72,16 @@ def hotspot():
         details = {}
         current = None
         for line in stations["output"].splitlines():
-            match = re.match(r"^Station ([0-9a-fA-F:]{17})\\s", line)
+            match = re.match(r"^Station ([0-9a-fA-F:]{17})\s", line)
             if match:
                 current = match.group(1).lower()
                 details[current] = {}
                 continue
             if current:
-                for key, pattern in (("signal", r"^\\s*signal:\\s*(-?\\d+)\\s*dBm"),
-                                     ("connected_seconds", r"^\\s*connected time:\\s*(\\d+)\\s*seconds"),
-                                     ("rx_bytes", r"^\\s*rx bytes:\\s*(\\d+)"),
-                                     ("tx_bytes", r"^\\s*tx bytes:\\s*(\\d+)")):
+                for key, pattern in (("signal", r"^\s*signal:\s*(-?\d+)\s*dBm"),
+                                     ("connected_seconds", r"^\s*connected time:\s*(\d+)\s*seconds"),
+                                     ("rx_bytes", r"^\s*rx bytes:\s*(\d+)"),
+                                     ("tx_bytes", r"^\s*tx bytes:\s*(\d+)")):
                     value = re.match(pattern, line)
                     if value:
                         details[current][key] = int(value.group(1))

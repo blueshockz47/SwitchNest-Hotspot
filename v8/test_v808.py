@@ -52,11 +52,11 @@ class ReliabilityTests(unittest.TestCase):
         self.assertEqual(wr.health({"hotspot": {"state": "off"}})["state"], "inactive")
 
     def test_live_station_metrics_are_read_only(self):
-        station = ("Station aa:bb:cc:dd:ee:ff (on wlan0)\\n"
-                   "  signal: -52 dBm\\n"
-                   "  connected time: 31 seconds\\n"
-                   "  rx bytes: 2048\\n"
-                   "  tx bytes: 1024\\n")
+        station = ("Station aa:bb:cc:dd:ee:ff (on wlan0)\n"
+                   "  signal: -52 dBm\n"
+                   "  connected time: 31 seconds\n"
+                   "  rx bytes: 2048\n"
+                   "  tx bytes: 1024\n")
         def fake_probe(argv):
             if argv[:3] == ["nmcli", "-g", "connection.uuid"]:
                 return {"ok": True, "output": "12345678-1234-1234-1234-123456789012"}
