@@ -6,21 +6,26 @@ from unittest.mock import patch
 from v8 import homebrew
 
 class HomebrewTests(unittest.TestCase):
-    def test_discovery_rejects_untrusted_names(self):
-        def fetch(_):
-            return {"items": [{"full_name": "owner/valid", "id": 1}, {"full_name": "../../evil", "id": 2}]}
-        self.assertEqual([x["repo"] for x in homebrew.discover("retroarch", fetch)], ["owner/valid"])
-    def test_discovery_uses_user_query_without_extra_required_terms(self):
+    def test_discovery_only_returns_switch2_candidates(self):
         seen = []
         def fetch(path):
             seen.append(path)
-            return {"items": [{"full_name": "owner/retroarch", "id": 42}]}
-        result = homebrew.discover("retroarch", fetch)
-        self.assertEqual([item["repo"] for item in result], ["owner/retroarch"])
-        from urllib.parse import parse_qs, urlsplit
-        params = parse_qs(urlsplit(seen[0]).query)
-        self.assertEqual(params["q"], ["retroarch"])
-        self.assertEqual(params["per_page"], ["25"])
+            return {"full_name": "NerdsMcGee/retroarch-s2", "id": 42,
+                    "description": "Switch 2 port"}
+        rows = homebrew.discover("retroarch", fetch)
+        self.assertEqual([x["repo"] for x in rows], ["NerdsMcGee/retroarch-s2"])
+        self.assertEqual(seen, ["/repos/NerdsMcGee/retroarch-s2"])
+        self.assertFalse(rows[0]["verified"])
+
+    def test_discovery_rejects_untrusted_metadata(self):
+        def fetch(_):
+            return {"full_name": "someone/retroarch", "id": 42}
+        self.assertEqual(homebrew.discover("retroarch", fetch), [])
+
+    def test_unrelated_search_does_not_query_github(self):
+        def fetch(_):
+            raise AssertionError("Unrelated repositories must not be fetched")
+        self.assertEqual(homebrew.discover("retroarch-windows", fetch), [])
 
     def test_release_asset_filter(self):
         def fetch(_):
