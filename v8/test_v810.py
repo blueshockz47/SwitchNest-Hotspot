@@ -6,10 +6,50 @@ from unittest.mock import patch
 from v8 import homebrew
 
 class HomebrewTests(unittest.TestCase):
-    def test_discovery_rejects_untrusted_names(self):
+    def test_discovery_only_returns_switch2_candidates(self):
+        seen = []
+        def fetch(path):
+            seen.append(path)
+            return {"full_name": "NerdsMcGee/retroarch-s2", "id": 42}
+        rows = homebrew.discover("retroarch", fetch)
+        self.assertEqual([x["repo"] for x in rows], ["NerdsMcGee/retroarch-s2"])
+        self.assertEqual(seen, ["/repos/NerdsMcGee/retroarch-s2"])
+        self.assertFalse(rows[0]["verified"])
+
+    def test_discovery_rejects_untrusted_metadata(self):
         def fetch(_):
-            return {"items": [{"full_name": "owner/valid", "id": 1}, {"full_name": "../../evil", "id": 2}]}
-        self.assertEqual([x["repo"] for x in homebrew.discover("retroarch", fetch)], ["owner/valid"])
+            return {"full_name": "other/retroarch", "id": 42}
+        self.assertEqual(homebrew.discover("retroarch", fetch), [])
+
+    def test_unrelated_query_does_not_query_github(self):
+        def fetch(_):
+            raise AssertionError("Unrelated repository was queried")
+        self.assertEqual(homebrew.discover("windows-retroarch", fetch), [])
+
+    def test_large_zip_is_listed_but_install_rejected(self):
+        import hashlib
+        size = 504925907
+        digest = "sha256:" + hashlib.sha256(b"test").hexdigest()
+        def fetch(_):
+            return {"tag_name": "switch2-v0.5.0", "assets": [{
+                "name": "retroarch-switch2-v0.5.0.zip",
+                "browser_download_url": "https://github.com/NerdsMcGee/retroarch-s2/releases/download/switch2-v0.5.0/retroarch-switch2-v0.5.0.zip",
+                "size": size, "digest": digest
+            }, {
+                "name": "SHA256SUMS.txt",
+                "browser_download_url": "https://github.com/NerdsMcGee/retroarch-s2/releases/download/switch2-v0.5.0/SHA256SUMS.txt",
+                "size": 2909, "digest": digest
+            }]}
+        result = homebrew.release_assets("NerdsMcGee/retroarch-s2", fetch)
+        self.assertEqual(result["version"], "switch2-v0.5.0")
+        self.assertEqual([a["name"] for a in result["assets"]],
+                         ["retroarch-switch2-v0.5.0.zip", "SHA256SUMS.txt"])
+        self.assertTrue(all(a["system"] for a in result["assets"]))
+        with self.assertRaises(ValueError):
+            homebrew.install_nro(result["assets"][0],
+                                 "/switch/retroarch-switch2-v0.5.0.zip",
+                                 "10.42.60.99", 1337, confirmed=True)
+
     def test_release_asset_filter(self):
         def fetch(_):
             return {"tag_name": "v1", "assets": [
