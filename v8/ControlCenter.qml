@@ -22,6 +22,12 @@ ApplicationWindow {
     property string activityLog: "Waiting for activity...\n"
     property bool updateInProgress: false
     property string availableVersion: ""
+    property var updatePrefs: JSON.parse(controller.updatePreferences)
+    property string updateStage: "idle"
+    property real downloadPercent: -1
+    property real downloadedMB: 0
+    property real totalMB: 0
+    property var clients: root.hotspot.clients || []
     property var hotspot: report.hotspot || ({state: "unknown"})
     property string http: report.http_service ? report.http_service.output : "Unknown"
     property string dns: report.dns_service ? report.dns_service.output : "Unknown"
@@ -35,9 +41,22 @@ ApplicationWindow {
         }
         function onMessage(message) { root.notice = message; root.activityLog += message + "\n" }
         function onUpdateLog(chunk) { root.activityLog += chunk }
+        function onPreferencesChanged() { root.updatePrefs = JSON.parse(controller.updatePreferences) }
+        function onRollbackCompleted() { restartDialog.open() }
+        function onUpdateProgress(raw) {
+            try {
+                var p = JSON.parse(raw)
+                root.updateStage = p.stage || "unknown"
+                if (p.stage === "download") {
+                    root.downloadedMB = (p.bytes || 0) / 1048576
+                    root.totalMB = p.total ? p.total / 1048576 : 0
+                    root.downloadPercent = p.total ? Math.min(100, 100 * p.bytes / p.total) : -1
+                }
+            } catch (e) { root.activityLog += "Progress report unavailable\\n" }
+        }
         function onUpdateAvailable(version) { root.availableVersion = version; updateAvailableDialog.open() }
         function onUpdateInstalled(version) { root.updateInProgress = false; restartDialog.open() }
-        function onBusyChanged(value) { root.busy = value }
+        function onBusyChanged(value) { root.busy = value; if (!value && root.updateInProgress && root.updateStage !== "idle") root.updateInProgress = false }
         function onUpdateBusy(value) { root.updateBusy = value }
         function onUpdateResult(value) { root.updateStatus = value }
     }
@@ -70,6 +89,7 @@ ApplicationWindow {
                         pages.currentIndex = 6
                         root.activityLog = "Preparing update...\n"
                         root.updateInProgress = true
+                        root.updateStage = "download"
                         controller.install_update()
                     }
                 }
@@ -78,7 +98,7 @@ ApplicationWindow {
     }
     Dialog {
         id: restartDialog
-        title: "SwitchNest update complete"
+        title: "Restart SwitchNest"
         modal: true
         anchors.centerIn: parent
         width: Math.min(460, root.width - 50)
@@ -89,7 +109,7 @@ ApplicationWindow {
             width: parent.width
             spacing: 14
             Label {
-                text: "The update was installed successfully. Restart SwitchNest to use the new version."
+                text: "The version change completed successfully. Restart SwitchNest to use the selected version."
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
             }
@@ -97,6 +117,24 @@ ApplicationWindow {
                 Layout.alignment: Qt.AlignRight
                 Button { text: "Later"; onClicked: restartDialog.close() }
                 Button { text: "Restart SwitchNest"; highlighted: true; onClicked: controller.restart_after_update() }
+            }
+        }
+    }
+    Dialog {
+        id: rollbackDialog
+        title: "Restore previous version?"
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(440, root.width - 50)
+        implicitHeight: 200
+        standardButtons: Dialog.NoButton
+        ColumnLayout {
+            width: parent.width
+            Label { text: "SwitchNest will restore the previous installed version. Restart is required."; wrapMode: Text.Wrap; Layout.fillWidth: true }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                Button { text: "Cancel"; onClicked: rollbackDialog.close() }
+                Button { text: "Restore Previous Version"; highlighted: true; onClicked: { rollbackDialog.close(); controller.rollback_update() } }
             }
         }
     }
@@ -135,7 +173,7 @@ ApplicationWindow {
                 NavButton { text: "Settings"; page: 5 }
                 NavButton { text: root.updateStatus.startsWith("Update available") ? "Updates •" : "Updates"; page: 6 }
                 Item { Layout.fillHeight: true }
-                Label { text: "v8.0.5"; color: root.accent }
+                Label { text: "v8.0.6"; color: root.accent }
                 Label { text: "Linux stable"; color: root.muted; font.pixelSize: 12 }
             }
         }
@@ -174,6 +212,7 @@ ApplicationWindow {
                                     BusyIndicator { running: root.busy; visible: running; implicitWidth: 30; implicitHeight: 30 }
                                 }
                                 Label { text: "v7.1 backend"; color: root.muted }
+                                Label { text: "Gateway: " + (root.hotspot.ip || "Unavailable"); color: root.muted }
                             }
                         }
                         RowLayout {
@@ -205,6 +244,8 @@ ApplicationWindow {
                                 Label { text: "Host IPv4: " + (root.hotspot.ip || "Unavailable"); Layout.fillWidth: true; wrapMode: Text.Wrap }
                                 Label { text: "Security: " + (root.hotspot.security || "Unavailable"); Layout.fillWidth: true; wrapMode: Text.Wrap }
                                 Label { text: "HTTP service: " + root.http; color: root.http === "active" ? root.accent : root.muted }
+                                Label { text: "DNS: " + root.dns; color: root.dns === "active" ? root.accent : root.muted }
+                                Label { text: "Connection health: " + (root.hotspot.state === "on" && root.dns === "active" ? "Hotspot and DNS active (isolation unverified)" : "Requires attention"); wrapMode: Text.Wrap; Layout.fillWidth: true }
                             }
                         }
                         Panel {
@@ -215,9 +256,16 @@ ApplicationWindow {
                                 Label { text: "Connected Wi-Fi stations"; font.bold: true }
                                 Label { text: Array.isArray(root.hotspot.stations) ? String(root.hotspot.stations.length) + " associated stations" : "Station count unavailable"; color: root.accent }
                                 Repeater {
-                                    model: root.hotspot.stations || []
-                                    delegate: Label { required property string modelData; text: modelData; color: root.muted }
+                                    model: root.clients
+                                    delegate: Label {
+                                        required property var modelData
+                                        text: modelData.mac + "  •  " + (modelData.ip || "IP unavailable") + "  •  " + modelData.status
+                                        color: root.muted
+                                        wrapMode: Text.Wrap
+                                        Layout.fillWidth: true
+                                    }
                                 }
+                                Button { text: "Refresh clients"; enabled: !root.busy; onClicked: controller.refresh() }
                             }
                         }
                         Panel {
@@ -252,8 +300,22 @@ ApplicationWindow {
                     Item { Layout.fillHeight: true }
                 }
                 FtpPage {}
-                ScrollView {
-                    TextArea { readOnly: true; text: JSON.stringify(root.report, null, 2); wrapMode: TextEdit.Wrap }
+                ColumnLayout {
+                    RowLayout {
+                        Label { text: "Live diagnostics (10-second refresh)"; font.pixelSize: 20 }
+                        Item { Layout.fillWidth: true }
+                        Button { text: "Copy Diagnostics"; onClicked: controller.copy_diagnostics() }
+                    }
+                    RowLayout {
+                        Label { text: "Hotspot: " + root.hotspot.state; color: root.accent }
+                        Label { text: "DNS: " + root.dns; color: root.accent }
+                        Label { text: "Clients: " + root.clients.length; color: root.accent }
+                    }
+                    Label { text: "Isolation: unverified; active services do not prove traffic is blocked."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                    ScrollView {
+                        Layout.fillWidth: true; Layout.fillHeight: true
+                        TextArea { readOnly: true; text: JSON.stringify(root.report, null, 2); wrapMode: TextEdit.Wrap; selectByMouse: true }
+                    }
                 }
                 ColumnLayout {
                     Label { text: "Settings"; font.pixelSize: 22 }
@@ -272,16 +334,24 @@ ApplicationWindow {
                     Button { text: "Change Wi-Fi password"; enabled: !root.busy; onClicked: controller.wifi_settings() }
                     Label { text: "Select option 5 in Konsole. SSID changes are not supported in this preview."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Label { text: "Refresh interval: 10 seconds"; color: root.muted }
+                    Label { text: "Update notifications"; font.bold: true }
+                    CheckBox { text: "Check for updates at startup"; checked: root.updatePrefs.check_at_startup; onToggled: controller.set_update_preference("check_at_startup", checked) }
+                    CheckBox { text: "Show update available popup"; checked: root.updatePrefs.show_update_popup; onToggled: controller.set_update_preference("show_update_popup", checked) }
+                    CheckBox { text: "Stable releases only for startup checks"; checked: root.updatePrefs.stable_only; onToggled: controller.set_update_preference("stable_only", checked) }
                     Item { Layout.fillHeight: true }
                 }
                 ColumnLayout {
                     Label { text: "Software updates"; font.pixelSize: 22 }
-                    Label { text: "Installed: v8.0.5"; color: root.accent }
+                    Label { text: "Installed: v8.0.6"; color: root.accent }
                     ComboBox { id: channel; model: ["Stable", "Development"]; enabled: !root.updateBusy }
                     Label { text: root.updateStatus; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Button { text: root.updateBusy ? "Checking..." : "Check for Updates"; enabled: !root.updateBusy; onClicked: controller.check_updates(channel.currentIndex===0?"stable":"development") }
-                    Button { text: "Download & Install Update"; highlighted: true; visible: root.updateStatus.startsWith("Update available: ") && channel.currentIndex === 0; enabled: !root.updateBusy && !root.busy; onClicked: { root.activityLog = "Preparing update...\n"; root.updateInProgress = true; controller.install_update() } }
+                    Button { text: "Download & Install Update"; highlighted: true; visible: root.updateStatus.startsWith("Update available: ") && channel.currentIndex === 0; enabled: !root.updateBusy && !root.busy; onClicked: { root.activityLog = "Preparing update...\n"; root.updateInProgress = true; root.updateStage = "download"; controller.install_update() } }
                     Button { text: "View Update on GitHub"; visible: root.updateStatus.startsWith("Update available: "); onClicked: controller.download_update() }
+                    Label { text: "Stage: " + root.updateStage; color: root.muted }
+                    ProgressBar { Layout.fillWidth: true; visible: root.updateInProgress && root.updateStage === "download"; from: 0; to: 100; value: root.downloadPercent < 0 ? 0 : root.downloadPercent; indeterminate: root.downloadPercent < 0 }
+                    Label { visible: root.updateInProgress && root.updateStage === "download"; text: root.downloadedMB.toFixed(1) + " MB" + (root.totalMB > 0 ? " / " + root.totalMB.toFixed(1) + " MB (" + root.downloadPercent.toFixed(0) + "%)" : " downloaded"); color: root.muted }
+                    Button { text: "Restore Previous Version"; enabled: !root.busy && !root.updateBusy && controller.rollbackAvailable; onClicked: rollbackDialog.open() }
                     Button { text: "Open GitHub releases"; onClicked: controller.open_updates(false) }
                     Button { text: "Open development downloads"; onClicked: controller.open_updates(true) }
                     Label { text: "Private repository: sign in using GitHub CLI for automatic lookup, or use your browser. Download & Install uses a GitHub release ZIP with a published SHA-256 digest. It installs without sudo and keeps the previous version for rollback. Restart SwitchNest after installation."; wrapMode: Text.Wrap; Layout.fillWidth: true; color: root.muted }

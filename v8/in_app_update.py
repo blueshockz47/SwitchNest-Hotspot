@@ -54,17 +54,25 @@ def install_latest():
         h = hashlib.sha256()
         total = 0
         with urllib.request.urlopen(req, timeout=40) as response, archive.open("wb") as dest:
+            header = response.headers.get("Content-Length")
+            expected_bytes = int(header) if header and header.isdecimal() else None
+            if expected_bytes is not None and expected_bytes > MAX_BYTES:
+                raise RuntimeError("Update exceeds size limit")
+            print("SWITCHNEST_PROGRESS:" + json.dumps({"stage": "download", "bytes": 0, "total": expected_bytes}), flush=True)
             while chunk := response.read(1024 * 1024):
                 total += len(chunk)
                 if total > MAX_BYTES:
                     raise RuntimeError("Update exceeds size limit")
                 if total // (5 * 1024 * 1024) != (total - len(chunk)) // (5 * 1024 * 1024):
                     print(f"Downloaded {total / (1024 * 1024):.1f} MiB", flush=True)
+                print("SWITCHNEST_PROGRESS:" + json.dumps({"stage": "download", "bytes": total, "total": expected_bytes}), flush=True)
                 h.update(chunk)
                 dest.write(chunk)
+        print("SWITCHNEST_PROGRESS:" + json.dumps({"stage": "verify"}), flush=True)
         print("Verifying SHA-256 checksum...", flush=True)
         if h.hexdigest() != digest:
             raise RuntimeError("Update checksum mismatch")
+        print("SWITCHNEST_PROGRESS:" + json.dumps({"stage": "extract"}), flush=True)
         print("Checksum verified. Extracting release...", flush=True)
         target = folder / "source"
         target.mkdir()
@@ -92,6 +100,7 @@ def install_latest():
         if ("VERSION = \"" + tag.removeprefix("v") + "\"") not in expected.read_text():
             raise RuntimeError("Release version does not match its tag")
         # Run the installer only after the verified release is fully extracted.
+        print("SWITCHNEST_PROGRESS:" + json.dumps({"stage": "install"}), flush=True)
         print("Installing " + tag + " (this can take several minutes)...", flush=True)
         subprocess.run([sys.executable, "-m", "v8.install", "install"], cwd=roots[0], check=True, env={**os.environ, "PYTHONPATH": str(roots[0])})
     return "Installed " + tag + ". Close and reopen SwitchNest to use the update."

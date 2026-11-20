@@ -8,7 +8,7 @@ import os
 import sys
 import subprocess
 import threading
-from v8 import updates, autostart
+from v8 import updates, autostart, preferences
 from pathlib import Path
 from v8.ftp_browser import Browser
 from PySide6.QtCore import QObject, Signal, Slot, Property, QLockFile, QStandardPaths, QProcess, QTimer, QUrl
@@ -24,6 +24,9 @@ class Controller(QObject):
     updateLog = Signal(str)
     updateInstalled = Signal(str)
     updateAvailable = Signal(str)
+    updateProgress = Signal(str)
+    preferencesChanged = Signal()
+    rollbackCompleted = Signal()
     autostartChanged = Signal()
 
     def __init__(self):
@@ -33,7 +36,9 @@ class Controller(QObject):
         self.process.readyReadStandardOutput.connect(self.read_stdout)
         self.process.readyReadStandardError.connect(self.read_stderr)
         self._process_output = []
+        self._update_line_buffer = ""
         self.update_installed = False
+        self.rollback_completed = False
         self.process.errorOccurred.connect(self.failed)
         self.kind = ""
         self.latestUpdateTag = None
@@ -42,6 +47,45 @@ class Controller(QObject):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.refresh)
         self.timer.start(10000)
+
+    @Property(str, notify=preferencesChanged)
+    def updatePreferences(self):
+        return json.dumps(preferences.load())
+
+    @Slot(str, bool)
+    def set_update_preference(self, key, value):
+        try:
+            preferences.save(key, value)
+            self.preferencesChanged.emit()
+        except (ValueError, OSError, RuntimeError) as exc:
+            self.message.emit("Unable to save update setting: " + str(exc))
+
+    @Slot()
+    def copy_diagnostics(self):
+        if not hasattr(self, "last_report"):
+            self.message.emit("Refresh diagnostics first.")
+            return
+        QGuiApplication.clipboard().setText(self.last_report)
+        self.message.emit("Diagnostics copied. Review IP and MAC addresses before sharing.")
+
+    @Property(bool, notify=busyChanged)
+    def rollbackAvailable(self):
+        base = Path.home() / ".local/share/switchnest"
+        return (base / "previous").is_symlink() and (base / "current").is_symlink()
+
+    @Slot()
+    def rollback_update(self):
+        if self.process.state() != QProcess.NotRunning or getattr(self, "installing_update", False):
+            return
+        if not self.rollbackAvailable:
+            self.message.emit("No previous version is available.")
+            return
+        self.kind = "rollback"
+        self._process_output = []
+        self.busyChanged.emit(True)
+        self.updateLog.emit("Restoring previous SwitchNest version...\n")
+        self.process.setWorkingDirectory(str(Path(__file__).resolve().parent.parent))
+        self.process.start(sys.executable, ["-m", "v8.install", "rollback"])
 
     @Property(bool, notify=autostartChanged)
     def startOnLogin(self):
@@ -68,7 +112,7 @@ class Controller(QObject):
             except Exception as exc: result=str(exc)
             if result.startswith("Update available: "):
                 self.latestUpdateTag = result.removeprefix("Update available: ").strip()
-            if channel == "stable" and self.latestUpdateTag and self.latestUpdateTag != self.notifiedUpdateTag:
+            if channel == "stable" and preferences.load()["show_update_popup"] and self.latestUpdateTag and self.latestUpdateTag != self.notifiedUpdateTag:
                 self.notifiedUpdateTag = self.latestUpdateTag
                 self.updateAvailable.emit(self.latestUpdateTag)
             self.updateResult.emit(result)
@@ -86,27 +130,34 @@ class Controller(QObject):
         self.installing_update = True
         self.update_installed = False
         self._process_output = []
+        self._update_line_buffer = ""
         self.kind = "install_update"
         self.updateLog.emit("Starting update download and installation...\n")
         self.busyChanged.emit(True)
         self.process.setWorkingDirectory(str(Path(__file__).resolve().parent.parent))
-        self.process.start(sys.executable, ["-m", "v8.in_app_update"])
+        self.process.start(sys.executable, ["-u", "-m", "v8.in_app_update"])
         
     def read_stdout(self):
         data = bytes(self.process.readAllStandardOutput()).decode(errors="replace")
         self._process_output.append(data)
         if self.kind == "install_update":
-            self.updateLog.emit(data)
+            self._update_line_buffer += data
+            while "\n" in self._update_line_buffer:
+                line, self._update_line_buffer = self._update_line_buffer.split("\n", 1)
+                if line.startswith("SWITCHNEST_PROGRESS:"):
+                    self.updateProgress.emit(line[len("SWITCHNEST_PROGRESS:"):])
+                else:
+                    self.updateLog.emit(line + "\n")
 
     def read_stderr(self):
         data = bytes(self.process.readAllStandardError()).decode(errors="replace")
         self._process_output.append(data)
-        if self.kind == "install_update":
+        if self.kind in ("install_update", "rollback"):
             self.updateLog.emit(data)
 
     @Slot()
     def restart_after_update(self):
-        if not self.update_installed or self.process.state() != QProcess.NotRunning:
+        if not (self.update_installed or self.rollback_completed) or self.process.state() != QProcess.NotRunning:
             self.message.emit("No completed update is ready to restart.")
             return
         launcher = Path.home() / ".local/share/switchnest/launch"
@@ -233,6 +284,7 @@ class Controller(QObject):
         kind = self.kind
         self._process_output = []
         if kind == "refresh" and code == 0:
+            self.last_report = output
             self.refreshed.emit(output)
         else:
             self.message.emit(("Completed: " if code == 0 else "Failed: ") + output)
@@ -244,6 +296,9 @@ class Controller(QObject):
                 self.updateInstalled.emit(output.split("Installed v")[-1].split(". Close")[0].strip())
             else:
                 self.updateLog.emit("\nUpdate failed. Check the output above.\n")
+        if kind == "rollback" and code == 0 and status == QProcess.NormalExit:
+            self.rollback_completed = True
+            self.rollbackCompleted.emit()
         if kind == "action":
             QTimer.singleShot(0, self.refresh)
 
@@ -267,7 +322,8 @@ def main():
     if not engine.rootObjects():
         return 1
     QTimer.singleShot(0, controller.refresh)
-    QTimer.singleShot(1500, lambda: controller.check_updates("stable"))
+    if preferences.load()["check_at_startup"]:
+        QTimer.singleShot(1500, lambda: controller.check_updates("stable" if preferences.load()["stable_only"] else "development"))
     return app.exec()
 
 if __name__ == "__main__":
