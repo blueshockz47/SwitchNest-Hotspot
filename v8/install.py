@@ -8,7 +8,7 @@ import subprocess
 import sys
 import uuid
 
-VERSION = "8.0.9"
+VERSION = "8.1.0"
 ROOT = Path.home()/".local/share/switchnest"
 SOURCE = Path(__file__).resolve().parent.parent
 
@@ -74,7 +74,7 @@ def install():
         python=release/"venv/bin/python"
         run(python,"-m","pip","install","PySide6>=6.7,<7")
         run(python,"-m","compileall","-q",release/"v8")
-        subprocess.run([str(python),"-m","unittest","-v","v8.test_ftp_tree","v8.test_install","v8.test_updates","v8.test_autostart","v8.test_v806","v8.test_v807","v8.test_v808","v8.test_v809"],cwd=release,check=True)
+        subprocess.run([str(python),"-m","unittest","-v","v8.test_ftp_tree","v8.test_install","v8.test_updates","v8.test_autostart","v8.test_v806","v8.test_v807","v8.test_v808","v8.test_v809","v8.test_v810"],cwd=release,check=True)
         run(python,"-c","from PySide6 import QtCore, QtGui, QtQml; print(QtCore.qVersion())")
         old=current("current")
         launcher()

@@ -269,7 +269,7 @@ ApplicationWindow {
                 NavButton { text: "Settings"; page: 5 }
                 NavButton { text: root.updateStatus.startsWith("Update available") ? "Updates •" : "Updates"; page: 6 }
                 Item { Layout.fillHeight: true }
-                Label { text: "v8.0.8"; color: root.accent }
+                Label { text: "v8.1.0"; color: root.accent }
                 Label { text: "Linux stable"; color: root.muted; font.pixelSize: 12 }
             }
         }
@@ -395,7 +395,13 @@ ApplicationWindow {
                     Label { text: "Stopping Sunshine disconnects existing streams."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Item { Layout.fillHeight: true }
                 }
-                FtpPage {}
+                ColumnLayout {
+                    TabBar { id: fileTabs; Layout.fillWidth: true; TabButton { text: "FTP File Manager" }; TabButton { text: "Homebrew Manager" } }
+                    StackLayout { Layout.fillWidth: true; Layout.fillHeight: true; currentIndex: fileTabs.currentIndex
+                        FtpPage {}
+                        HomebrewPage {}
+                    }
+                }
                 ColumnLayout {
                     RowLayout {
                         Label { text: "Live diagnostics (10-second refresh)"; font.pixelSize: 20 }
@@ -517,7 +523,7 @@ ApplicationWindow {
                 }
                 ColumnLayout {
                     Label { text: "Software updates"; font.pixelSize: 22 }
-                    Label { text: "Installed: v8.0.9"; color: root.accent }
+                    Label { text: "Installed: v8.1.0"; color: root.accent }
                     ComboBox { id: channel; model: ["Stable", "Development"]; enabled: !root.updateBusy }
                     Label { text: root.updateStatus; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Button { text: root.updateBusy ? "Checking..." : "Check for Updates"; enabled: !root.updateBusy; onClicked: controller.check_updates(channel.currentIndex===0?"stable":"development") }
