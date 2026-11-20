@@ -215,7 +215,7 @@ class Controller(QObject):
 
     def failed(self, error):
         if self.kind == "install_update":
-            self.updateLog.emit("Update process error: " + self.process.errorString() + "\\n")
+            self.updateLog.emit("Update process error: " + self.process.errorString() + "\n")
         if self.kind == "install_update":
             self.installing_update = False
         self.message.emit(self.process.errorString())
@@ -238,7 +238,7 @@ class Controller(QObject):
                 self.update_installed = True
                 self.updateInstalled.emit(output.split("Installed v")[-1].split(". Close")[0].strip())
             else:
-                self.updateLog.emit("\\nUpdate failed. Check the output above.\\n")
+                self.updateLog.emit("\nUpdate failed. Check the output above.\n")
         if kind == "action":
             QTimer.singleShot(0, self.refresh)
 
