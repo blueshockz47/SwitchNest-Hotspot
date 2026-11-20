@@ -374,8 +374,12 @@ ApplicationWindow {
                         TextArea { readOnly: true; text: JSON.stringify(root.report, null, 2); wrapMode: TextEdit.Wrap; selectByMouse: true }
                     }
                 }
-                ColumnLayout {
-                    Label { text: "Settings"; font.pixelSize: 22 }
+                ScrollView {
+                    clip: true
+                    contentWidth: availableWidth
+                    ColumnLayout {
+                        width: parent.width
+                        Label { text: "Settings"; font.pixelSize: 22 }
                     CheckBox {
                         id: launchAtLogin
                         text: "Start SwitchNest on desktop login"
@@ -415,6 +419,7 @@ ApplicationWindow {
                     CheckBox { text: "Show update available popup"; checked: root.updatePrefs.show_update_popup; onToggled: controller.set_update_preference("show_update_popup", checked) }
                     CheckBox { text: "Stable releases only for startup checks"; checked: root.updatePrefs.stable_only; onToggled: controller.set_update_preference("stable_only", checked) }
                     Item { Layout.fillHeight: true }
+                    }
                 }
                 ColumnLayout {
                     Label { text: "Software updates"; font.pixelSize: 22 }
