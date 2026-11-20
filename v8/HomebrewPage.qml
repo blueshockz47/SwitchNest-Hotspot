@@ -19,6 +19,7 @@ ColumnLayout {
     property string transferStatus: ""
     property bool installingZip: false
     property string statusText: "Loading the curated Switch 2 homebrew catalog..."
+    property string activeCategory: "All"
     spacing: 8
     Component.onCompleted: controller.homebrew_search("", "All")
     Connections {
@@ -36,7 +37,7 @@ ColumnLayout {
         function onHomebrewResult(raw) {
             try {
                 let data = JSON.parse(raw)
-                if (data.kind === "search") { home.results = data.items; home.assets = []; home.readyZip = ""; home.statusText = data.items.length + " community-listed Switch 2 projects. Browse-only entries cannot be installed automatically." }
+                if (data.kind === "search") { home.results = data.items; home.assets = []; home.readyZip = ""; home.activeCategory = data.category || "All"; home.statusText = data.items.length + " projects in " + home.activeCategory + ". NRO: FTP install; ZIP: manual download." }
                 else if (data.kind === "assets") { home.selectedRepo = data.repo; home.assets = data.assets; home.readyZip = ""; home.statusText = "Release " + data.version + " — verified NRO: install over FTP; verified ZIP: download only and open folder" }
                 else if (data.kind === "download_only_ready") {
                     home.downloadedDirectory = data.directory
@@ -66,7 +67,13 @@ ColumnLayout {
     Label { text: (home.ftpState.busy ? "Connecting / FTP operation in progress" : home.ftpState.connected ? "Connected to " + home.ftpState.host + ":" + home.ftpState.port : "Not connected") + " — " + home.ftpState.status; color: home.ftpState.connected ? "#22c55e" : "#ef4444"; wrapMode: Text.Wrap; Layout.fillWidth: true }
     RowLayout {
         TextField { id: searchBox; placeholderText: "Search Switch 2 homebrew"; Layout.fillWidth: true; onAccepted: controller.homebrew_search(text, categoryBox.currentText) }
-        ComboBox { id: categoryBox; model: ["All", "Tools", "Games", "Streaming", "Emulation", "Fun", "Media"]; onActivated: controller.homebrew_search(searchBox.text, currentText) }
+        ComboBox {
+            id: categoryBox
+            model: ["All", "Tools", "Games", "Streaming", "Emulation", "Fun", "Media"]
+            onActivated: function(index) {
+                controller.homebrew_search(searchBox.text, categoryBox.model[index])
+            }
+        }
         Button { text: "Search"; enabled: !home.working; onClicked: controller.homebrew_search(searchBox.text, categoryBox.currentText) }
         Button { text: "Show all"; enabled: !home.working; onClicked: { searchBox.text = ""; categoryBox.currentIndex = 0; controller.homebrew_search("", "All") } }
     }
