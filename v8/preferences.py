@@ -3,7 +3,7 @@ import json
 import os
 from pathlib import Path
 
-DEFAULTS = {"check_at_startup": True, "show_update_popup": True, "stable_only": True}
+DEFAULTS = {"check_at_startup": True, "show_update_popup": True, "stable_only": True, "fullscreen_on_start": False}
 PATH = Path.home() / ".config" / "switchnest" / "preferences.json"
 
 def load():
