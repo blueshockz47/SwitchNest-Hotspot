@@ -19,6 +19,8 @@ ApplicationWindow {
     property bool updateBusy: false
     property string updateStatus: "Checking for published GitHub releases..."
     property string notice: "Waiting for diagnostics"
+    property string activityLog: "Waiting for activity...\\n"
+    property bool updateInProgress: false
     property var hotspot: report.hotspot || ({state: "unknown"})
     property string http: report.http_service ? report.http_service.output : "Unknown"
     property string dns: report.dns_service ? report.dns_service.output : "Unknown"
@@ -30,10 +32,35 @@ ApplicationWindow {
             try { root.report = JSON.parse(raw) }
             catch (e) { root.notice = "Invalid diagnostics response" }
         }
-        function onMessage(message) { root.notice = message }
+        function onMessage(message) { root.notice = message; root.activityLog += message + "\\n" }
+        function onUpdateLog(chunk) { root.activityLog += chunk }
+        function onUpdateInstalled(version) { root.updateInProgress = false; restartDialog.open() }
         function onBusyChanged(value) { root.busy = value }
         function onUpdateBusy(value) { root.updateBusy = value }
         function onUpdateResult(value) { root.updateStatus = value }
+    }
+    Dialog {
+        id: restartDialog
+        title: "SwitchNest update complete"
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(460, root.width - 50)
+        closePolicy: Popup.NoAutoClose
+        standardButtons: Dialog.NoButton
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 14
+            Label {
+                text: "The update was installed successfully. Restart SwitchNest to use the new version."
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                Button { text: "Later"; onClicked: restartDialog.close() }
+                Button { text: "Restart SwitchNest"; highlighted: true; onClicked: controller.restart_after_update() }
+            }
+        }
     }
     component Panel: Rectangle {
         color: "#1b222d"
@@ -70,7 +97,7 @@ ApplicationWindow {
                 NavButton { text: "Settings"; page: 5 }
                 NavButton { text: root.updateStatus.startsWith("Update available") ? "Updates •" : "Updates"; page: 6 }
                 Item { Layout.fillHeight: true }
-                Label { text: "v8.0.3"; color: root.accent }
+                Label { text: "v8.0.4"; color: root.accent }
                 Label { text: "Linux stable"; color: root.muted; font.pixelSize: 12 }
             }
         }
@@ -211,11 +238,11 @@ ApplicationWindow {
                 }
                 ColumnLayout {
                     Label { text: "Software updates"; font.pixelSize: 22 }
-                    Label { text: "Installed: v8.0.3"; color: root.accent }
+                    Label { text: "Installed: v8.0.4"; color: root.accent }
                     ComboBox { id: channel; model: ["Stable", "Development"]; enabled: !root.updateBusy }
                     Label { text: root.updateStatus; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Button { text: root.updateBusy ? "Checking..." : "Check for Updates"; enabled: !root.updateBusy; onClicked: controller.check_updates(channel.currentIndex===0?"stable":"development") }
-                    Button { text: "Download & Install Update"; highlighted: true; visible: root.updateStatus.startsWith("Update available: ") && channel.currentIndex === 0; enabled: !root.updateBusy && !root.busy; onClicked: controller.install_update() }
+                    Button { text: "Download & Install Update"; highlighted: true; visible: root.updateStatus.startsWith("Update available: ") && channel.currentIndex === 0; enabled: !root.updateBusy && !root.busy; onClicked: { root.activityLog = "Preparing update...\\n"; root.updateInProgress = true; controller.install_update() } }
                     Button { text: "View Update on GitHub"; visible: root.updateStatus.startsWith("Update available: "); onClicked: controller.download_update() }
                     Button { text: "Open GitHub releases"; onClicked: controller.open_updates(false) }
                     Button { text: "Open development downloads"; onClicked: controller.open_updates(true) }
@@ -225,13 +252,13 @@ ApplicationWindow {
             }
             Rectangle {
                 Layout.fillWidth: true
-                implicitHeight: 65
+                implicitHeight: 190
                 color: "#1b222d"
                 radius: 8
                 ScrollView {
                     anchors.fill: parent
                     anchors.margins: 8
-                    TextArea { text: root.notice; readOnly: true; selectByMouse: true; wrapMode: TextEdit.Wrap; color: root.muted; font.pixelSize: 13 }
+                    TextArea { text: root.activityLog; readOnly: true; selectByMouse: true; wrapMode: TextEdit.Wrap; color: root.muted; font.pixelSize: 13 }
                 }
             }
         }
