@@ -27,7 +27,7 @@ ColumnLayout {
         function onHomebrewResult(raw) {
             try {
                 let data = JSON.parse(raw)
-                if (data.kind === "search") { home.results = data.items; home.assets = []; home.readyZip = ""; home.statusText = data.items.length + " Switch 2 candidate repositories found (not compatibility-verified)" }
+                if (data.kind === "search") { home.results = data.items; home.assets = []; home.readyZip = ""; home.statusText = data.items.length + " community-listed Switch 2 projects. Browse-only entries cannot be installed automatically." }
                 else if (data.kind === "assets") { home.selectedRepo = data.repo; home.assets = data.assets; home.readyZip = ""; home.statusText = "Release " + data.version + " — select a ZIP to download and preview" }
                 else if (data.kind === "zip_ready") {
                     home.readyZip = data.name
@@ -42,13 +42,15 @@ ColumnLayout {
     Label { text: "Switch 2 Homebrew Manager"; font.pixelSize: 22; font.bold: true }
     Label { text: "Only Switch 2 candidate projects are listed. NRO installation requires a GitHub SHA-256 digest and explicit confirmation. ZIPs require a verified download followed by separate installation confirmation."; wrapMode: Text.Wrap; Layout.fillWidth: true }
     RowLayout {
-        TextField { id: searchBox; placeholderText: "Search Switch 2 homebrew"; Layout.fillWidth: true; onAccepted: controller.homebrew_search(text) }
-        Button { text: "Search"; enabled: !home.working; onClicked: controller.homebrew_search(searchBox.text) }
+        TextField { id: searchBox; placeholderText: "Search Switch 2 homebrew"; Layout.fillWidth: true; onAccepted: controller.homebrew_search(text, categoryBox.currentText) }
+        ComboBox { id: categoryBox; model: ["All", "Tools", "Games", "Streaming", "Emulation", "Fun", "Media"]; onActivated: controller.homebrew_search(searchBox.text, currentText) }
+        Button { text: "Search"; enabled: !home.working; onClicked: controller.homebrew_search(searchBox.text, categoryBox.currentText) }
     }
     Label { text: home.statusText; wrapMode: Text.Wrap; Layout.fillWidth: true }
+    Label { text: "Catalog source: https://ouncebrew.github.io/hblist/ — listings are not security or compatibility verification."; wrapMode: Text.Wrap; Layout.fillWidth: true }
     RowLayout {
         Layout.fillWidth: true
-        Label { text: "Repositories"; font.bold: true; Layout.fillWidth: true }
+        Label { text: "Switch 2 projects"; font.bold: true; Layout.fillWidth: true }
         Label { text: "Release assets"; font.bold: true; Layout.fillWidth: true }
     }
     RowLayout {
@@ -61,8 +63,11 @@ ColumnLayout {
             model: home.results
             delegate: ItemDelegate {
                 width: ListView.view.width
-                text: modelData.repo
-                onClicked: { home.selectedRepo = modelData.repo; controller.homebrew_releases(modelData.repo) }
+                text: modelData.name + " [" + modelData.category + "] — " + modelData.status
+                onClicked: {
+                    if (modelData.repo) { home.selectedRepo = modelData.repo; controller.homebrew_releases(modelData.repo) }
+                    else { home.assets = []; home.statusText = modelData.name + " is browse-only. See the community Switch 2 Homebrew List for its official download link; no FTP installation is enabled." }
+                }
             }
         }
         ListView {
