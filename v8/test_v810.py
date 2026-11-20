@@ -6,6 +6,15 @@ from unittest.mock import patch
 from v8 import homebrew
 
 class HomebrewTests(unittest.TestCase):
+    def test_manual_install_warnings(self):
+        entries = {item["name"]: item for item in homebrew.catalog_search()}
+        self.assertEqual(len(entries), 28)
+        self.assertTrue(entries["FTPD Plugin"]["manual"])
+        self.assertIn("manual", entries["FTPD Plugin"]["status"].lower())
+        self.assertFalse(entries["RetroArch"]["manual"])
+        self.assertIn("ZIP", entries["RetroArch"]["status"])
+        self.assertTrue(all(item["warning"] for item in entries.values()))
+
     def test_curated_release_sources_and_plugin_exclusion(self):
         names = {row["name"]: row for row in homebrew.catalog_search()}
         self.assertEqual(names["KaiTube"]["repo"], "Sank-kab/KaiTube")
