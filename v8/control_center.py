@@ -9,7 +9,7 @@ import sys
 import subprocess
 import threading
 import time
-from v8 import updates, autostart, preferences, wifi_reliability, stability, homebrew
+from v8 import updates, autostart, preferences, wifi_reliability, stability, homebrew, homebrew_zip
 from pathlib import Path
 from v8.ftp_browser import Browser
 from PySide6.QtCore import QObject, Signal, Slot, Property, QLockFile, QStandardPaths, QProcess, QTimer, QUrl
@@ -39,6 +39,7 @@ class Controller(QObject):
     selfTestResult = Signal(str)
     homebrewResult = Signal(str)
     homebrewBusy = Signal(bool)
+    homebrewProgress = Signal(str)
 
     def __init__(self):
         super().__init__()
@@ -123,22 +124,17 @@ class Controller(QObject):
         self.process.start(sys.executable, ["-m", "v8.install", "repair"])
 
 
-    @Slot(str)
-    def homebrew_search(self, query):
-        if getattr(self, "_homebrew_busy", False):
-            return
-        self._homebrew_busy = True
-        self.homebrewBusy.emit(True)
-        def worker():
-            try:
-                rows = homebrew.discover(query)
-                self.homebrewResult.emit(json.dumps({"kind": "search", "items": rows}))
-            except Exception as exc:
-                self.homebrewResult.emit(json.dumps({"kind": "error", "message": str(exc)[:200]}))
-            finally:
-                self._homebrew_busy = False
-                self.homebrewBusy.emit(False)
-        threading.Thread(target=worker, daemon=True).start()
+    @Slot(str, str)
+    def homebrew_search(self, query, category):
+        """Local catalog filtering is immediate and must not be dropped during downloads."""
+        try:
+            rows = homebrew.catalog_search(query, category)
+            self.homebrewResult.emit(json.dumps({
+                "kind": "search", "items": rows, "category": category,
+                "query": query}))
+        except Exception as exc:
+            self.homebrewResult.emit(json.dumps({
+                "kind": "error", "message": str(exc)[:200]}))
 
     @Slot(str)
     def homebrew_releases(self, repo):
@@ -180,7 +176,13 @@ class Controller(QObject):
                 if not state.get("connected") or state.get("busy"):
                     raise RuntimeError("Connect the FTP browser and finish any active transfer first")
                 destination = "/switch/" + asset["name"]
-                message = homebrew.install_nro(asset, destination, state["host"], state["port"], confirmed=True)
+                def report(stage, done, total):
+                    self.homebrewProgress.emit(json.dumps({
+                        "status": stage, "name": asset["name"],
+                        "done": done, "total": total}))
+                message = homebrew.install_nro(
+                    asset, destination, state["host"], state["port"],
+                    confirmed=True, progress=report)
                 self.homebrewResult.emit(json.dumps({"kind": "installed", "message": message}))
             except Exception as exc:
                 self.homebrewResult.emit(json.dumps({"kind": "error", "message": str(exc)[:250]}))
@@ -188,6 +190,104 @@ class Controller(QObject):
                 self._homebrew_busy = False
                 self.homebrewBusy.emit(False)
         threading.Thread(target=worker, daemon=True).start()
+
+    @Slot(str, str)
+    def homebrew_download_only(self, repo, name):
+        """Download a GitHub release asset locally; never invoke FTP or install."""
+        if getattr(self, "_homebrew_busy", False):
+            return
+        self._homebrew_busy = True
+        self.homebrewBusy.emit(True)
+        def worker():
+            try:
+                if repo not in homebrew.SWITCH2_CANDIDATES:
+                    raise ValueError("Repository is not in the curated Switch 2 catalog")
+                asset = next(a for a in homebrew.release_assets(repo)["assets"]
+                             if a["name"] == name)
+                if not asset.get("digest"):
+                    raise ValueError("Download disabled: GitHub SHA-256 digest unavailable")
+                if name.lower().endswith(".zip"):
+                    path = homebrew_zip.download_zip(asset, progress=lambda done, total: self.homebrewProgress.emit(json.dumps({"status": "Downloading", "name": name, "done": done, "total": total})))
+                elif name.lower().endswith(".nro"):
+                    directory = Path.home() / ".cache" / "switchnest" / "homebrew" / "downloads"
+                    directory.mkdir(parents=True, exist_ok=True)
+                    import tempfile
+                    with tempfile.TemporaryDirectory(prefix="download-", dir=directory) as temp:
+                        fetched = homebrew.download_asset(asset, temp, progress=lambda done, total: self.homebrewProgress.emit(json.dumps({"status": "Downloading", "name": name, "done": done, "total": total})))
+                        target = directory / name
+                        if target.exists():
+                            import hashlib
+                            with target.open("rb") as stream:
+                                if hashlib.file_digest(stream, "sha256").hexdigest() != asset["digest"][7:].lower():
+                                    raise FileExistsError("Different file already exists in Downloads cache")
+                        else:
+                            os.replace(fetched, target)
+                        path = target
+                else:
+                    raise ValueError("Download-only supports verified ZIP and NRO releases")
+                self.homebrewResult.emit(json.dumps({
+                    "kind": "download_only_ready", "name": name,
+                    "directory": str(path.parent), "path": str(path),
+                    "message": "Download verified. No files were installed or uploaded."}))
+            except Exception as exc:
+                self.homebrewResult.emit(json.dumps({"kind": "error", "message": str(exc)[:250]}))
+            finally:
+                self._homebrew_busy = False
+                self.homebrewBusy.emit(False)
+        threading.Thread(target=worker, daemon=True).start()
+
+    @Slot(str)
+    def homebrew_open_download_directory(self, directory):
+        base = (Path.home() / ".cache" / "switchnest" / "homebrew").resolve()
+        candidate = Path(directory).resolve()
+        if not candidate.is_dir() or not candidate.is_relative_to(base):
+            self.homebrewResult.emit(json.dumps({"kind": "error", "message": "Invalid download directory"}))
+            return
+        if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(candidate))):
+            self.homebrewResult.emit(json.dumps({"kind": "error", "message": "Could not open file manager"}))
+
+    @Slot(str, str)
+    def homebrew_download_zip(self, repo, name):
+        if getattr(self, "_homebrew_busy", False):
+            return
+        self._homebrew_busy = True
+        self.homebrewBusy.emit(True)
+        def worker():
+            try:
+                if repo not in homebrew.SWITCH2_CANDIDATES:
+                    raise ValueError("Repository is not in the Switch 2 catalog")
+                asset = next(a for a in homebrew.release_assets(repo)["assets"]
+                             if a["name"] == name)
+                path = homebrew_zip.download_zip(asset)
+                plan = homebrew_zip.inspect_zip(path)
+                self._homebrew_zip = {"repo": repo, "name": name,
+                                      "digest": asset["digest"], "path": str(path),
+                                      "plan": plan}
+                self.homebrewResult.emit(json.dumps({
+                    "kind": "zip_ready", "repo": repo, "name": name,
+                    "count": plan["count"], "bytes": plan["bytes"],
+                    "sample": plan["sample"]}))
+            except Exception as exc:
+                self.homebrewResult.emit(json.dumps({"kind": "error", "message": str(exc)[:250]}))
+            finally:
+                self._homebrew_busy = False
+                self.homebrewBusy.emit(False)
+        threading.Thread(target=worker, daemon=True).start()
+
+    @Slot(str, str, bool)
+    def homebrew_install_zip(self, repo, name, confirmed):
+        """ZIP installation is intentionally disabled; use manual download."""
+        self.homebrewResult.emit(json.dumps({
+            "kind": "error",
+            "message": "ZIP installation is manual-only. Download the ZIP and open its folder."
+        }))
+
+    @Slot()
+    def homebrew_cancel_install(self):
+        event = getattr(self, "_homebrew_cancel", None)
+        if event is not None and getattr(self, "_homebrew_busy", False):
+            event.set()
+            self.homebrewProgress.emit(json.dumps({"status": "Cancelling after current FTP operation..."}))
 
     @Slot()
     def copy_diagnostics(self):
