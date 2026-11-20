@@ -23,7 +23,7 @@ ApplicationWindow {
     property string activityLog: "Waiting for activity...\n"
     property bool updateInProgress: false
     property string availableVersion: ""
-    property var updatePrefs: JSON.parse(controller.updatePreferences)
+    property var updatePrefs: controller ? JSON.parse(controller.updatePreferences) : ({fullscreen_on_start: false})
     property var wifiInfo: ({})
     property string wifiName: ""
     property string wifiPassword: ""
@@ -440,7 +440,7 @@ ApplicationWindow {
                     CheckBox {
                         id: launchAtLogin
                         text: "Start SwitchNest on desktop login"
-                        checked: controller.startOnLogin
+                        checked: controller ? controller.startOnLogin : false
                         onToggled: controller.set_autostart(checked)
                         Connections {
                             target: controller
@@ -543,7 +543,7 @@ ApplicationWindow {
                     Label { text: "Stage: " + root.updateStage; color: root.muted }
                     ProgressBar { Layout.fillWidth: true; visible: root.updateInProgress && root.updateStage === "download"; from: 0; to: 100; value: root.downloadPercent < 0 ? 0 : root.downloadPercent; indeterminate: root.downloadPercent < 0 }
                     Label { visible: root.updateInProgress && root.updateStage === "download"; text: root.downloadedMB.toFixed(1) + " MB" + (root.totalMB > 0 ? " / " + root.totalMB.toFixed(1) + " MB (" + root.downloadPercent.toFixed(0) + "%)" : " downloaded"); color: root.muted }
-                    Button { text: "Restore Previous Version"; enabled: !root.busy && !root.updateBusy && controller.rollbackAvailable; onClicked: rollbackDialog.open() }
+                    Button { text: "Restore Previous Version"; enabled: !root.busy && !root.updateBusy && controller && controller.rollbackAvailable; onClicked: rollbackDialog.open() }
                     Button { text: "Open GitHub releases"; onClicked: controller.open_updates(false) }
                     Button { text: "Open development downloads"; onClicked: controller.open_updates(true) }
                     Label { text: "Private repository: sign in using GitHub CLI for automatic lookup, or use your browser. Download & Install uses a GitHub release ZIP with a published SHA-256 digest. It installs without sudo and keeps the previous version for rollback. Restart SwitchNest after installation."; wrapMode: Text.Wrap; Layout.fillWidth: true; color: root.muted }
