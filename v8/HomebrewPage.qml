@@ -40,8 +40,10 @@ ColumnLayout {
         selectedRepo = actionRepo
         selectedAsset = asset.name
         if (action === "download" || action === "zip") downloadOnlyDialog.open()
-        else if (ftpState.connected) installDialog.open()
-        else statusText = "Connect FTP before installing NRO."
+        else if (action === "install") {
+            if (ftpState.connected && !ftpState.busy) installDialog.open()
+            else statusText = "Connect to your Switch 2 FTP server above, then retry Download & Install. Only verified single-file NRO packages can be uploaded to /switch/."
+        }
     }
     spacing: 4
     Component.onCompleted: controller.homebrew_search("", "All")
@@ -65,7 +67,7 @@ ColumnLayout {
                     if (data.repo !== home.actionRepo || !home.action) return
                     home.choices = data.assets.filter(function(asset) {
                         let name = asset.name.toLowerCase()
-                        return !!asset.digest && (home.action === "install" ? name.endsWith(".nro") : home.action === "zip" ? name.endsWith(".zip") : (name.endsWith(".nro") || name.endsWith(".zip")))
+                        return !!asset.digest && (home.action === "install" ? name.endsWith(".nro") : (name.endsWith(".nro") || name.endsWith(".zip")))
                     })
                     if (home.choices.length === 1) {
                         home.useAsset(home.choices[0])
@@ -196,9 +198,9 @@ ColumnLayout {
                         onTriggered: home.requestRelease("download")
                     }
                     MenuItem {
-                        text: "Download & Install"
+                        text: "Download && Install"
                         width: contextMenu.width
-                        enabled: !!home.actionRepo && home.ftpState.connected && !home.working
+                        enabled: !!home.actionRepo && !home.working
                         onTriggered: home.requestRelease("install")
                     }
                 }
