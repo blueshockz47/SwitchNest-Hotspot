@@ -9,7 +9,7 @@ ColumnLayout {
     property string selectedRepo: ""
     property string selectedAsset: ""
     property bool working: false
-    property string statusText: "Search GitHub for Switch 2 homebrew. Search results are not compatibility verification."
+    property string statusText: "Search the curated Switch 2 homebrew catalog. Listings are not compatibility verification."
     spacing: 8
     Connections {
         target: controller
@@ -17,16 +17,16 @@ ColumnLayout {
         function onHomebrewResult(raw) {
             try {
                 let data = JSON.parse(raw)
-                if (data.kind === "search") { home.results = data.items; home.assets = []; home.statusText = data.items.length + " repositories found (unverified by default)" }
+                if (data.kind === "search") { home.results = data.items; home.assets = []; home.statusText = data.items.length + " Switch 2 candidate repositories found (not compatibility-verified)" }
                 else if (data.kind === "assets") { home.selectedRepo = data.repo; home.assets = data.assets; home.statusText = "Release " + data.version + " — choose a verified NRO" }
                 else { home.statusText = data.message || "Unknown result" }
             } catch (e) { home.statusText = "Invalid homebrew response" }
         }
     }
     Label { text: "Switch 2 Homebrew Manager"; font.pixelSize: 22; font.bold: true }
-    Label { text: "GitHub results are untrusted. NRO installation requires a GitHub SHA-256 digest and explicit confirmation. Plugins and system files are not automatically installed."; wrapMode: Text.Wrap; Layout.fillWidth: true }
+    Label { text: "Only Switch 2 candidate projects are listed. Compatibility is not guaranteed. NRO installation requires a GitHub SHA-256 digest and explicit confirmation. Plugins and system files are not automatically installed."; wrapMode: Text.Wrap; Layout.fillWidth: true }
     RowLayout {
-        TextField { id: searchBox; placeholderText: "Search GitHub homebrew"; Layout.fillWidth: true; onAccepted: controller.homebrew_search(text) }
+        TextField { id: searchBox; placeholderText: "Search Switch 2 homebrew"; Layout.fillWidth: true; onAccepted: controller.homebrew_search(text) }
         Button { text: "Search"; enabled: !home.working; onClicked: controller.homebrew_search(searchBox.text) }
     }
     Label { text: home.statusText; wrapMode: Text.Wrap; Layout.fillWidth: true }
