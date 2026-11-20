@@ -400,8 +400,27 @@ ApplicationWindow {
                     TabBar {
                         id: fileTabs
                         Layout.fillWidth: true
-                        TabButton { text: "FTP File Manager" }
-                        TabButton { text: "Homebrew Manager" }
+                        TabButton {
+                            text: "FTP File Manager"
+                            contentItem: Label {
+                                text: "FTP File Manager"
+                                color: "#22c55e"
+                                font.bold: true
+                                font.pixelSize: 16
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+                        TabButton {
+                            text: "Homebrew Manager"
+                            contentItem: Row {
+                                spacing: 0
+                                anchors.centerIn: parent
+                                Label { text: "Home"; color: "#ef4444"; font.bold: true; font.pixelSize: 16 }
+                                Label { text: "brew"; color: "#3b82f6"; font.bold: true; font.pixelSize: 16 }
+                                Label { text: " Manager"; color: "#facc15"; font.bold: true; font.pixelSize: 16 }
+                            }
+                        }
                     }
                     StackLayout {
                         Layout.fillWidth: true
