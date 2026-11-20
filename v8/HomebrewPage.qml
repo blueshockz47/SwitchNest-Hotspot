@@ -8,6 +8,8 @@ ColumnLayout {
     property var results: []
     property var assets: []
     property string selectedRepo: ""
+    property bool selectedManual: false
+    property string selectedWarning: ""
     property string selectedAsset: ""
     property bool working: false
     property string readyZip: ""
@@ -63,6 +65,7 @@ ColumnLayout {
         Button { text: "Show all"; enabled: !home.working; onClicked: { searchBox.text = ""; categoryBox.currentIndex = 0; controller.homebrew_search("", "All") } }
     }
     Label { text: home.statusText; wrapMode: Text.Wrap; Layout.fillWidth: true }
+    Label { text: home.selectedWarning; visible: home.selectedWarning.length > 0; color: "#f59e0b"; font.bold: true; wrapMode: Text.Wrap; Layout.fillWidth: true }
     Label { text: "Catalog source: https://ouncebrew.github.io/hblist/ — listings are not security or compatibility verification."; wrapMode: Text.Wrap; Layout.fillWidth: true }
     RowLayout {
         Layout.fillWidth: true
@@ -81,6 +84,8 @@ ColumnLayout {
                 width: ListView.view.width
                 text: modelData.name + " [" + modelData.category + "] — " + modelData.status
                 onClicked: {
+                    home.selectedManual = modelData.manual
+                    home.selectedWarning = "⚠ " + modelData.warning
                     if (modelData.repo) { home.selectedRepo = modelData.repo; controller.homebrew_releases(modelData.repo) }
                     else { home.assets = []; home.statusText = modelData.name + " is browse-only. See the community Switch 2 Homebrew List for its official download link; no FTP installation is enabled." }
                 }
@@ -96,7 +101,10 @@ ColumnLayout {
                 text: modelData.name + (modelData.digest ? " (SHA-256)" : " (no digest)")
                 onClicked: {
                     home.selectedAsset = modelData.name
-                    if (modelData.name.toLowerCase().endsWith(".zip") && modelData.digest)
+                    if (home.selectedManual) {
+                        home.statusText = "DOWNLOAD ONLY / MANUAL INSTALL: this package requires project-specific instructions. Automatic FTP installation is disabled."
+                    }
+                    else if (modelData.name.toLowerCase().endsWith(".zip") && modelData.digest)
                         downloadZipDialog.open()
                     else if (modelData.name.toLowerCase().endsWith(".nro") && modelData.digest)
                         installDialog.open()
