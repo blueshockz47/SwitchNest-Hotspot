@@ -32,6 +32,7 @@ ApplicationWindow {
     property var wifiEventsList: []
     property var wifiHealthInfo: ({state: "unknown", issues: []})
     property string wifiRestartMessage: ""
+    property var selfTestInfo: ({checks: [], state: "not run"})
     property string wifiFeedback: "Select Check Compatibility to inspect the existing hotspot profile."
     property string updateStage: "idle"
     property real downloadPercent: -1
@@ -66,6 +67,10 @@ ApplicationWindow {
         }
         function onNetworkEvents(raw) {
             try { root.wifiEventsList = JSON.parse(raw) } catch(e) { root.wifiEventsList = [] }
+        }
+        function onSelfTestResult(raw) {
+            try { root.selfTestInfo = JSON.parse(raw) }
+            catch(e) { root.selfTestInfo = ({checks: [], state: "unavailable"}) }
         }
         function onWifiHealth(raw) {
             try { root.wifiHealthInfo = JSON.parse(raw) } catch(e) { root.wifiHealthInfo = ({state: "unknown", issues: []}) }
@@ -350,7 +355,7 @@ ApplicationWindow {
                                     model: root.clients
                                     delegate: Label {
                                         required property var modelData
-                                        text: modelData.mac + "  •  " + (modelData.ip || "IP unavailable") + "  •  " + modelData.status + (modelData.signal !== undefined ? "  •  " + modelData.signal + " dBm" : "") + (modelData.connected_seconds !== undefined ? "  •  " + modelData.connected_seconds + "s" : "")
+                                        text: modelData.mac + "  •  " + (modelData.ip || "IP unavailable") + "  •  " + modelData.status + (modelData.signal !== undefined ? "  •  " + modelData.signal + " dBm" : "") + (modelData.connected_seconds !== undefined ? "  •  " + modelData.connected_seconds + "s" : "") + (modelData.rx_bytes !== undefined ? "  •  RX " + modelData.rx_bytes + " B" : "") + (modelData.tx_bytes !== undefined ? "  •  TX " + modelData.tx_bytes + " B" : "")
                                         color: root.muted
                                         wrapMode: Text.Wrap
                                         Layout.fillWidth: true
@@ -465,6 +470,28 @@ ApplicationWindow {
                         model: Object.keys(root.wifiPresetMap)
                         onActivated: controller.wifi_select_preset(currentText)
                     }
+                    Label { text: "v8.0.9 Stability & Recovery"; font.bold: true }
+                    Label { text: "Recovery: one attempt after a failed confirmed restart; 120-second cooldown. Client disconnects do not trigger recovery."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                    RowLayout {
+                        Button { text: "Run Self-Test"; enabled: !root.busy; onClicked: controller.run_self_test() }
+                        Button { text: "Export Redacted Report"; enabled: !root.busy; onClicked: controller.export_diagnostics() }
+                    }
+                    Label { text: "Self-test: " + root.selfTestInfo.state; color: root.accent }
+                    Repeater {
+                        model: root.selfTestInfo.checks || []
+                        delegate: Label {
+                            required property var modelData
+                            text: modelData.label + ": " + modelData.result + (modelData.reason ? " — " + modelData.reason : "")
+                            color: root.muted
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                        }
+                    }
+                    RowLayout {
+                        Button { text: "Verify App"; enabled: !root.busy; onClicked: controller.verify_application() }
+                        Button { text: "Repair App Launcher"; enabled: !root.busy; onClicked: controller.repair_application() }
+                    }
+                    Label { text: "Self-test is read-only and cannot certify isolation or FTP reachability. Repair changes only the SwitchNest launcher."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Label { text: "Network event history (most recent 100 events)"; font.bold: true }
                     Button { text: "Refresh Events"; onClicked: controller.wifi_events() }
                     Repeater {
@@ -490,7 +517,7 @@ ApplicationWindow {
                 }
                 ColumnLayout {
                     Label { text: "Software updates"; font.pixelSize: 22 }
-                    Label { text: "Installed: v8.0.8"; color: root.accent }
+                    Label { text: "Installed: v8.0.9"; color: root.accent }
                     ComboBox { id: channel; model: ["Stable", "Development"]; enabled: !root.updateBusy }
                     Label { text: root.updateStatus; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Button { text: root.updateBusy ? "Checking..." : "Check for Updates"; enabled: !root.updateBusy; onClicked: controller.check_updates(channel.currentIndex===0?"stable":"development") }

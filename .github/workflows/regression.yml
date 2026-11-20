@@ -1,0 +1,21 @@
+name: SwitchNest regression tests
+on:
+  push:
+    branches: [main, 'feature/**', 'fix/**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile Python sources
+        run: python -m compileall -q v8
+      - name: Offline regression tests (no networking modifications)
+        run: python -m unittest -v v8.test_ftp_tree v8.test_install v8.test_updates v8.test_autostart v8.test_v806 v8.test_v807 v8.test_v808 v8.test_v809

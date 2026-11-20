@@ -8,7 +8,8 @@ import os
 import sys
 import subprocess
 import threading
-from v8 import updates, autostart, preferences, wifi_reliability
+import time
+from v8 import updates, autostart, preferences, wifi_reliability, stability
 from pathlib import Path
 from v8.ftp_browser import Browser
 from PySide6.QtCore import QObject, Signal, Slot, Property, QLockFile, QStandardPaths, QProcess, QTimer, QUrl
@@ -35,6 +36,7 @@ class Controller(QObject):
     wifiPresets = Signal(str)
     networkEvents = Signal(str)
     wifiHealth = Signal(str)
+    selfTestResult = Signal(str)
 
     def __init__(self):
         super().__init__()
@@ -53,6 +55,7 @@ class Controller(QObject):
         self.notifiedUpdateTag = None
         self.wifi_restart_phase = None
         self.wifi_recovery_attempted = False
+        self.wifi_last_recovery = None
         self.wifi_pending_restore = False
         self.wifi_expected_ssid = None
         self.timer = QTimer(self)
@@ -71,6 +74,47 @@ class Controller(QObject):
             self.preferencesChanged.emit()
         except (ValueError, OSError, RuntimeError) as exc:
             self.message.emit("Unable to save update setting: " + str(exc))
+
+    @Slot()
+    def run_self_test(self):
+        if not hasattr(self, "last_report"):
+            self.message.emit("Refresh diagnostics first.")
+            return
+        try:
+            result = stability.self_test(json.loads(self.last_report))
+            self.selfTestResult.emit(json.dumps(result))
+            self.message.emit("Self-test finished (read-only; FTP and isolation not proven).")
+        except (ValueError, TypeError) as exc:
+            self.message.emit("Self-test unavailable: " + str(exc))
+
+    @Slot()
+    def export_diagnostics(self):
+        if not hasattr(self, "last_report"):
+            self.message.emit("Refresh diagnostics first.")
+            return
+        try:
+            destination = Path.home()/"Downloads"/"switchnest-diagnostics-v8.0.9.json"
+            destination.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            stability.export_report(json.loads(self.last_report), destination)
+            self.message.emit("Redacted report saved to " + str(destination) + ". Review before sharing.")
+        except (OSError, ValueError, RuntimeError) as exc:
+            self.message.emit("Report export failed: " + str(exc))
+
+    @Slot()
+    def verify_application(self):
+        from v8 import install
+        result = install.verify_installation()
+        self.message.emit("Application verification: " + ("OK" if result["ok"] else ", ".join(result["issues"])))
+
+    @Slot()
+    def repair_application(self):
+        if self.process.state() != QProcess.NotRunning or self.wifi_restart_phase:
+            return
+        self.kind = "repair"
+        self._process_output = []
+        self.busyChanged.emit(True)
+        self.process.setWorkingDirectory(str(Path(__file__).resolve().parent.parent))
+        self.process.start(sys.executable, ["-m", "v8.install", "repair"])
 
     @Slot()
     def copy_diagnostics(self):
@@ -336,10 +380,14 @@ class Controller(QObject):
         self.wifi_event("restart_failed", detail)
         self.busyChanged.emit(False)
         # Only one automatic recovery attempt, and only after the user confirmed a restart.
-        if not self.wifi_recovery_attempted:
+        now = time.monotonic()
+        if stability.recovery_allowed(int(self.wifi_recovery_attempted), self.wifi_last_recovery, now):
             self.wifi_recovery_attempted = True
+            self.wifi_last_recovery = now
             self.wifi_pending_restore = True
             QTimer.singleShot(500, self.wifi_restore)
+        else:
+            self.wifiRestartProgress.emit("Recovery cooldown active or retry limit reached. Use manual controls.")
 
     @Slot()
     def wifi_status(self):
@@ -511,6 +559,8 @@ class Controller(QObject):
                 self.updateInstalled.emit(output.split("Installed v")[-1].split(". Close")[0].strip())
             else:
                 self.updateLog.emit("\nUpdate failed. Check the output above.\n")
+        if kind == "repair":
+            self.message.emit("Application repair completed." if code == 0 else "Application repair failed: " + output[:250])
         if kind == "rollback" and code == 0 and status == QProcess.NormalExit:
             self.rollback_completed = True
             self.rollbackCompleted.emit()
