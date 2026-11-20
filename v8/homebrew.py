@@ -34,20 +34,30 @@ def request_json(path, opener=urllib.request.urlopen):
         raise ValueError("GitHub response too large")
     return json.loads(data)
 
+# Explicit Switch 2 / kaiHEN candidate catalog. A catalog entry does not
+# verify its binaries or authorize automatic installation.
+SWITCH2_CANDIDATES = frozenset({"NerdsMcGee/retroarch-s2"})
+# Discovery limit for displaying release packages (no downloads implied).
+MAX_LISTING_BYTES = 2 * 1024 * 1024 * 1024
+
 def discover(query, fetch=request_json):
-    query = query.strip()[:90]
+    query = query.strip()[:90].casefold()
     if not query:
         return []
-    data = fetch("/search/repositories?" + urllib.parse.urlencode({
-        "q": query + " switch2 homebrew", "per_page": 25}))
     result = []
-    for item in data.get("items", []):
+    for repo in sorted(SWITCH2_CANDIDATES):
+        if query not in repo.casefold():
+            continue
+        item = fetch("/repos/" + repo)
         name = item.get("full_name", "")
-        if (re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", name)
-                and not item.get("archived") and not item.get("disabled")):
-            result.append({"repo": name, "description": str(item.get("description") or "")[:160],
-                           "url": "https://github.com/" + name,
-                           "verified": item.get("id") in VERIFIED_REPOSITORIES})
+        if (name.casefold() != repo.casefold()
+                or not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", name)
+                or item.get("archived") or item.get("disabled")):
+            continue
+        result.append({"repo": name,
+                       "description": str(item.get("description") or "")[:160],
+                       "url": "https://github.com/" + name,
+                       "verified": item.get("id") in VERIFIED_REPOSITORIES})
     return result
 
 def release_assets(repo, fetch=request_json):
@@ -60,11 +70,11 @@ def release_assets(repo, fetch=request_json):
         url = asset.get("browser_download_url", "")
         if (not re.fullmatch(r"[A-Za-z0-9_.() -]+", name)
                 or not url.startswith("https://github.com/" + repo + "/releases/download/")
-                or not name.lower().endswith((".nro", ".zip", ".ovl", ".kip", ".bin"))):
+                or not name.lower().endswith((".nro", ".zip", ".ovl", ".kip", ".bin", ".txt"))):
             continue
         digest = asset.get("digest") or ""
         size = asset.get("size", 0)
-        if not isinstance(size, int) or size <= 0 or size > MAX_BYTES:
+        if not isinstance(size, int) or size <= 0 or size > MAX_LISTING_BYTES:
             continue
         items.append({"name": name, "url": url, "size": size,
                       "digest": digest if re.fullmatch(r"sha256:[a-fA-F0-9]{64}", digest) else "",
