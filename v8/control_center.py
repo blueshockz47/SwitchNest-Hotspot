@@ -120,15 +120,15 @@ class Controller(QObject):
         self.process.start(sys.executable, ["-m", "v8.install", "repair"])
 
 
-    @Slot(str)
-    def homebrew_search(self, query):
+    @Slot(str, str)
+    def homebrew_search(self, query, category):
         if getattr(self, "_homebrew_busy", False):
             return
         self._homebrew_busy = True
         self.homebrewBusy.emit(True)
         def worker():
             try:
-                rows = homebrew.discover(query)
+                rows = homebrew.catalog_search(query, category)
                 self.homebrewResult.emit(json.dumps({"kind": "search", "items": rows}))
             except Exception as exc:
                 self.homebrewResult.emit(json.dumps({"kind": "error", "message": str(exc)[:200]}))
