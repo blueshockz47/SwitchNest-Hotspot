@@ -187,6 +187,61 @@ class Controller(QObject):
         threading.Thread(target=worker, daemon=True).start()
 
     @Slot(str, str)
+    def homebrew_download_only(self, repo, name):
+        """Download a GitHub release asset locally; never invoke FTP or install."""
+        if getattr(self, "_homebrew_busy", False):
+            return
+        self._homebrew_busy = True
+        self.homebrewBusy.emit(True)
+        def worker():
+            try:
+                if repo not in homebrew.SWITCH2_CANDIDATES:
+                    raise ValueError("Repository is not in the curated Switch 2 catalog")
+                asset = next(a for a in homebrew.release_assets(repo)["assets"]
+                             if a["name"] == name)
+                if not asset.get("digest"):
+                    raise ValueError("Download disabled: GitHub SHA-256 digest unavailable")
+                if name.lower().endswith(".zip"):
+                    path = homebrew_zip.download_zip(asset)
+                elif name.lower().endswith(".nro"):
+                    directory = Path.home() / ".cache" / "switchnest" / "homebrew" / "downloads"
+                    directory.mkdir(parents=True, exist_ok=True)
+                    import tempfile
+                    with tempfile.TemporaryDirectory(prefix="download-", dir=directory) as temp:
+                        fetched = homebrew.download_asset(asset, temp)
+                        target = directory / name
+                        if target.exists():
+                            import hashlib
+                            with target.open("rb") as stream:
+                                if hashlib.file_digest(stream, "sha256").hexdigest() != asset["digest"][7:].lower():
+                                    raise FileExistsError("Different file already exists in Downloads cache")
+                        else:
+                            os.replace(fetched, target)
+                        path = target
+                else:
+                    raise ValueError("Download-only supports verified ZIP and NRO releases")
+                self.homebrewResult.emit(json.dumps({
+                    "kind": "download_only_ready", "name": name,
+                    "directory": str(path.parent), "path": str(path),
+                    "message": "Download verified. No files were installed or uploaded."}))
+            except Exception as exc:
+                self.homebrewResult.emit(json.dumps({"kind": "error", "message": str(exc)[:250]}))
+            finally:
+                self._homebrew_busy = False
+                self.homebrewBusy.emit(False)
+        threading.Thread(target=worker, daemon=True).start()
+
+    @Slot(str)
+    def homebrew_open_download_directory(self, directory):
+        base = (Path.home() / ".cache" / "switchnest" / "homebrew").resolve()
+        candidate = Path(directory).resolve()
+        if not candidate.is_dir() or not candidate.is_relative_to(base):
+            self.homebrewResult.emit(json.dumps({"kind": "error", "message": "Invalid download directory"}))
+            return
+        if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(candidate))):
+            self.homebrewResult.emit(json.dumps({"kind": "error", "message": "Could not open file manager"}))
+
+    @Slot(str, str)
     def homebrew_download_zip(self, repo, name):
         if getattr(self, "_homebrew_busy", False):
             return
