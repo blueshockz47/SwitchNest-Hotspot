@@ -180,6 +180,7 @@ class ZipWorkflowTests(unittest.TestCase):
             class FakeTree:
                 def __init__(self, *args): pass
                 def entries(self, path): return {"demo.nro": False}
+                def sizes(self, path): return {"demo.nro": 999}
             with self.assertRaises(FileExistsError):
                 homebrew_zip.install_zip(path, plan, "10.42.60.99", 1337,
                                          confirmed=True, tree_factory=FakeTree)
