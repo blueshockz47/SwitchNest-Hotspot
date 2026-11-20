@@ -34,20 +34,29 @@ def request_json(path, opener=urllib.request.urlopen):
         raise ValueError("GitHub response too large")
     return json.loads(data)
 
+# Explicit Switch 2 / kaiHEN candidate catalog. Listing is not verification
+# of compatibility, binary safety, or suitability for automatic installation.
+SWITCH2_CANDIDATES = frozenset({"NerdsMcGee/retroarch-s2"})
+
 def discover(query, fetch=request_json):
-    query = query.strip()[:90]
+    query = query.strip()[:90].casefold()
     if not query:
         return []
-    data = fetch("/search/repositories?" + urllib.parse.urlencode({
-        "q": query, "per_page": 25}))
     result = []
-    for item in data.get("items", []):
+    for repo in sorted(SWITCH2_CANDIDATES):
+        if query not in repo.casefold():
+            continue
+        # Fetch metadata only for curated Switch 2 candidate repositories.
+        item = fetch("/repos/" + repo)
         name = item.get("full_name", "")
-        if (re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", name)
-                and not item.get("archived") and not item.get("disabled")):
-            result.append({"repo": name, "description": str(item.get("description") or "")[:160],
-                           "url": "https://github.com/" + name,
-                           "verified": item.get("id") in VERIFIED_REPOSITORIES})
+        if (name.casefold() != repo.casefold()
+                or not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", name)
+                or item.get("archived") or item.get("disabled")):
+            continue
+        result.append({"repo": name,
+                       "description": str(item.get("description") or "")[:160],
+                       "url": "https://github.com/" + name,
+                       "verified": item.get("id") in VERIFIED_REPOSITORIES})
     return result
 
 def release_assets(repo, fetch=request_json):
