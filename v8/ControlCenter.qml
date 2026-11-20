@@ -19,7 +19,7 @@ ApplicationWindow {
     property bool updateBusy: false
     property string updateStatus: "Checking for published GitHub releases..."
     property string notice: "Waiting for diagnostics"
-    property string activityLog: "Waiting for activity...\\n"
+    property string activityLog: "Waiting for activity...\n"
     property bool updateInProgress: false
     property var hotspot: report.hotspot || ({state: "unknown"})
     property string http: report.http_service ? report.http_service.output : "Unknown"
@@ -32,7 +32,7 @@ ApplicationWindow {
             try { root.report = JSON.parse(raw) }
             catch (e) { root.notice = "Invalid diagnostics response" }
         }
-        function onMessage(message) { root.notice = message; root.activityLog += message + "\\n" }
+        function onMessage(message) { root.notice = message; root.activityLog += message + "\n" }
         function onUpdateLog(chunk) { root.activityLog += chunk }
         function onUpdateInstalled(version) { root.updateInProgress = false; restartDialog.open() }
         function onBusyChanged(value) { root.busy = value }
@@ -242,7 +242,7 @@ ApplicationWindow {
                     ComboBox { id: channel; model: ["Stable", "Development"]; enabled: !root.updateBusy }
                     Label { text: root.updateStatus; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Button { text: root.updateBusy ? "Checking..." : "Check for Updates"; enabled: !root.updateBusy; onClicked: controller.check_updates(channel.currentIndex===0?"stable":"development") }
-                    Button { text: "Download & Install Update"; highlighted: true; visible: root.updateStatus.startsWith("Update available: ") && channel.currentIndex === 0; enabled: !root.updateBusy && !root.busy; onClicked: { root.activityLog = "Preparing update...\\n"; root.updateInProgress = true; controller.install_update() } }
+                    Button { text: "Download & Install Update"; highlighted: true; visible: root.updateStatus.startsWith("Update available: ") && channel.currentIndex === 0; enabled: !root.updateBusy && !root.busy; onClicked: { root.activityLog = "Preparing update...\n"; root.updateInProgress = true; controller.install_update() } }
                     Button { text: "View Update on GitHub"; visible: root.updateStatus.startsWith("Update available: "); onClicked: controller.download_update() }
                     Button { text: "Open GitHub releases"; onClicked: controller.open_updates(false) }
                     Button { text: "Open development downloads"; onClicked: controller.open_updates(true) }
