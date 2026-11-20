@@ -190,19 +190,13 @@ ColumnLayout {
                     id: contextMenu
                     width: Math.max(280, implicitWidth)
                     MenuItem {
-                        text: "Download Verified NRO / ZIP"
+                        text: "Download Only"
                         width: contextMenu.width
                         enabled: !!home.actionRepo && !home.working
                         onTriggered: home.requestRelease("download")
                     }
                     MenuItem {
-                        text: "Download Official ZIP (Manual)"
-                        width: contextMenu.width
-                        enabled: !!home.actionRepo && !home.working
-                        onTriggered: home.requestRelease("zip")
-                    }
-                    MenuItem {
-                        text: "Download & Install NRO"
+                        text: "Download & Install"
                         width: contextMenu.width
                         enabled: !!home.actionRepo && home.ftpState.connected && !home.working
                         onTriggered: home.requestRelease("install")
