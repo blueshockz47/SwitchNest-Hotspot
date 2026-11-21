@@ -209,7 +209,6 @@ ColumnLayout {
                     Drag.active: dragHandler.active || dragFinishing
                     property bool dragFinishing: false
                     Drag.keys: ["remote"]
-                    onEntered: drag => { if (page.dataState.busy || !page.dataState.connected) drag.accepted = false }
                     Drag.hotSpot.x: width / 2
                     Drag.hotSpot.y: height / 2
                     DragHandler {
