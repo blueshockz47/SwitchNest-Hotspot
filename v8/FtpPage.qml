@@ -17,21 +17,41 @@ ColumnLayout {
     property bool showActivity: false
     property int fileFontSize: 16
     property bool dragInProgress: false
+    property string dropTarget: ""
+    function targetAt(point) {
+        if (!dataState.connected || dataState.busy) return ""
+        let local = localList.mapToItem(page, 0, 0)
+        let remote = remoteList.mapToItem(page, 0, 0)
+        if (dragGhost.dragSide === "remote" && point.x >= local.x && point.x < local.x + localList.width && point.y >= local.y && point.y < local.y + localList.height) return "local"
+        if (dragGhost.dragSide === "local" && point.x >= remote.x && point.x < remote.x + remoteList.width && point.y >= remote.y && point.y < remote.y + remoteList.height) return "remote"
+        return ""
+    }
     function beginDrag(side, name, directory, source, point) {
         if (dataState.busy || !dataState.connected) return
         dragGhost.fileName = name
         dragGhost.dragSide = side
         dragGhost.isDirectory = directory
-        dragGhost.positionFrom(source, point)
         dragInProgress = true
+        updateDrag(source, point)
     }
     function updateDrag(source, point) {
-        if (dragInProgress) dragGhost.positionFrom(source, point)
-    }
-    function finishDrag() {
         if (!dragInProgress) return
-        dragGhost.Drag.drop()
+        let p = source.mapToItem(page, point.x, point.y)
+        dragGhost.x = p.x - dragGhost.width / 2
+        dragGhost.y = p.y - dragGhost.height / 2
+        dropTarget = targetAt(p)
+    }
+    function finishDrag(source, point) {
+        if (!dragInProgress) return
+        // Explicit hit testing avoids unreliable Qt Quick drag-source delivery
+        // across two clipped ListViews. Only cross-panel drops transfer.
+        updateDrag(source, point)
+        let target = dropTarget
+        let side = dragGhost.dragSide
+        let name = dragGhost.fileName
         dragInProgress = false
+        dropTarget = ""
+        if (target && target !== side) transfer(side, [name])
     }
     function clearSelection() { localSelected=[]; remoteSelected=[]; entryName="" }
     function selectAll() { if (activeSide==="local") localSelected=sorted(dataState.localRows).map(x=>x.name); else remoteSelected=sorted(dataState.remoteRows).map(x=>x.name) }
@@ -115,19 +135,19 @@ ColumnLayout {
             Label { text: page.dataState.local; elide: Text.ElideMiddle; Layout.fillWidth: true }
             Button { text: "Up"; enabled: !page.dataState.busy; onClicked: { page.activeSide="local"; page.entryName=""; page.localSelected=[]; ftpBrowser.local_open("..") } }
             ListView {
+                id: localList
                 Layout.fillWidth: true; Layout.fillHeight: true
                 clip: true
                 model: page.sorted(page.dataState.localRows)
-                DropArea {
+                Rectangle {
                     anchors.fill: parent
-                    keys: ["remote"]
-                    onEntered: drag => { if (page.dataState.busy || !page.dataState.connected) drag.accepted = false }
-                    onDropped: drop => {
-                        if (drop.source && drop.source.fileName) {
-                            page.droppedFiles("remote", drop.source.fileName)
-                            drop.acceptProposedAction()
-                        }
-                    }
+                    z: 20
+                    enabled: false
+                    visible: page.dropTarget === "local"
+                    color: "#2252e0ae"
+                    border.color: "#52e0ae"
+                    border.width: 3
+                    radius: 6
                 }
                 delegate: ItemDelegate {
                     required property var modelData
@@ -140,7 +160,6 @@ ColumnLayout {
                     highlighted: page.localSelected.indexOf(modelData.name) >= 0
                     enabled: !page.dataState.busy
                     property string fileName: modelData.name
-                    Drag.supportedActions: Qt.CopyAction
                     onClicked: {
                         page.activeSide="local"; page.entryName=modelData.name
                         if (modelData.directory && !page.selectionMode) { page.localSelected=[]; ftpBrowser.local_open(modelData.name); page.entryName="" }
@@ -157,7 +176,7 @@ ColumnLayout {
                         target: null
                         onActiveChanged: {
                             if (active) page.beginDrag("local", modelData.name, modelData.directory, parent, centroid.position)
-                            else page.finishDrag()
+                            else page.finishDrag(parent, centroid.position)
                         }
                         onCentroidChanged: if (active) page.updateDrag(parent, centroid.position)
                     }
@@ -180,19 +199,19 @@ ColumnLayout {
             Label { text: page.dataState.remote; elide: Text.ElideMiddle; Layout.fillWidth: true }
             Button { text: "Up"; enabled: !page.dataState.busy && page.dataState.connected; onClicked: { page.activeSide="remote"; page.entryName=""; page.remoteSelected=[]; ftpBrowser.remote_open("..") } }
             ListView {
+                id: remoteList
                 Layout.fillWidth: true; Layout.fillHeight: true
                 clip: true
                 model: page.sorted(page.dataState.remoteRows)
-                DropArea {
+                Rectangle {
                     anchors.fill: parent
-                    keys: ["local"]
-                    onEntered: drag => { if (page.dataState.busy || !page.dataState.connected) drag.accepted = false }
-                    onDropped: drop => {
-                        if (drop.source && drop.source.fileName) {
-                            page.droppedFiles("local", drop.source.fileName)
-                            drop.acceptProposedAction()
-                        }
-                    }
+                    z: 20
+                    enabled: false
+                    visible: page.dropTarget === "remote"
+                    color: "#2252e0ae"
+                    border.color: "#52e0ae"
+                    border.width: 3
+                    radius: 6
                 }
                 delegate: ItemDelegate {
                     required property var modelData
@@ -205,7 +224,6 @@ ColumnLayout {
                     highlighted: page.remoteSelected.indexOf(modelData.name) >= 0
                     enabled: !page.dataState.busy
                     property string fileName: modelData.name
-                    Drag.supportedActions: Qt.CopyAction
                     onClicked: {
                         page.activeSide="remote"; page.entryName=modelData.name
                         if (modelData.directory && !page.selectionMode) { page.remoteSelected=[]; ftpBrowser.remote_open(modelData.name); page.entryName="" }
@@ -222,7 +240,7 @@ ColumnLayout {
                         target: null
                         onActiveChanged: {
                             if (active) page.beginDrag("remote", modelData.name, modelData.directory, parent, centroid.position)
-                            else page.finishDrag()
+                            else page.finishDrag(parent, centroid.position)
                         }
                         onCentroidChanged: if (active) page.updateDrag(parent, centroid.position)
                     }
@@ -365,11 +383,6 @@ ColumnLayout {
             property string fileName: ""
             property string dragSide: "local"
             property bool isDirectory: false
-            function positionFrom(source, point) {
-                let p = source.mapToItem(dragOverlay, point.x, point.y)
-                x = p.x - width / 2
-                y = p.y - height / 2
-            }
             width: Math.min(310, Math.max(155, ghostLabel.implicitWidth + 34))
             height: 46
             radius: 9
@@ -380,11 +393,6 @@ ColumnLayout {
             scale: page.dragInProgress ? 1.04 : 0.92
             Behavior on opacity { NumberAnimation { duration: 110 } }
             Behavior on scale { NumberAnimation { duration: 110 } }
-            Drag.active: page.dragInProgress
-            Drag.keys: [dragSide]
-            Drag.supportedActions: Qt.CopyAction
-            Drag.hotSpot.x: width / 2
-            Drag.hotSpot.y: height / 2
             Label {
                 id: ghostLabel
                 anchors.centerIn: parent
