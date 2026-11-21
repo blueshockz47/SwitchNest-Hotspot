@@ -134,6 +134,7 @@ class Controller(QObject):
         def worker():
             try:
                 data = homebrew_monitor.refresh()
+                self._community_repos = frozenset(row["repo"] for row in data.get("catalog", []) if row.get("repo"))
                 self.homebrewMonitorResult.emit(json.dumps(data))
             except Exception as exc:
                 self.homebrewMonitorResult.emit(json.dumps({
@@ -156,6 +157,9 @@ class Controller(QObject):
 
     @Slot(str)
     def homebrew_releases(self, repo):
+        if repo not in homebrew.SWITCH2_CANDIDATES and repo not in getattr(self, "_community_repos", frozenset()):
+            self.homebrewResult.emit(json.dumps({"kind": "error", "message": "Repository not found in current catalog"}))
+            return
         if getattr(self, "_homebrew_busy", False):
             return
         self._homebrew_busy = True
@@ -177,6 +181,9 @@ class Controller(QObject):
             return
         # Only assets freshly obtained from GitHub are trusted; never accept a
         # QML-supplied download URL or checksum as the source of truth.
+        if repo not in homebrew.SWITCH2_CANDIDATES and repo not in getattr(self, "_community_repos", frozenset()):
+            self.homebrewResult.emit(json.dumps({"kind": "error", "message": "Repository not found in current catalog"}))
+            return
         if not confirmed:
             self.homebrewResult.emit(json.dumps({"kind": "error", "message": "Confirm the installation first."}))
             return
@@ -218,8 +225,8 @@ class Controller(QObject):
         self.homebrewBusy.emit(True)
         def worker():
             try:
-                if repo not in homebrew.SWITCH2_CANDIDATES:
-                    raise ValueError("Repository is not in the curated Switch 2 catalog")
+                if repo not in homebrew.SWITCH2_CANDIDATES and repo not in getattr(self, "_community_repos", frozenset()):
+                    raise ValueError("Repository is not in the current Switch 2 catalog")
                 asset = next(a for a in homebrew.release_assets(repo)["assets"]
                              if a["name"] == name)
                 if not asset.get("digest"):
