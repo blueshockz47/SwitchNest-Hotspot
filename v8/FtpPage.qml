@@ -279,103 +279,95 @@ ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.preferredWidth: 1
-            Label { text: "Switch 2 · FTP"; font.bold: true }
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 3
-                Repeater {
-                    model: page.remoteSegments()
-                    delegate: ToolButton {
-                        required property var modelData
-                        text: modelData.name + (modelData.path === page.dataState.remote ? "" : " ›")
-                        enabled: !page.dataState.busy && page.dataState.connected
-                        onClicked: { page.clearSelection(); ftpBrowser.open_remote_path(modelData.path) }
-                    }
-                }
+                Label { text: "Switch 2 · FTP"; font.bold: true }
                 Item { Layout.fillWidth: true }
-                ToolButton {
-                    text: "Copy path"
-                    enabled: page.dataState.connected
-                    onClicked: ftpBrowser.copy_remote_path()
-                }
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                ToolButton { text: page.switchPlacesExpanded ? "▾ Places" : "▸ Places"; onClicked: page.switchPlacesExpanded = !page.switchPlacesExpanded }
-                ToolButton {
-                    text: "★ Pin folder"
-                    enabled: !page.dataState.busy && page.dataState.connected
-                    onClicked: ftpBrowser.bookmark("remote")
-                    ToolTip.visible: hovered; ToolTip.text: "Save current Switch 2 folder to favorites"
-                }
-                Item { Layout.fillWidth: true }
-            }
-            Frame {
-                visible: page.switchPlacesExpanded
-                Layout.fillWidth: true
-                Layout.preferredHeight: 146
-                ColumnLayout {
-                    anchors.fill: parent
-                    spacing: 2
-                    RowLayout {
-                        ToolButton {
-                            text: "⌂ Root"
-                            enabled: !page.dataState.busy && page.dataState.connected
-                            onClicked: { page.clearSelection(); ftpBrowser.open_remote_path("/") }
-                        }
-                        ToolButton {
-                            text: page.switchTreeExpanded ? "▾ Folders" : "▸ Folders"
-                            onClicked: page.switchTreeExpanded = !page.switchTreeExpanded
-                        }
-                        Item { Layout.fillWidth: true }
-                    }
-                    ScrollView {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        ColumnLayout {
-                            width: parent.width
-                            spacing: 0
-                            Label { text: "FAVORITES"; font.pixelSize: 11; color: "#8cb9c9" }
-                            Repeater {
-                                model: page.switchBookmarks()
-                                delegate: ToolButton {
-                                    required property var modelData
-                                    text: "★ " + modelData.item.path
-                                    width: parent.width
-                                    enabled: !page.dataState.busy && page.dataState.connected
-                                    onClicked: { page.clearSelection(); ftpBrowser.open_bookmark(modelData.index) }
-                                }
-                            }
-                            Label { text: "RECENT"; font.pixelSize: 11; color: "#8cb9c9" }
-                            Repeater {
-                                model: page.dataState.remoteRecent || []
-                                delegate: ToolButton {
-                                    required property string modelData
-                                    text: "◷ " + modelData
-                                    width: parent.width
-                                    enabled: !page.dataState.busy && page.dataState.connected
-                                    onClicked: { page.clearSelection(); ftpBrowser.open_remote_path(modelData) }
-                                }
-                            }
-                            Label { text: "CURRENT FOLDER"; visible: page.switchTreeExpanded; font.pixelSize: 11; color: "#8cb9c9" }
-                            Repeater {
-                                model: page.switchTreeExpanded ? page.sorted(page.dataState.remoteRows).filter(x => x.directory) : []
-                                delegate: ToolButton {
-                                    required property var modelData
-                                    text: "📁 " + modelData.name
-                                    width: parent.width
-                                    enabled: !page.dataState.busy && page.dataState.connected
-                                    onClicked: page.openDirectory("remote",modelData.name)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                Label { text: "⌂  " + page.dataState.remote; elide: Text.ElideMiddle; Layout.fillWidth: true; ToolTip.visible: hovered; ToolTip.text: page.dataState.remote }
                 Label { text: page.remoteSelected.length + " selected"; visible: page.remoteSelected.length > 0; color: "#8cb9c9" }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 4
+                ToolButton {
+                    text: "⌂ /"
+                    enabled: !page.dataState.busy && page.dataState.connected
+                    onClicked: { page.clearSelection(); ftpBrowser.open_remote_path("/") }
+                    ToolTip.visible: hovered; ToolTip.text: "FTP root"
+                }
+                ToolButton {
+                    text: "📁 /switch"
+                    enabled: !page.dataState.busy && page.dataState.connected
+                    onClicked: { page.clearSelection(); ftpBrowser.open_remote_path("/switch/") }
+                    ToolTip.visible: hovered; ToolTip.text: "Switch homebrew folder"
+                }
+                ScrollView {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 38
+                    contentWidth: breadcrumbRow.implicitWidth
+                    ScrollBar.vertical.policy: ScrollBar.AlwaysOff
+                    Row {
+                        id: breadcrumbRow
+                        spacing: 0
+                        Repeater {
+                            model: page.remoteSegments()
+                            delegate: ToolButton {
+                                required property var modelData
+                                text: modelData.name + (modelData.path === page.dataState.remote ? "" : " ›")
+                                enabled: !page.dataState.busy && page.dataState.connected
+                                onClicked: { page.clearSelection(); ftpBrowser.open_remote_path(modelData.path) }
+                            }
+                        }
+                    }
+                }
+                ToolButton {
+                    text: "★"
+                    enabled: page.dataState.connected
+                    onClicked: switchQuickMenu.popup()
+                    ToolTip.visible: hovered; ToolTip.text: "Favorites and recent folders"
+                }
+                ToolButton {
+                    text: "⋯"
+                    enabled: page.dataState.connected
+                    onClicked: switchActionsMenu.popup()
+                    ToolTip.visible: hovered; ToolTip.text: "Switch 2 folder actions"
+                }
+                Menu {
+                    id: switchQuickMenu
+                    MenuItem { text: "Favorites"; enabled: false }
+                    Repeater {
+                        model: page.switchBookmarks()
+                        delegate: MenuItem {
+                            required property var modelData
+                            text: "★ " + modelData.item.path
+                            enabled: !page.dataState.busy && page.dataState.connected
+                            onTriggered: { page.clearSelection(); ftpBrowser.open_bookmark(modelData.index) }
+                        }
+                    }
+                    MenuSeparator {}
+                    MenuItem { text: "Recent folders"; enabled: false }
+                    Repeater {
+                        model: page.dataState.remoteRecent || []
+                        delegate: MenuItem {
+                            required property string modelData
+                            text: "◷ " + modelData
+                            enabled: !page.dataState.busy && page.dataState.connected
+                            onTriggered: { page.clearSelection(); ftpBrowser.open_remote_path(modelData) }
+                        }
+                    }
+                }
+                Menu {
+                    id: switchActionsMenu
+                    MenuItem {
+                        text: "Pin current folder"
+                        enabled: !page.dataState.busy && page.dataState.connected
+                        onTriggered: ftpBrowser.bookmark("remote")
+                    }
+                    MenuItem {
+                        text: "Copy current path"
+                        enabled: page.dataState.connected
+                        onTriggered: ftpBrowser.copy_remote_path()
+                    }
+                }
             }
             ToolButton { text: "↑ Parent folder"; enabled: !page.dataState.busy && page.dataState.connected; onClicked: page.openDirectory("remote","..") }
             ListView {
