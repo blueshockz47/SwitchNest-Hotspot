@@ -19,7 +19,14 @@ class MonitorTests(unittest.TestCase):
         self.addCleanup(patcher.stop)
 
     def test_iz2s_parser_validates_repositories(self):
-        sample = "IZSTORE2\\napp\\tsw2nes\\tnro\\t2.1\\tSW2NES\\tRodpad\\tEmulators\\tNES emulator\\nrepository\\thttps://github.com/Rodpad/SW2NES\\napp\\tevil\\tnro\\t1\\tEvil\\tBad\\tTools\\tBad\\nrepository\\thttps://evil.example/attack\\n"
+        sample = "\n".join([
+            "IZSTORE2",
+            "app\tsw2nes\tnro\t2.1\tSW2NES\tRodpad\tEmulators\tNES emulator",
+            "repository\thttps://github.com/Rodpad/SW2NES",
+            "app\tevil\tnro\t1\tEvil\tBad\tTools\tBad",
+            "repository\thttps://evil.example/attack",
+            "",
+        ])
         rows = catalog_sources.iz2s_rows(sample)
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["repo"], "Rodpad/SW2NES")
