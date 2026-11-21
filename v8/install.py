@@ -114,7 +114,7 @@ def launcher():
         "Comment=SwitchNest v8 Hotspot Manager\n"
         "Exec=" + desktop_quote(str(executable)) + "\n"
         "Path=" + str(ROOT / "current") + "\n"
-        "Icon=network-wireless\n"
+        "Icon=" + str(ROOT/"current"/"v8"/"assets"/"switchnest-logo.svg") + "\n"
         "Terminal=false\n"
         "Categories=Network;Utility;\n"
         "StartupNotify=true\n"
