@@ -94,6 +94,18 @@ class Phase2bTests(unittest.TestCase):
         self.assertNotIn('text: page.switchPlacesExpanded ?', ui)
         self.assertNotIn('text: page.switchTreeExpanded ?', ui)
 
+    def test_phase3d_resizable_details_and_transfer_status(self):
+        ui = (ROOT / 'FtpPage.qml').read_text()
+        for token in ('SplitView {', 'id: fileSplit',
+                      'SplitView.minimumWidth: 220',
+                      'property bool showDetails: true',
+                      'function typeText(row)', 'function fileLabel(row)',
+                      'text: page.fileLabel(modelData)',
+                      'text: "Details"', 'page.dataState.current || ""'):
+            self.assertIn(token, ui)
+        self.assertEqual(ui.count('text: page.fileLabel(modelData)'), 2)
+        self.assertIn('page.finishDrag(parent, centroid.position)', ui)
+
     def test_ui_and_backend_wiring_preserve_worker(self):
         backend = (ROOT / 'ftp_browser.py').read_text()
         ui = (ROOT / 'FtpPage.qml').read_text()
