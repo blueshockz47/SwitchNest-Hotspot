@@ -119,6 +119,8 @@ ColumnLayout {
     property var choices: []
     property var installableRepos: ({})
     property var zipOnlyRepos: ({})
+    property var checkedRepos: ({})
+    property var staleRepos: ({})
     property string probingRepo: ""
     function probeRelease(repo) {
         if (!repo || working) return
@@ -175,11 +177,17 @@ ColumnLayout {
                         let next = Object.assign({}, home.installableRepos)
                         next[data.repo] = eligible
                         home.installableRepos = next
+                        let checked = Object.assign({}, home.checkedRepos)
+                        checked[data.repo] = true
+                        home.checkedRepos = checked
+                        let stale = Object.assign({}, home.staleRepos)
+                        stale[data.repo] = !!data.stale
+                        home.staleRepos = stale
                         let zipOnly = !eligible && data.assets.some(function(asset) { return asset.name.toLowerCase().endsWith(".zip") })
                         let zipState = Object.assign({}, home.zipOnlyRepos)
                         zipState[data.repo] = zipOnly
                         home.zipOnlyRepos = zipState
-                        home.statusText = eligible ? "NRO release available for " + data.repo + ". Right-click again to install." : "No NRO release for " + data.repo + "; ZIP-only projects cannot be installed automatically."
+                        home.statusText = (data.stale ? "Cached release information (may be outdated). " : "") + (eligible ? "NRO release available for " + data.repo + ". Right-click again to install." : "No NRO release for " + data.repo + "; ZIP-only projects cannot be installed automatically.")
                         home.action = ""
                         home.probingRepo = ""
                         return
@@ -194,6 +202,11 @@ ColumnLayout {
                         home.action = ""
                     } else if (home.choices.length > 1) assetPicker.open()
                     else { home.statusText = "No compatible GitHub release asset for " + home.actionName + ". ZIP and download-only actions still require a GitHub SHA-256 digest."; home.action = "" }
+                }
+                else if (data.kind === "rate_limited") {
+                    home.statusText = data.message || "GitHub API limit reached. Retry later."
+                    home.action = ""
+                    home.probingRepo = ""
                 }
                 else if (data.kind === "error" && home.action === "probe") {
                     home.statusText = "Release check failed: " + (data.message || "Unknown error")
@@ -316,8 +329,22 @@ ColumnLayout {
                             Layout.fillWidth: true
                         }
                         Label {
+                            visible: !!modelData.repo && home.checkedRepos[modelData.repo] !== true
+                            text: "Release Not Checked"
+                            font.pixelSize: 10
+                            color: "#aab7c6"
+                            Layout.fillWidth: true
+                        }
+                        Label {
+                            visible: !!modelData.repo && home.installableRepos[modelData.repo] === true
+                            text: home.staleRepos[modelData.repo] ? "NRO Available — Cached Release" : "NRO Available — Download & Install"
+                            font.pixelSize: 10
+                            color: "#52e0ae"
+                            Layout.fillWidth: true
+                        }
+                        Label {
                             visible: !!modelData.repo && home.zipOnlyRepos[modelData.repo] === true
-                            text: "ZIP File — Manual Install Required"
+                            text: home.staleRepos[modelData.repo] ? "ZIP File — Manual Install (Cached)" : "ZIP File — Manual Install Required"
                             font.pixelSize: 10
                             font.bold: true
                             color: "#f59e0b"
