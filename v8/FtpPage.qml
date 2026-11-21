@@ -16,11 +16,10 @@ ColumnLayout {
     property bool selectionMode: false
     property bool showActivity: false
     property bool queueExpanded: false
-    property bool switchPlacesExpanded: true
-    property bool switchTreeExpanded: true
     property string notification: ""
     property string lastStatus: ""
-    property int fileFontSize: 16
+    property int fileFontSize: 14
+    property bool showDetails: true
     property bool dragInProgress: false
     property string dropTarget: ""
     property string dropFolder: ""
@@ -174,6 +173,8 @@ ColumnLayout {
     Shortcut { sequences: [StandardKey.Paste]; enabled: page.visible && !page.dataState.busy && !host.activeFocus && !port.activeFocus && !search.activeFocus && !editDialog.visible && !conflictDialog.visible; onActivated: page.pasteFiles() }
     function toggle(items, name) { return items.indexOf(name) < 0 ? items.concat([name]) : items.filter(x => x !== name) }
     function sorted(rows) { return rows.filter(x => (showHidden || !x.name.startsWith(".")) && x.name.toLowerCase().includes(search.text.toLowerCase())).sort((a,b) => a.directory !== b.directory ? (a.directory ? -1 : 1) : sortMode === 1 ? (b.size || 0)-(a.size || 0) || a.name.localeCompare(b.name) : a.name.localeCompare(b.name)) }
+    function typeText(row) { if (row.directory) return "Folder"; let name = row.name || ""; let dot = name.lastIndexOf("."); return dot > 0 ? name.slice(dot + 1).toUpperCase() : "File" }
+    function fileLabel(row) { return (row.directory ? "📁 " : "▧ ") + row.name + (showDetails ? "    ·    " + typeText(row) + (row.directory ? "" : "    ·    " + sizeText(row.size)) + (row.date ? "    ·    " + row.date : "") : (row.directory ? "" : "  ·  " + sizeText(row.size))) }
     function sizeText(n) { return n === null || n === undefined ? "" : n >= 1073741824 ? (n/1073741824).toFixed(2)+" GiB" : n >= 1048576 ? (n/1048576).toFixed(1)+" MiB" : n >= 1024 ? (n/1024).toFixed(1)+" KiB" : n+" B" }
     Connections {
         target: ftpBrowser
@@ -204,14 +205,17 @@ ColumnLayout {
         CheckBox { text: "Select"; checked: page.selectionMode; onToggled: { page.selectionMode=checked; page.clearSelection() } }
         CheckBox { text: "Hidden"; checked: page.showHidden; onToggled: { page.showHidden=checked; page.clearSelection() } }
     }
-    RowLayout { Label { text: "Local FTP • PASV"; color: "#98a5b5" } Item { Layout.fillWidth: true } ComboBox { model: ["Name", "Size"]; onCurrentIndexChanged: page.sortMode=currentIndex; enabled: !page.dataState.busy } }
-    RowLayout {
+    RowLayout { Label { text: "Local FTP • PASV"; color: "#98a5b5" } Item { Layout.fillWidth: true } CheckBox { text: "Details"; checked: page.showDetails; onToggled: page.showDetails = checked } ComboBox { model: ["Name", "Size"]; onCurrentIndexChanged: page.sortMode=currentIndex; enabled: !page.dataState.busy } }
+    SplitView {
+        id: fileSplit
+        orientation: Qt.Horizontal
         Layout.fillWidth: true
         Layout.fillHeight: true
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.preferredWidth: 1
+            SplitView.preferredWidth: fileSplit.width / 2
+            SplitView.minimumWidth: 220
             Label { text: "Local · " + page.sizeText(page.dataState.localFree) + " free"; font.bold: true }
             RowLayout {
                 Layout.fillWidth: true
@@ -227,7 +231,7 @@ ColumnLayout {
                 delegate: ItemDelegate {
                     required property var modelData
                     width: ListView.view.width
-                    text: (modelData.directory ? "📁 " : "▧ ") + modelData.name + (modelData.directory ? "" : "  ·  " + page.sizeText(modelData.size))
+                    text: page.fileLabel(modelData)
                     font.pixelSize: page.fileFontSize
                     implicitHeight: 42
                     ToolTip.visible: hovered
@@ -278,7 +282,8 @@ ColumnLayout {
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.preferredWidth: 1
+            SplitView.preferredWidth: fileSplit.width / 2
+            SplitView.minimumWidth: 220
             RowLayout {
                 Layout.fillWidth: true
                 Label { text: "Switch 2 · FTP"; font.bold: true }
@@ -379,7 +384,7 @@ ColumnLayout {
                 delegate: ItemDelegate {
                     required property var modelData
                     width: ListView.view.width
-                    text: (modelData.directory ? "📁 " : "▧ ") + modelData.name + (modelData.directory ? "" : "  ·  " + page.sizeText(modelData.size))
+                    text: page.fileLabel(modelData)
                     font.pixelSize: page.fileFontSize
                     implicitHeight: 42
                     ToolTip.visible: hovered
@@ -516,6 +521,7 @@ ColumnLayout {
     RowLayout {
         visible: page.dataState.busy
         Label { text: "Transfer " + Math.round(page.dataState.progress || 0) + "%"; font.pixelSize: 14; font.bold: true }
+        Label { text: page.dataState.current || ""; elide: Text.ElideMiddle; Layout.maximumWidth: 240 }
         Label { text: page.dataState.pending && page.dataState.pending.length ? page.dataState.pending.length + " pending" : ""; color: "#8cb9c9" }
         Item { Layout.fillWidth: true }
         Button { text: "View Queue"; onClicked: queueDialog.open() }
