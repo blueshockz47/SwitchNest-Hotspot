@@ -329,8 +329,24 @@ ColumnLayout {
         standardButtons: Dialog.Close
         ColumnLayout {
             Label { text: page.dataState.status; wrapMode: Text.Wrap; Layout.preferredWidth: 300 }
-            Label { text: "Pending / active: "+page.dataState.pending.length }
-            ScrollView { Layout.preferredWidth: 300; Layout.preferredHeight: 160; TextArea { readOnly: true; text: page.dataState.pending.join("\n") } }
+            Label { text: "Transfer entries: " + (page.dataState.transferItems || []).length }
+            ScrollView {
+                Layout.preferredWidth: 390
+                Layout.preferredHeight: 230
+                ColumnLayout {
+                    width: 370
+                    Repeater {
+                        model: page.dataState.transferItems || []
+                        delegate: RowLayout {
+                            required property var modelData
+                            width: 360
+                            Label { text: modelData.status === "Completed" ? "✓" : modelData.status === "Active" ? "●" : "○"; color: modelData.status === "Completed" ? "#52e0ae" : "#98a5b5" }
+                            Label { text: modelData.name; elide: Text.ElideMiddle; Layout.fillWidth: true }
+                            Label { text: modelData.status; color: "#8cb9c9" }
+                        }
+                    }
+                }
+            }
             Button { text: "Cancel transfer"; enabled: page.dataState.busy; onClicked: ftpBrowser.cancel() }
         }
     }
