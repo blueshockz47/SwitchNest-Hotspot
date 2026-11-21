@@ -69,9 +69,10 @@ ColumnLayout {
         function onChanged() { page.dataState = JSON.parse(ftpBrowser.state) }
     }
     RowLayout {
-        TextField { id: host; text: page.dataState.host; Layout.fillWidth: true; enabled: !page.dataState.busy }
-        TextField { id: port; text: page.dataState.port; Layout.preferredWidth: 85; enabled: !page.dataState.busy }
-        Button { text: "Connect"; enabled: !page.dataState.busy; onClicked: { page.remoteSelected=[]; ftpBrowser.connect_to(host.text, port.text) } }
+        TextField { id: host; text: page.dataState.host; Layout.fillWidth: true; enabled: !page.dataState.busy && !page.dataState.connected; placeholderText: "Switch 2 FTP address" }
+        TextField { id: port; text: page.dataState.port; Layout.preferredWidth: 85; enabled: !page.dataState.busy && !page.dataState.connected }
+        Label { text: page.dataState.connected ? "● Connected" : (page.dataState.busy ? "● Working…" : "● Disconnected"); color: page.dataState.connected ? "#52e0ae" : (page.dataState.busy ? "#f4bd53" : "#98a5b5"); font.bold: true; font.pixelSize: 14 }
+        Button { text: page.dataState.connected ? "Disconnect" : "Connect"; enabled: !page.dataState.busy; onClicked: { page.remoteSelected=[]; if (page.dataState.connected) ftpBrowser.disconnect(); else ftpBrowser.connect_to(host.text, port.text) } }
     }
     RowLayout {
         Button { text: "←"; onClicked: page.navigate("back"); enabled: !page.dataState.busy }
