@@ -39,6 +39,9 @@ class Phase2bTests(unittest.TestCase):
         self.assertIn('page.finishDrag(parent, centroid.position)', ui)
         self.assertIn('selected.indexOf(name) >= 0 ? selected.slice() : [name]', ui)
         self.assertIn('transfer(side, names)', ui)
+        self.assertEqual(ui.count('page.deleteSelected()'), 3)  # toolbar and both context menus
+        self.assertEqual(ui.count('selected.indexOf(page.entryName) >= 0 && selected.length > 1'), 2)
+        self.assertEqual(ui.count('page.editEntry("delete")'), 2)  # single-file fallback
         self.assertIn('ftpBrowser.cancel()', ui)
 
 
