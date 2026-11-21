@@ -13,6 +13,38 @@ REPO = re.compile(r"^/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/?$")
 MANIFEST = re.compile(r"^/HerXayah/brewstore-repo/main/packages/[A-Za-z0-9_.-]+/manifest\.json$")
 AGENT = "SwitchNest-Homebrew-Catalog/8.1.6"
 
+
+CATEGORY_MAP = {
+    "tools": "Tools", "tool": "Tools", "utilities": "Tools", "utility": "Tools",
+    "system": "Tools", "file managers": "Tools", "file manager": "Tools",
+    "games": "Games", "game": "Games", "gaming": "Games",
+    "emulators": "Emulation", "emulator": "Emulation", "emulation": "Emulation",
+    "media": "Media", "music": "Media", "audio": "Media", "video": "Media",
+    "streaming": "Streaming", "stream": "Streaming",
+    "fun": "Fun", "entertainment": "Fun",
+}
+# Conservative title/repository hints used only when the source has no useful category.
+HINTS = {
+    "Emulation": ("cemu", "ppsspp", "retroarch", "snes", "nes", "gba", "mgba", "dolphin", "scummvm", "psp", "openrac", "nxengine"),
+    "Streaming": ("moonlight", "chiaki", "stream", "sunshine"),
+    "Media": ("youtube", "tube", "radio", "music", "video", "player"),
+    "Games": ("game vault", "donkey kong", "mario", "shipwright", "gravity rush", "starship", "pursuit", "openblops"),
+    "Tools": ("ftp", "file manager", "browser", "installer", "checkpoint", "shell", "90dns", "dns", "transfer", "dump", "patch", "brewstore", "switchfin"),
+}
+
+def normalize_category(category, name="", repo=""):
+    """Classify for browsing only; never implies verification or install safety."""
+    raw = str(category or "").strip().lower()
+    if raw in CATEGORY_MAP:
+        return CATEGORY_MAP[raw]
+    if raw and raw not in ("other", "misc", "miscellaneous", "unknown", "uncategorized"):
+        return "Other"
+    haystack = (str(name) + " " + str(repo).split("/")[-1]).lower()
+    for group, hints in HINTS.items():
+        if any(hint in haystack for hint in hints):
+            return group
+    return "Other"
+
 def get_text(url, opener=urllib.request.urlopen):
     parsed = urlsplit(url)
     if parsed.scheme != "https" or parsed.hostname != "raw.githubusercontent.com":
@@ -48,6 +80,8 @@ def iz2s_rows(text):
             rows.append(current)
         elif parts[0] == "repository" and len(parts) >= 2 and current:
             current["repo"] = repo_from_url(parts[1])
+    for row in rows:
+        row["category"] = normalize_category(row["category"], row["name"], row["repo"])
     return [r for r in rows if r["repo"]][:250]
 
 def brewstore_rows(index_text, fetch=get_text):
@@ -73,7 +107,7 @@ def brewstore_rows(index_text, fetch=get_text):
                 if not repo:
                     continue
                 rows.append({"name": str(package.get("title") or package.get("name") or repo.split("/")[-1])[:100],
-                             "category": "Other",
+                             "category": normalize_category(package.get("category"), package.get("title") or package.get("name") or "", repo),
                              "version": str(package.get("version") or "")[:50],
                              "format": "unknown", "description": str(package.get("description") or "")[:240],
                              "repo": repo, "source": "BrewStore",
@@ -98,6 +132,9 @@ def discover(fetch=get_text):
         key = row["repo"].casefold()
         if key not in merged:
             merged[key] = dict(row, sources=[row["source"]])
-        elif row["source"] not in merged[key]["sources"]:
-            merged[key]["sources"].append(row["source"])
+        else:
+            if row["source"] not in merged[key]["sources"]:
+                merged[key]["sources"].append(row["source"])
+            if merged[key]["category"] == "Other" and row["category"] != "Other":
+                merged[key]["category"] = row["category"]
     return list(merged.values()), warnings
