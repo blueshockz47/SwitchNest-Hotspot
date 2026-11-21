@@ -74,7 +74,12 @@ ColumnLayout {
         dragInProgress = false
         dropTarget = ""
         dropFolder = ""
-        if (target && target !== side) { transferFolder = folder; transfer(side, [name]) }
+        if (target && target !== side) {
+            let selected = side === "local" ? localSelected : remoteSelected
+            let names = selected.indexOf(name) >= 0 ? selected.slice() : [name]
+            transferFolder = folder
+            transfer(side, names)
+        }
     }
     function clearSelection() { localSelected=[]; remoteSelected=[]; entryName="" }
     function selectAll() { if (activeSide==="local") localSelected=sorted(dataState.localRows).map(x=>x.name); else remoteSelected=sorted(dataState.remoteRows).map(x=>x.name) }
