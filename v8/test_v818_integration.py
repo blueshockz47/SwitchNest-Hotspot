@@ -45,6 +45,28 @@ class Phase2bTests(unittest.TestCase):
         self.assertIn('page.dataState.busy', ui)
         self.assertEqual(ui.count('page.deleteSelected()'), 3)
 
+    def test_phase3b_navigation_selection_and_docked_queue(self):
+        ui = (ROOT / 'FtpPage.qml').read_text()
+        for required in (
+            'function selectRange(side, name, modifiers)',
+            'Qt.ShiftModifier',
+            'Qt.ControlModifier',
+            'function openDirectory(side, name)',
+            'page.openDirectory("local","..")',
+            'page.openDirectory("remote","..")',
+            'property bool queueExpanded: false',
+            'text: page.queueExpanded ? "Hide queue" : "Show queue"',
+            'visible: page.queueExpanded',
+            'model: page.dataState.transferItems || []',
+            'page.dataState.queueSummary',
+            'page.notification = next',
+        ):
+            self.assertIn(required, ui)
+        self.assertIn('ftpBrowser.tree_batch(', ui)
+        self.assertIn('ftpBrowser.tree_batch_into(', ui)
+        self.assertIn('ftpBrowser.delete_batch(', ui)
+        self.assertIn('ftpBrowser.cancel()', ui)
+
     def test_ui_and_backend_wiring_preserve_worker(self):
         backend = (ROOT / 'ftp_browser.py').read_text()
         ui = (ROOT / 'FtpPage.qml').read_text()
