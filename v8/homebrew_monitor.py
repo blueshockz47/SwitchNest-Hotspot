@@ -1,5 +1,6 @@
 """Read-only release monitoring. Reddit discoveries never authorize downloads."""
 import json
+import urllib.error
 import re
 import urllib.parse
 import urllib.request
@@ -39,12 +40,19 @@ def github_updates(fetch=None, repos=None, warnings=None):
     repos = repos if repos is not None else sorted(homebrew.SWITCH2_CANDIDATES)
     result = []
     failures = 0
+    rate_limited = False
     for repo in repos:
         if repo not in homebrew.SWITCH2_CANDIDATES:
             continue
         try:
             release = homebrew.release_assets(repo, fetch=fetch)
-        except (ValueError, KeyError, OSError, TypeError, urllib.error.URLError) as exc:
+        except urllib.error.HTTPError as exc:
+            failures += 1
+            if exc.code in (403, 429):
+                rate_limited = True
+                break
+            continue
+        except (ValueError, KeyError, OSError, TypeError, urllib.error.URLError):
             failures += 1
             continue
         if release["assets"]:
@@ -52,7 +60,9 @@ def github_updates(fetch=None, repos=None, warnings=None):
                            "asset_count": len(release["assets"]),
                            "url": "https://github.com/" + repo + "/releases",
                            "source": "GitHub", "status": "Official repository release; assets require verification"})
-    if warnings is not None and failures:
+    if warnings is not None and rate_limited:
+        warnings.append("GitHub API rate limit or access restriction (HTTP 403/429); release checks paused. Catalog browsing still works.")
+    elif warnings is not None and failures:
         warnings.append(f"GitHub discovery unavailable for {failures} curated repositories; results may be incomplete")
     return result
 
@@ -63,7 +73,7 @@ def refresh(fetch=None, reddit_fetch=reddit_discover, repos=None, catalog_fetch=
         reddit = reddit_fetch()
     except (ValueError, OSError, TypeError, KeyError, json.JSONDecodeError) as exc:
         reddit = []
-        warnings.append("Reddit discovery unavailable: " + type(exc).__name__)
+        warnings.append("Reddit discovery unavailable (may be blocked by Reddit); GitHub catalog browsing remains available")
     try:
         catalog, catalog_warnings = catalog_sources.discover(
             fetch=catalog_fetch or catalog_sources.get_text)
