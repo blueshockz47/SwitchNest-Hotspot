@@ -123,6 +123,15 @@ ColumnLayout {
     property string actionRepo: ""
     property string actionName: ""
     property var choices: []
+    property var installableRepos: ({})
+    property string probingRepo: ""
+    function probeRelease(repo) {
+        if (!repo || working) return
+        probingRepo = repo
+        action = "probe"
+        statusText = "Checking GitHub release assets for " + repo + "..."
+        controller.homebrew_releases(repo)
+    }
     function selectApp(item) {
         selectedRepo = item.repo
         selectedManual = item.manual
@@ -166,6 +175,16 @@ ColumnLayout {
                 let data = JSON.parse(raw)
                 if (data.kind === "search") { home.curatedResults = data.items; home.assets = []; home.readyZip = ""; home.activeCategory = data.category || "All"; home.updateCatalog() }
                 else if (data.kind === "assets") {
+                    if (home.action === "probe" && data.repo === home.probingRepo) {
+                        let eligible = data.assets.some(function(asset) { return asset.name.toLowerCase().endsWith(".nro") })
+                        let next = Object.assign({}, home.installableRepos)
+                        next[data.repo] = eligible
+                        home.installableRepos = next
+                        home.statusText = eligible ? "NRO release available for " + data.repo + ". Right-click again to install." : "No NRO release for " + data.repo + "; ZIP-only projects cannot be installed automatically."
+                        home.action = ""
+                        home.probingRepo = ""
+                        return
+                    }
                     if (data.repo !== home.actionRepo || !home.action) return
                     home.choices = data.assets.filter(function(asset) {
                         let name = asset.name.toLowerCase()
@@ -313,6 +332,7 @@ ColumnLayout {
                         home.actionRepo = projectCard.modelData.repo
                         home.actionName = projectCard.modelData.name
                         contextMenu.popup()
+                        if (home.actionRepo && home.installableRepos[home.actionRepo] === undefined) home.probeRelease(home.actionRepo)
                     }
                 }
                 Menu {
@@ -327,7 +347,7 @@ ColumnLayout {
                     MenuItem {
                         text: "Download && Install"
                         width: contextMenu.width
-                        enabled: !!home.actionRepo && !home.working
+                        enabled: !!home.actionRepo && home.installableRepos[home.actionRepo] === true && !home.working
                         onTriggered: home.requestRelease("install")
                     }
                     MenuSeparator {}
