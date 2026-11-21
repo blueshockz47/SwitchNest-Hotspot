@@ -83,6 +83,19 @@ class MonitorTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Verified SHA-256"):
                 homebrew.download_asset(asset, directory, opener=opener, allow_unverified_nro=True)
 
+    def test_ftp_drag_coordinates_and_folder_target_regression(self):
+        # The window overlay and page have different origins. Never use the
+        # overlay position for ListView hit testing (previous mis-target bug).
+        qml = (Path(__file__).parent / "FtpPage.qml").read_text(encoding="utf-8")
+        self.assertIn("source.mapToItem(page, point.x, point.y)", qml)
+        self.assertIn("source.mapToItem(dragOverlay, point.x, point.y)", qml)
+        self.assertIn("dropTarget = targetAt(pagePoint)", qml)
+        self.assertIn("list.mapFromItem(page, pagePoint.x, pagePoint.y)", qml)
+        self.assertIn("list.itemAt(inList.x, inList.y + list.contentY)", qml)
+        self.assertIn("page.transferFolder", qml)
+        self.assertIn("ftpBrowser.tree_batch_into", qml)
+        self.assertIn("COPY ONLY", qml)
+
     def test_maximized_preference_registered(self):
         self.assertIn("fullscreen_on_start", preferences.DEFAULTS)
         self.assertIs(type(preferences.DEFAULTS["fullscreen_on_start"]), bool)
