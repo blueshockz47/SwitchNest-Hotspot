@@ -185,11 +185,12 @@ def validate_destination(name, destination):
         raise ValueError("Only single-file NRO installs in /switch/ are supported")
     return destination
 
-def download_asset(asset, directory, opener=urllib.request.urlopen, progress=None):
+def download_asset(asset, directory, opener=urllib.request.urlopen, progress=None, allow_unverified_nro=False):
     if not asset["url"].startswith("https://github.com/"):
         raise ValueError("Untrusted download host")
     expected = asset.get("digest", "")
-    if not re.fullmatch(r"sha256:[a-fA-F0-9]{64}", expected):
+    verified = re.fullmatch(r"sha256:[a-fA-F0-9]{64}", expected) is not None
+    if not verified and not (allow_unverified_nro and asset["name"].lower().endswith(".nro")):
         raise ValueError("Verified SHA-256 digest required")
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
@@ -214,7 +215,7 @@ def download_asset(asset, directory, opener=urllib.request.urlopen, progress=Non
                     out.write(block)
                     if progress:
                         progress(total, asset["size"])
-        if total != asset["size"] or digest.hexdigest() != expected.split(":")[1].lower():
+        if total != asset["size"] or (verified and digest.hexdigest() != expected.split(":")[1].lower()):
             raise ValueError("Download integrity verification failed")
         return Path(path)
     except BaseException:
@@ -236,9 +237,9 @@ def install_nro(asset, destination, host, port, *, confirmed=False, repo_id=None
     factory = tree_factory or Tree
     with tempfile.TemporaryDirectory(prefix="switchnest-homebrew-") as temp:
         if progress and fetcher is download_asset:
-            path = fetcher(asset, temp, progress=lambda done, total: progress("Downloading", done, total))
+            path = fetcher(asset, temp, progress=lambda done, total: progress("Downloading", done, total), allow_unverified_nro=confirmed)
         else:
-            path = fetcher(asset, temp)
+            path = fetcher(asset, temp, allow_unverified_nro=confirmed) if fetcher is download_asset else fetcher(asset, temp)
         target = Path(temp) / asset["name"]
         os.replace(path, target)
         tree = factory(str(address), int(port), "skip", lambda: False, lambda *_: None)

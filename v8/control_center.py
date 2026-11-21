@@ -1,5 +1,6 @@
 """Qt desktop preview for the installed v7.1 manager. Run as an ordinary user."""
 import json
+import urllib.error
 import ipaddress
 import re
 import shutil
@@ -9,7 +10,7 @@ import sys
 import subprocess
 import threading
 import time
-from v8 import updates, autostart, preferences, wifi_reliability, stability, homebrew, homebrew_zip
+from v8 import updates, autostart, preferences, wifi_reliability, stability, homebrew, homebrew_zip, homebrew_monitor, homebrew_release_cache
 from pathlib import Path
 from v8.ftp_browser import Browser
 from PySide6.QtCore import QObject, Signal, Slot, Property, QLockFile, QStandardPaths, QProcess, QTimer, QUrl
@@ -40,6 +41,7 @@ class Controller(QObject):
     homebrewResult = Signal(str)
     homebrewBusy = Signal(bool)
     homebrewProgress = Signal(str)
+    homebrewMonitorResult = Signal(str)
 
     def __init__(self):
         super().__init__()
@@ -124,6 +126,35 @@ class Controller(QObject):
         self.process.start(sys.executable, ["-m", "v8.install", "repair"])
 
 
+    @Slot(bool)
+    def homebrew_monitor_refresh(self, force=False):
+        """Read-only background discovery; never triggers a download or FTP write."""
+        if getattr(self, "_homebrew_monitor_busy", False):
+            return
+        cached = homebrew_monitor.load_cache()
+        if cached is not None:
+            self._community_repos = frozenset(row["repo"] for row in cached.get("catalog", []) if isinstance(row, dict) and row.get("repo"))
+            self.homebrewMonitorResult.emit(json.dumps(cached))
+            if not force and homebrew_monitor.cache_is_today(cached):
+                return
+        self._homebrew_monitor_busy = True
+        self.homebrewMonitorResult.emit(json.dumps({"kind": "monitor_progress", "message": "Checking GitHub releases, Reddit and community catalogs..."}))
+        def worker():
+            try:
+                data = homebrew_monitor.refresh()
+                self._community_repos = frozenset(row["repo"] for row in data.get("catalog", []) if row.get("repo"))
+                try:
+                    homebrew_monitor.save_cache(data)
+                except OSError:
+                    pass
+                self.homebrewMonitorResult.emit(json.dumps(data))
+            except Exception as exc:
+                self.homebrewMonitorResult.emit(json.dumps({
+                    "kind": "monitor_error", "message": type(exc).__name__ + ": " + str(exc)[:160]}))
+            finally:
+                self._homebrew_monitor_busy = False
+        threading.Thread(target=worker, daemon=True).start()
+
     @Slot(str, str)
     def homebrew_search(self, query, category):
         """Local catalog filtering is immediate and must not be dropped during downloads."""
@@ -136,8 +167,40 @@ class Controller(QObject):
             self.homebrewResult.emit(json.dumps({
                 "kind": "error", "message": str(exc)[:200]}))
 
+    @Slot()
+    def homebrew_cached_releases(self):
+        """Restore release availability labels without contacting GitHub."""
+        state = homebrew_release_cache._read()
+        releases = {}
+        entries = state.get("releases", {})
+        if not isinstance(entries, dict):
+            entries = {}
+        for repo, entry in entries.items():
+            if not isinstance(repo, str) or not homebrew_release_cache.REPO_PATTERN.fullmatch(repo):
+                continue
+            cached = homebrew_release_cache.get(repo)
+            if cached:
+                releases[repo] = {"assets": cached["data"]["assets"], "stale": cached["stale"]}
+        self.homebrewResult.emit(json.dumps({"kind": "cached_releases", "releases": releases}))
+
     @Slot(str)
     def homebrew_releases(self, repo):
+        """Read-only release preview: cached for 24h, with GitHub rate-limit cooldown."""
+        if repo not in homebrew.SWITCH2_CANDIDATES and repo not in getattr(self, "_community_repos", frozenset()):
+            self.homebrewResult.emit(json.dumps({"kind": "error", "message": "Repository not found in current catalog"}))
+            return
+        cached = homebrew_release_cache.get(repo)
+        if cached and not cached["stale"]:
+            self.homebrewResult.emit(json.dumps({"kind": "assets", "repo": repo, "cached": True, **cached["data"]}))
+            return
+        remaining = homebrew_release_cache.cooldown_remaining()
+        if remaining:
+            if cached:
+                self.homebrewResult.emit(json.dumps({"kind": "assets", "repo": repo, "cached": True, "stale": True, **cached["data"]}))
+            else:
+                self.homebrewResult.emit(json.dumps({"kind": "rate_limited", "repo": repo,
+                    "message": "GitHub API limit reached. Try again in about " + str((remaining + 59) // 60) + " minutes. Saved catalog remains available."}))
+            return
         if getattr(self, "_homebrew_busy", False):
             return
         self._homebrew_busy = True
@@ -145,9 +208,29 @@ class Controller(QObject):
         def worker():
             try:
                 result = homebrew.release_assets(repo)
+                try:
+                    homebrew_release_cache.put(repo, result)
+                except OSError:
+                    pass
                 self.homebrewResult.emit(json.dumps({"kind": "assets", "repo": repo, **result}))
+            except urllib.error.HTTPError as exc:
+                if exc.code in (403, 429):
+                    try:
+                        homebrew_release_cache.mark_limited()
+                    except OSError:
+                        pass
+                    if cached:
+                        self.homebrewResult.emit(json.dumps({"kind": "assets", "repo": repo, "cached": True, "stale": True, **cached["data"]}))
+                    else:
+                        self.homebrewResult.emit(json.dumps({"kind": "rate_limited", "repo": repo,
+                            "message": "GitHub API limit reached (HTTP " + str(exc.code) + "). Saved catalog remains available; retry later."}))
+                else:
+                    self.homebrewResult.emit(json.dumps({"kind": "error", "message": str(exc)[:200]}))
             except Exception as exc:
-                self.homebrewResult.emit(json.dumps({"kind": "error", "message": str(exc)[:200]}))
+                if cached:
+                    self.homebrewResult.emit(json.dumps({"kind": "assets", "repo": repo, "cached": True, "stale": True, **cached["data"]}))
+                else:
+                    self.homebrewResult.emit(json.dumps({"kind": "error", "message": str(exc)[:200]}))
             finally:
                 self._homebrew_busy = False
                 self.homebrewBusy.emit(False)
@@ -159,6 +242,9 @@ class Controller(QObject):
             return
         # Only assets freshly obtained from GitHub are trusted; never accept a
         # QML-supplied download URL or checksum as the source of truth.
+        if repo not in homebrew.SWITCH2_CANDIDATES and repo not in getattr(self, "_community_repos", frozenset()):
+            self.homebrewResult.emit(json.dumps({"kind": "error", "message": "Repository not found in current catalog"}))
+            return
         if not confirmed:
             self.homebrewResult.emit(json.dumps({"kind": "error", "message": "Confirm the installation first."}))
             return
@@ -200,8 +286,8 @@ class Controller(QObject):
         self.homebrewBusy.emit(True)
         def worker():
             try:
-                if repo not in homebrew.SWITCH2_CANDIDATES:
-                    raise ValueError("Repository is not in the curated Switch 2 catalog")
+                if repo not in homebrew.SWITCH2_CANDIDATES and repo not in getattr(self, "_community_repos", frozenset()):
+                    raise ValueError("Repository is not in the current Switch 2 catalog")
                 asset = next(a for a in homebrew.release_assets(repo)["assets"]
                              if a["name"] == name)
                 if not asset.get("digest"):

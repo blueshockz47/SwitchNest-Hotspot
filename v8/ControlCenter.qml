@@ -27,7 +27,7 @@ ApplicationWindow {
     title: "SwitchNest Control Center"
     Material.theme: Material.Dark
     Material.accent: Material.Teal
-    color: "#11151c"
+    color: "#101a2a"
     property var report: ({})
     property bool busy: false
     property bool updateBusy: false
@@ -56,7 +56,7 @@ ApplicationWindow {
     property var hotspot: report.hotspot || ({state: "unknown"})
     property string http: report.http_service ? report.http_service.output : "Unknown"
     property string dns: report.dns_service ? report.dns_service.output : "Unknown"
-    property color muted: "#98a5b5"
+    property color muted: "#a6b9cc"
     property color accent: "#52e0ae"
     Connections {
         target: controller
@@ -249,30 +249,90 @@ ApplicationWindow {
         }
     }
     component Panel: Rectangle {
-        color: "#1b222d"
+        color: "#1c2b40"
         radius: 14
-        border.color: "#303b49"
+        border.color: "#3a5673"
         Layout.fillWidth: true
     }
     component NavButton: Button {
         required property int page
         Layout.fillWidth: true
-        flat: pages.currentIndex !== page
-        highlighted: pages.currentIndex === page
+        Layout.minimumWidth: 0
+        Layout.maximumWidth: 10000
+        flat: true
+        property color pageAccent: page === 0 ? "#5eead4" : page === 1 ? "#60a5fa" :
+                                   page === 2 ? "#c084fc" : page === 3 ? "#fbbf24" :
+                                   page === 4 ? "#fb7185" : page === 5 ? "#34d399" : "#a78bfa"
+        contentItem: Label {
+            text: parent.text
+            color: pages.currentIndex === page ? "#0b1524" : "#d1deee"
+            font.bold: pages.currentIndex === page
+            verticalAlignment: Text.AlignVCenter
+            leftPadding: 12
+        }
+        background: Rectangle {
+            radius: 10
+            color: pages.currentIndex === page ? pageAccent : parent.hovered ? "#2e435d" : "transparent"
+            Behavior on color { ColorAnimation { duration: 170 } }
+            border.width: pages.currentIndex === page ? 1 : 0
+            border.color: "#ffffff"
+        }
         onClicked: pages.currentIndex = page
     }
     RowLayout {
         anchors.fill: parent
         spacing: 0
         Rectangle {
-            color: "#161c25"
+            clip: true
+            Layout.minimumWidth: root.width < 800 ? 145 : 190
+            Layout.maximumWidth: root.width < 800 ? 145 : 190
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: "#192d40" }
+                GradientStop { position: 0.55; color: "#172235" }
+                GradientStop { position: 1.0; color: "#111827" }
+            }
             Layout.preferredWidth: root.width < 800 ? 145 : 190
             Layout.fillHeight: true
             ColumnLayout {
                 anchors.fill: parent
                 anchors.margins: 16
                 spacing: 10
-                Label { text: "◉  SwitchNest"; font.pixelSize: root.width < 800 ? 17 : 23; font.bold: true; color: root.accent }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.maximumWidth: parent.width
+                    spacing: 7
+                    Image {
+                        source: "assets/switchnest-logo.svg"
+                        sourceSize.width: 48
+                        sourceSize.height: 48
+                        Layout.preferredWidth: 34
+                        Layout.preferredHeight: 34
+                        Layout.minimumWidth: 34
+                        fillMode: Image.PreserveAspectFit
+                        smooth: true
+                    }
+                    Rectangle {
+                        Layout.preferredWidth: 9
+                        Layout.preferredHeight: 9
+                        radius: 5
+                        color: "#4adeb7"
+                        border.color: "#a7f3d0"
+                        SequentialAnimation on opacity {
+                            running: true; loops: Animation.Infinite
+                            NumberAnimation { to: 0.55; duration: 1600; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 1.0; duration: 1600; easing.type: Easing.InOutSine }
+                        }
+                    }
+                    Label {
+                        text: "SwitchNest"
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        font.pixelSize: root.width < 800 ? 14 : 17
+                        font.bold: true
+                        color: "#5eead4"
+                        elide: Text.ElideRight
+                    }
+                }
                 Label { text: "CONTROL CENTER"; font.pixelSize: 11; color: root.muted }
                 Item { Layout.preferredHeight: 20 }
                 NavButton { text: "Overview"; page: 0 }
@@ -294,7 +354,14 @@ ApplicationWindow {
             spacing: 14
             RowLayout {
                 Layout.fillWidth: true
-                Label { text: ["Overview","Network","Streaming","Files","Diagnostics","Settings","Updates"][pages.currentIndex]; font.pixelSize: 28; font.bold: true }
+                Rectangle {
+                    width: 5; height: 31; radius: 3
+                    color: pages.currentIndex === 0 ? "#5eead4" : pages.currentIndex === 1 ? "#60a5fa" :
+                           pages.currentIndex === 2 ? "#c084fc" : pages.currentIndex === 3 ? "#fbbf24" :
+                           pages.currentIndex === 4 ? "#fb7185" : pages.currentIndex === 5 ? "#34d399" : "#a78bfa"
+                    Behavior on color { ColorAnimation { duration: 180 } }
+                }
+                Label { text: ["Overview","Network","Streaming","Files","Diagnostics","Settings","Updates"][pages.currentIndex]; font.pixelSize: 28; font.bold: true; color: "#edf6ff" }
                 Item { Layout.fillWidth: true }
                 Button { text: "Refresh"; enabled: !root.busy; onClicked: controller.refresh() }
             }

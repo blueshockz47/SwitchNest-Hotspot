@@ -1,0 +1,153 @@
+"""Read-only release monitoring. Reddit discoveries never authorize downloads."""
+import json
+import os
+from pathlib import Path
+from datetime import date
+import urllib.error
+import re
+import urllib.parse
+import urllib.request
+from datetime import datetime, timezone
+from v8 import homebrew, catalog_sources, homebrew_release_cache
+
+USER_AGENT = "SwitchNest-Homebrew-Monitor/8.1.6 (read-only)"
+MAX_RESPONSE = 1024 * 1024
+DIRECTORY_URL = "https://switch2homebrew.com/"
+REDDIT_URL = "https://www.reddit.com/r/switch2hacks/new.json?limit=25"
+REDDIT_TERMS = ("switch 2", "switch2", "kaihen", "libounce", "ounce", "homebrew", "release", "github", "port", "exploit")
+
+def reddit_discover(opener=urllib.request.urlopen):
+    request = urllib.request.Request(REDDIT_URL, headers={"User-Agent": USER_AGENT, "Accept": "application/json"})
+    with opener(request, timeout=12) as response:
+        raw = response.read(MAX_RESPONSE + 1)
+    if len(raw) > MAX_RESPONSE:
+        raise ValueError("Reddit response too large")
+    entries = json.loads(raw).get("data", {}).get("children", [])
+    result = []
+    for entry in entries[:25]:
+        post = entry.get("data", {}) if isinstance(entry, dict) else {}
+        title = post.get("title", "")
+        permalink = post.get("permalink", "")
+        if not isinstance(title, str) or not isinstance(permalink, str):
+            continue
+        if not any(term in title.casefold() for term in REDDIT_TERMS):
+            continue
+        if not re.fullmatch(r"/r/switch2hacks/comments/[A-Za-z0-9]+/[^?#]*", permalink, re.IGNORECASE):
+            continue
+        result.append({"title": title[:140], "url": "https://www.reddit.com" + permalink,
+                       "status": "Unverified community discovery", "source": "Reddit"})
+    return result[:15]
+
+def github_updates(fetch=None, repos=None, warnings=None):
+    use_cache = fetch is None and repos is None
+    fetch = fetch or homebrew.request_json
+    repos = repos if repos is not None else sorted(homebrew.SWITCH2_CANDIDATES)
+    result = []
+    failures = 0
+    rate_limited = False
+    requests_made = 0
+    for repo in repos:
+        if repo not in homebrew.SWITCH2_CANDIDATES:
+            continue
+        cached = homebrew_release_cache.get(repo) if use_cache else None
+        if cached and not cached["stale"]:
+            release = cached["data"]
+        elif use_cache and (homebrew_release_cache.cooldown_remaining() or requests_made >= 8):
+            if not cached:
+                continue
+            release = cached["data"]
+        else:
+            try:
+                requests_made += 1
+                release = homebrew.release_assets(repo, fetch=fetch)
+                if use_cache:
+                    try:
+                        homebrew_release_cache.put(repo, release)
+                    except OSError:
+                        pass
+            except urllib.error.HTTPError as exc:
+                failures += 1
+                if exc.code in (403, 429):
+                    rate_limited = True
+                    if use_cache:
+                        try:
+                            homebrew_release_cache.mark_limited()
+                        except OSError:
+                            pass
+                    break
+                continue
+            except (ValueError, KeyError, OSError, TypeError, urllib.error.URLError):
+                failures += 1
+                continue
+        if release["assets"]:
+            result.append({"repo": repo, "version": release["version"],
+                           "asset_count": len(release["assets"]),
+                           "url": "https://github.com/" + repo + "/releases",
+                           "source": "GitHub", "status": "GitHub release metadata; cached if previously checked"})
+    if warnings is not None and rate_limited:
+        warnings.append("GitHub API rate limit (HTTP 403/429); release checks paused. Saved catalog still works.")
+    elif warnings is not None and failures:
+        warnings.append(f"GitHub discovery unavailable for {failures} repositories; results may be incomplete")
+    if warnings is not None and use_cache and requests_made >= 8:
+        warnings.append("Release discovery limited to 8 repositories per scan to conserve GitHub API quota")
+    return result
+
+def refresh(fetch=None, reddit_fetch=reddit_discover, repos=None, catalog_fetch=None):
+    warnings = []
+    github = github_updates(fetch=fetch, repos=repos, warnings=warnings)
+    try:
+        reddit = reddit_fetch()
+    except (ValueError, OSError, TypeError, KeyError, json.JSONDecodeError) as exc:
+        reddit = []
+        warnings.append("Reddit discovery unavailable (may be blocked by Reddit); GitHub catalog browsing remains available")
+    try:
+        catalog, catalog_warnings = catalog_sources.discover(
+            fetch=catalog_fetch or catalog_sources.get_text)
+        warnings.extend(catalog_warnings)
+    except (ValueError, OSError, TypeError, UnicodeError) as exc:
+        catalog = []
+        warnings.append("Catalog discovery unavailable: " + type(exc).__name__)
+    # Directory-only source: no verified feed/API or parser contract yet.
+    # Never treat its listings as confirmed releases or installable assets.
+    directory = {"source": "Switch2Homebrew", "url": DIRECTORY_URL,
+                 "status": "Community directory — unverified; open in browser",
+                 "automated": False}
+    return {"kind": "monitor", "github": github, "reddit": reddit, "catalog": catalog, "directory": directory,
+            "warnings": warnings, "checked_at": datetime.now(timezone.utc).isoformat()}
+
+
+CACHE_PATH = Path.home() / ".cache" / "switchnest" / "homebrew" / "discovery.json"
+
+def load_cache(path=CACHE_PATH):
+    try:
+        if path.stat().st_size > 2 * MAX_RESPONSE:
+            return None
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict) or data.get("kind") != "monitor":
+            return None
+        if not all(isinstance(data.get(key), list) for key in ("github", "reddit", "catalog", "warnings")):
+            return None
+        if not isinstance(data.get("checked_at"), str):
+            return None
+        return data
+    except (OSError, ValueError, TypeError, UnicodeError):
+        return None
+
+def cache_is_today(data):
+    try:
+        return datetime.fromisoformat(data["checked_at"]).astimezone().date() == date.today()
+    except (ValueError, TypeError, KeyError):
+        return False
+
+def save_cache(data, path=CACHE_PATH):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    try:
+        with tmp.open("w", encoding="utf-8") as stream:
+            json.dump(data, stream, ensure_ascii=False)
+        os.replace(tmp, path)
+    finally:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass

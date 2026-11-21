@@ -18,4 +18,4 @@ jobs:
       - name: Compile Python sources
         run: python -m compileall -q v8
       - name: Offline regression tests (no networking modifications)
-        run: python -m unittest -v v8.test_ftp_tree v8.test_install v8.test_updates v8.test_autostart v8.test_v806 v8.test_v807 v8.test_v808 v8.test_v809
+        run: python -m unittest -v v8.test_ftp_tree v8.test_install v8.test_updates v8.test_autostart v8.test_v806 v8.test_v807 v8.test_v808 v8.test_v809 v8.test_v810 v8.test_v816
