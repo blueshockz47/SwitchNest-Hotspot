@@ -31,6 +31,26 @@ class MonitorTests(unittest.TestCase):
         self.assertEqual(result[0]["version"], "v1.2.3")
         self.assertNotIn("assets", result[0])  # read-only metadata, no download URLs
 
+    def test_github_failure_is_visible(self):
+        repo = "NerdsMcGee/retroarch-s2"
+        def offline(path):
+            raise OSError("network unavailable")
+        result = homebrew_monitor.refresh(fetch=offline, repos=[repo], reddit_fetch=lambda: [])
+        self.assertEqual(result["github"], [])
+        self.assertTrue(any("GitHub discovery unavailable" in w for w in result["warnings"]))
+
+    def test_partial_github_failure_keeps_successful_releases(self):
+        repos = ["NerdsMcGee/retroarch-s2", "Rodpad/SW2NES"]
+        def partial(path):
+            if "SW2NES" in path:
+                raise OSError("timeout")
+            return {"tag_name": "v1", "assets": [{"name": "app.nro", "size": 42,
+                "browser_download_url": "https://github.com/NerdsMcGee/retroarch-s2/releases/download/v1/app.nro",
+                "digest": "sha256:" + "a" * 64}]}
+        result = homebrew_monitor.refresh(fetch=partial, repos=repos, reddit_fetch=lambda: [])
+        self.assertEqual(len(result["github"]), 1)
+        self.assertTrue(result["warnings"])
+
     def test_reddit_discovery_unverified_and_url_restricted(self):
         posts = {"data": {"children": [
             {"data": {"title": "New Switch 2 homebrew", "permalink": "/r/SwitchHacks/comments/abc123/new_switch_2_homebrew/"}},
