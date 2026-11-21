@@ -106,6 +106,12 @@ class Phase2bTests(unittest.TestCase):
         self.assertEqual(ui.count('text: page.fileLabel(modelData)'), 2)
         self.assertIn('page.finishDrag(parent, centroid.position)', ui)
 
+    def test_cross_pane_selection_clears_inactive_highlight(self):
+        ui = (ROOT / 'FtpPage.qml').read_text()
+        self.assertIn('if (side === "local") { localSelected=result; remoteSelected=[] }', ui)
+        self.assertIn('else { remoteSelected=result; localSelected=[] }', ui)
+        self.assertIn('selected.indexOf(name) >= 0 ? selected.slice() : [name]', ui)
+
     def test_ui_and_backend_wiring_preserve_worker(self):
         backend = (ROOT / 'ftp_browser.py').read_text()
         ui = (ROOT / 'FtpPage.qml').read_text()
