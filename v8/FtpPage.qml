@@ -299,19 +299,72 @@ ColumnLayout {
         }
         Label { text: "COPY ONLY · Originals kept"; color: "#8cb9c9"; font.pixelSize: 12 }
     }
-    RowLayout {
-        Button { text: "Upload (" + page.localSelected.length + ")"; enabled: !page.dataState.busy && page.dataState.connected && page.localSelected.length > 0; onClicked: page.transfer("local",page.localSelected) }
-        Button { text: "Download (" + page.remoteSelected.length + ")"; enabled: !page.dataState.busy && page.dataState.connected && page.remoteSelected.length > 0; onClicked: page.transfer("remote",page.remoteSelected) }
-        Button { text: "Reload"; enabled: !page.dataState.busy && page.dataState.connected; onClicked: { page.localSelected=[]; page.remoteSelected=[]; ftpBrowser.refresh() } }
-        Button { text: "Cancel"; enabled: page.dataState.busy; onClicked: ftpBrowser.cancel() }
-    }
-    RowLayout {
-        Button { text: "Copy"; enabled: !page.dataState.busy; onClicked: page.copyFiles() }
-        Button { text: "Paste"; enabled: !page.dataState.busy && page.clipboard.length > 0 && page.clipSide !== page.activeSide; onClicked: page.pasteFiles() }
-        Button { text: "+ Folder"; enabled: !page.dataState.busy && (page.activeSide === "local" || page.dataState.connected); onClicked: page.editEntry("mkdir") }
-        Button { text: "History"; onClicked: historyDialog.open() }
-        Button { text: "Queue"; onClicked: queueDialog.open() }
-        Label { text: page.activeSide; color: "#52e0ae" }
+    // Phase 3a: Dolphin-inspired compact action toolbar; existing backend calls are unchanged.
+    ToolBar {
+        Layout.fillWidth: true
+        RowLayout {
+            anchors.fill: parent
+            spacing: 4
+            ToolButton {
+                text: "↑ Upload (" + page.localSelected.length + ")"
+                enabled: !page.dataState.busy && page.dataState.connected && page.localSelected.length > 0
+                onClicked: page.transfer("local",page.localSelected)
+                ToolTip.visible: hovered; ToolTip.text: "Copy selected SteamOS files to Switch 2"
+            }
+            ToolButton {
+                text: "↓ Download (" + page.remoteSelected.length + ")"
+                enabled: !page.dataState.busy && page.dataState.connected && page.remoteSelected.length > 0
+                onClicked: page.transfer("remote",page.remoteSelected)
+                ToolTip.visible: hovered; ToolTip.text: "Copy selected Switch 2 files to SteamOS"
+            }
+            ToolSeparator {}
+            ToolButton {
+                text: "⟳"
+                enabled: !page.dataState.busy && page.dataState.connected
+                onClicked: { page.localSelected=[]; page.remoteSelected=[]; ftpBrowser.refresh() }
+                ToolTip.visible: hovered; ToolTip.text: "Refresh both panels (F5)"
+            }
+            ToolButton {
+                text: "+ Folder"
+                enabled: !page.dataState.busy && (page.activeSide === "local" || page.dataState.connected)
+                onClicked: page.editEntry("mkdir")
+            }
+            ToolButton {
+                text: "Delete"
+                enabled: !page.dataState.busy && (page.activeSide==="local"?page.localSelected.length:page.remoteSelected.length)>0
+                onClicked: page.deleteSelected()
+                ToolTip.visible: hovered; ToolTip.text: "Permanently delete selected entries after confirmation"
+            }
+            Item { Layout.fillWidth: true }
+            Label {
+                text: (page.activeSide === "local" ? "SteamOS" : "Switch 2") + " · " + (page.activeSide === "local" ? page.localSelected.length : page.remoteSelected.length) + " selected"
+                elide: Text.ElideRight
+                Layout.maximumWidth: 150
+                color: "#8cb9c9"
+            }
+            ToolButton {
+                text: "Cancel"
+                visible: page.dataState.busy
+                enabled: page.dataState.busy
+                onClicked: ftpBrowser.cancel()
+            }
+            ToolButton {
+                text: "More ▾"
+                onClicked: ftpActions.popup()
+                Menu {
+                    id: ftpActions
+                    MenuItem { text: "Copy"; enabled: !page.dataState.busy; onTriggered: page.copyFiles() }
+                    MenuItem { text: "Paste"; enabled: !page.dataState.busy && page.clipboard.length > 0 && page.clipSide !== page.activeSide; onTriggered: page.pasteFiles() }
+                    MenuSeparator {}
+                    MenuItem { text: "Select all"; enabled: !page.dataState.busy; onTriggered: page.selectAll() }
+                    MenuItem { text: "Clear selection"; onTriggered: page.clearSelection() }
+                    MenuSeparator {}
+                    MenuItem { text: "Transfer queue"; onTriggered: queueDialog.open() }
+                    MenuItem { text: "Transfer history"; onTriggered: historyDialog.open() }
+                    MenuItem { text: "Retry remaining entries"; enabled: !page.dataState.busy && page.dataState.retryAvailable; onTriggered: retryDialog.open() }
+                }
+            }
+        }
     }
     RowLayout {
         visible: page.dataState.busy
@@ -323,12 +376,6 @@ ColumnLayout {
     Label { visible: page.dataState.busy && page.dataState.transferSize > 0; text: page.sizeText(page.dataState.bytesDone) + " / " + page.sizeText(page.dataState.transferSize) + " · " + page.sizeText(page.dataState.speed) + "/s" + (page.dataState.speed > 0 ? " · ETA " + Math.max(0,Math.ceil((page.dataState.transferSize-page.dataState.bytesDone)/page.dataState.speed)) + " s" : ""); Layout.fillWidth: true }
     ProgressBar { indeterminate: page.dataState.busy && page.dataState.transferSize === 0 && page.dataState.total === 0; Layout.fillWidth: true; from: 0; to: 100; value: page.dataState.total > 0 && page.dataState.busy && page.dataState.current !== "" ? Math.min(100, (page.dataState.completed + page.dataState.progress/100)*100/page.dataState.total) : page.dataState.progress }
     Label { text: page.dataState.status + (page.dataState.total > 0 ? " · " + page.dataState.completed + "/" + page.dataState.total + " files · " + page.dataState.current : page.dataState.completed > 0 ? " · " + page.dataState.completed + " entries" : ""); wrapMode: Text.Wrap; Layout.fillWidth: true; maximumLineCount: 4 }
-    RowLayout {
-        Button { text: "All"; enabled: !page.dataState.busy; onClicked: page.selectAll() }
-        Button { text: "Clear"; onClicked: page.clearSelection() }
-        Button { text: "Delete selected"; enabled: !page.dataState.busy && (page.activeSide==="local"?page.localSelected.length:page.remoteSelected.length)>0; onClicked: page.deleteSelected() }
-        Button { text: "Retry"; enabled: !page.dataState.busy && page.dataState.retryAvailable; onClicked: retryDialog.open() }
-    }
     Dialog {
         id: retryDialog
         title: "Retry remaining entries"
