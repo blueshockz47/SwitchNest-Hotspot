@@ -2,6 +2,9 @@
 import io
 import json
 import unittest
+import tempfile
+from pathlib import Path
+from datetime import datetime, timezone, timedelta
 from unittest.mock import patch
 from v8 import homebrew_monitor, homebrew, preferences, catalog_sources
 
@@ -154,3 +157,21 @@ class MonitorTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DailyDiscoveryCacheTests(unittest.TestCase):
+    def test_cache_round_trip_and_daily_refresh(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "discovery.json"
+            data = {"kind": "monitor", "github": [], "reddit": [], "catalog": [{"repo": "owner/project"}], "warnings": [], "checked_at": datetime.now(timezone.utc).isoformat()}
+            homebrew_monitor.save_cache(data, path)
+            self.assertEqual(homebrew_monitor.load_cache(path), data)
+            self.assertTrue(homebrew_monitor.cache_is_today(data))
+            data["checked_at"] = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+            self.assertFalse(homebrew_monitor.cache_is_today(data))
+
+    def test_invalid_cache_ignored(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "discovery.json"
+            path.write_text('{"kind":"monitor","catalog":"invalid"}', encoding="utf-8")
+            self.assertIsNone(homebrew_monitor.load_cache(path))
