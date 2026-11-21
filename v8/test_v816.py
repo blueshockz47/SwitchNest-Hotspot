@@ -39,6 +39,13 @@ class MonitorTests(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["repo"], "Rodpad/SW2NES")
 
+    def test_community_categories(self):
+        self.assertEqual(catalog_sources.normalize_category("Emulators", "PPSSPP"), "Emulation")
+        self.assertEqual(catalog_sources.normalize_category("Media", "KaiPlayer"), "Media")
+        self.assertEqual(catalog_sources.normalize_category("Other", "Moonlight NX"), "Streaming")
+        self.assertEqual(catalog_sources.normalize_category("Other", "Sphaira"), "Other")
+        self.assertEqual(catalog_sources.normalize_category("Tools", "File Browser"), "Tools")
+
     def test_maximized_preference_registered(self):
         self.assertIn("fullscreen_on_start", preferences.DEFAULTS)
         self.assertIs(type(preferences.DEFAULTS["fullscreen_on_start"]), bool)
