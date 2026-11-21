@@ -14,6 +14,8 @@ ColumnLayout {
     property string deleteSide: "local"
     property string deletePath: ""
     property bool selectionMode: false
+    property bool showActivity: false
+    property int fileFontSize: 16
     function clearSelection() { localSelected=[]; remoteSelected=[]; entryName="" }
     function selectAll() { if (activeSide==="local") localSelected=sorted(dataState.localRows).map(x=>x.name); else remoteSelected=sorted(dataState.remoteRows).map(x=>x.name) }
     function deleteSelected() { deleteSide=activeSide; deletePath=activeSide==="local"?dataState.local:dataState.remote; deleteNames=(activeSide==="local"?localSelected:remoteSelected).slice(); if(deleteNames.length) batchDelete.open() }
@@ -37,6 +39,11 @@ ColumnLayout {
         clipSide = activeSide
         clipPath = activeSide === "local" ? dataState.local : dataState.remote
         clipHost = dataState.host + ":" + dataState.port
+    }
+    function droppedFiles(side, name) {
+        if (!name || dataState.busy || !dataState.connected) return
+        // Use the same conflict-confirmation workflow as the Upload/Download buttons.
+        transfer(side, [name])
     }
     function transfer(side, names) {
         if (dataState.busy || !dataState.connected || !names.length) return
@@ -96,9 +103,10 @@ ColumnLayout {
                 DropArea {
                     anchors.fill: parent
                     keys: ["remote"]
+                    onEntered: drag => { if (page.dataState.busy || !page.dataState.connected) drag.accepted = false }
                     onDropped: drop => {
                         if (drop.source && drop.source.fileName) {
-                            page.transfer("remote", [drop.source.fileName])
+                            page.droppedFiles("remote", drop.source.fileName)
                             drop.acceptProposedAction()
                         }
                     }
@@ -107,13 +115,14 @@ ColumnLayout {
                     required property var modelData
                     width: ListView.view.width
                     text: (modelData.directory ? "📁 " : "▧ ") + modelData.name + (modelData.directory ? "" : "  ·  " + page.sizeText(modelData.size))
-                    font.pixelSize: 13
-                    implicitHeight: 42
+                    font.pixelSize: page.fileFontSize
+                    implicitHeight: 52
                     ToolTip.visible: hovered
                     ToolTip.text: modelData.name + "  " + (modelData.date || "")
                     highlighted: page.localSelected.indexOf(modelData.name) >= 0
                     enabled: !page.dataState.busy
                     property string fileName: modelData.name
+                    Drag.supportedActions: Qt.CopyAction
                     onClicked: {
                         page.activeSide="local"; page.entryName=modelData.name
                         if (modelData.directory && !page.selectionMode) { page.localSelected=[]; ftpBrowser.local_open(modelData.name); page.entryName="" }
@@ -131,7 +140,7 @@ ColumnLayout {
                     Drag.hotSpot.y: height / 2
                     DragHandler {
                         id: dragHandler
-                        enabled: !modelData.directory && !page.dataState.busy
+                        enabled: !page.dataState.busy && page.dataState.connected
                         target: null
                         onActiveChanged: {
                             if (active) parent.dragFinishing = true
@@ -167,9 +176,10 @@ ColumnLayout {
                 DropArea {
                     anchors.fill: parent
                     keys: ["local"]
+                    onEntered: drag => { if (page.dataState.busy || !page.dataState.connected) drag.accepted = false }
                     onDropped: drop => {
                         if (drop.source && drop.source.fileName) {
-                            page.transfer("local", [drop.source.fileName])
+                            page.droppedFiles("local", drop.source.fileName)
                             drop.acceptProposedAction()
                         }
                     }
@@ -178,13 +188,14 @@ ColumnLayout {
                     required property var modelData
                     width: ListView.view.width
                     text: (modelData.directory ? "📁 " : "▧ ") + modelData.name + (modelData.directory ? "" : "  ·  " + page.sizeText(modelData.size))
-                    font.pixelSize: 13
-                    implicitHeight: 42
+                    font.pixelSize: page.fileFontSize
+                    implicitHeight: 52
                     ToolTip.visible: hovered
                     ToolTip.text: modelData.name + "  " + (modelData.date || "")
                     highlighted: page.remoteSelected.indexOf(modelData.name) >= 0
                     enabled: !page.dataState.busy
                     property string fileName: modelData.name
+                    Drag.supportedActions: Qt.CopyAction
                     onClicked: {
                         page.activeSide="remote"; page.entryName=modelData.name
                         if (modelData.directory && !page.selectionMode) { page.remoteSelected=[]; ftpBrowser.remote_open(modelData.name); page.entryName="" }
@@ -198,11 +209,12 @@ ColumnLayout {
                     Drag.active: dragHandler.active || dragFinishing
                     property bool dragFinishing: false
                     Drag.keys: ["remote"]
+                    onEntered: drag => { if (page.dataState.busy || !page.dataState.connected) drag.accepted = false }
                     Drag.hotSpot.x: width / 2
                     Drag.hotSpot.y: height / 2
                     DragHandler {
                         id: dragHandler
-                        enabled: !modelData.directory && !page.dataState.busy
+                        enabled: !page.dataState.busy && page.dataState.connected
                         target: null
                         onActiveChanged: {
                             if (active) parent.dragFinishing = true
@@ -225,6 +237,7 @@ ColumnLayout {
             }
         }
     }
+    Label { text: "Drag files or folders between Local and Switch 2 to transfer (confirmation required)"; color: "#8cb9c9"; font.pixelSize: 13; Layout.fillWidth: true }
     RowLayout {
         Button { text: "Upload (" + page.localSelected.length + ")"; enabled: !page.dataState.busy && page.dataState.connected && page.localSelected.length > 0; onClicked: page.transfer("local",page.localSelected) }
         Button { text: "Download (" + page.remoteSelected.length + ")"; enabled: !page.dataState.busy && page.dataState.connected && page.remoteSelected.length > 0; onClicked: page.transfer("remote",page.remoteSelected) }
@@ -239,6 +252,7 @@ ColumnLayout {
         Button { text: "Queue"; onClicked: queueDialog.open() }
         Label { text: page.activeSide; color: "#52e0ae" }
     }
+    Label { visible: page.dataState.busy; text: page.dataState.busy ? "Transfer: " + Math.round(page.dataState.progress || 0) + "%" : ""; font.pixelSize: 14; font.bold: true }
     Label { visible: page.dataState.busy && page.dataState.transferSize > 0; text: page.sizeText(page.dataState.bytesDone) + " / " + page.sizeText(page.dataState.transferSize) + " · " + page.sizeText(page.dataState.speed) + "/s" + (page.dataState.speed > 0 ? " · ETA " + Math.max(0,Math.ceil((page.dataState.transferSize-page.dataState.bytesDone)/page.dataState.speed)) + " s" : ""); Layout.fillWidth: true }
     ProgressBar { indeterminate: page.dataState.busy && page.dataState.transferSize === 0 && page.dataState.total === 0; Layout.fillWidth: true; from: 0; to: 100; value: page.dataState.total > 0 && page.dataState.busy && page.dataState.current !== "" ? Math.min(100, (page.dataState.completed + page.dataState.progress/100)*100/page.dataState.total) : page.dataState.progress }
     Label { text: page.dataState.status + (page.dataState.total > 0 ? " · " + page.dataState.completed + "/" + page.dataState.total + " files · " + page.dataState.current : page.dataState.completed > 0 ? " · " + page.dataState.completed + " entries" : ""); wrapMode: Text.Wrap; Layout.fillWidth: true; maximumLineCount: 4 }
