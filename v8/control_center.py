@@ -125,17 +125,27 @@ class Controller(QObject):
         self.process.start(sys.executable, ["-m", "v8.install", "repair"])
 
 
-    @Slot()
-    def homebrew_monitor_refresh(self):
+    @Slot(bool)
+    def homebrew_monitor_refresh(self, force=False):
         """Read-only background discovery; never triggers a download or FTP write."""
         if getattr(self, "_homebrew_monitor_busy", False):
             return
+        cached = homebrew_monitor.load_cache()
+        if cached is not None:
+            self._community_repos = frozenset(row["repo"] for row in cached.get("catalog", []) if isinstance(row, dict) and row.get("repo"))
+            self.homebrewMonitorResult.emit(json.dumps(cached))
+            if not force and homebrew_monitor.cache_is_today(cached):
+                return
         self._homebrew_monitor_busy = True
         self.homebrewMonitorResult.emit(json.dumps({"kind": "monitor_progress", "message": "Checking GitHub releases, Reddit and community catalogs..."}))
         def worker():
             try:
                 data = homebrew_monitor.refresh()
                 self._community_repos = frozenset(row["repo"] for row in data.get("catalog", []) if row.get("repo"))
+                try:
+                    homebrew_monitor.save_cache(data)
+                except OSError:
+                    pass
                 self.homebrewMonitorResult.emit(json.dumps(data))
             except Exception as exc:
                 self.homebrewMonitorResult.emit(json.dumps({
