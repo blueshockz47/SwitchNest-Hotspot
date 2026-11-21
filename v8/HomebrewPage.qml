@@ -149,8 +149,8 @@ ColumnLayout {
         }
     }
     spacing: 4
-    Component.onCompleted: { controller.homebrew_search("", "All"); if (visible) controller.homebrew_monitor_refresh(false) }
-    onVisibleChanged: { if (visible) controller.homebrew_monitor_refresh() }
+    Component.onCompleted: { controller.homebrew_search("", "All"); Qt.callLater(function() { controller.homebrew_monitor_refresh(false) }) }
+    onVisibleChanged: { if (visible) Qt.callLater(function() { controller.homebrew_monitor_refresh(false) }) }
     Connections {
         target: ftpBrowser
         function onChanged() { home.ftpState = JSON.parse(ftpBrowser.state) }
@@ -243,7 +243,7 @@ ColumnLayout {
         Layout.fillWidth: true
         Label { text: "Live Homebrew Updates"; font.bold: true; color: "#52e0ae" }
         Label { text: home.monitorStatus; Layout.fillWidth: true; elide: Text.ElideRight; font.pixelSize: 11 }
-        Button { text: home.monitorChecking ? "Checking..." : "Check Now"; enabled: !home.monitorChecking; onClicked: controller.homebrew_monitor_refresh() }
+        Button { text: home.monitorChecking ? "Checking..." : "Check Now"; enabled: !home.monitorChecking; onClicked: controller.homebrew_monitor_refresh(true) }
     }
     ProgressBar {
         Layout.fillWidth: true
