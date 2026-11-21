@@ -312,6 +312,7 @@ ColumnLayout {
                             model: page.remoteSegments()
                             delegate: ToolButton {
                                 required property var modelData
+                                visible: modelData.path !== "/"
                                 text: modelData.name + (modelData.path === page.dataState.remote ? "" : " ›")
                                 enabled: !page.dataState.busy && page.dataState.connected
                                 onClicked: { page.clearSelection(); ftpBrowser.open_remote_path(modelData.path) }
