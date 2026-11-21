@@ -28,14 +28,14 @@ ColumnLayout {
             seen[item.repo.toLowerCase()] = true
             rows.push({name: item.name, category: item.category || "Other", repo: item.repo,
                        manual: true, community: true, source: item.sources.join(" + "),
-                       warning: "Unverified community listing. Only GitHub release NROs with SHA-256 digests can be installed after explicit confirmation; ZIPs are download-only."})
+                       warning: "Unverified community listing. GitHub release NROs can be installed after explicit confirmation, even without a publisher digest; ZIPs are download-only."})
         }
         let q = catalogQuery.toLowerCase().trim()
         results = rows.filter(function(item) {
             if (catalogCategory !== "All" && item.category !== catalogCategory) return false
             return !q || [item.name, item.repo, item.category, item.source || ""].join(" ").toLowerCase().indexOf(q) !== -1
         })
-        statusText = results.length + " projects shown (curated + community, deduplicated). Community release assets require SHA-256 verification and confirmation."
+        statusText = results.length + " projects shown (curated + community, deduplicated). NRO installs require confirmation; publisher checksums may be unavailable."
     }
     property var assets: []
     property string selectedRepo: ""
@@ -137,7 +137,8 @@ ColumnLayout {
         }
     }
     spacing: 4
-    Component.onCompleted: { controller.homebrew_search("", "All"); controller.homebrew_monitor_refresh() }
+    Component.onCompleted: { controller.homebrew_search("", "All"); if (visible) controller.homebrew_monitor_refresh() }
+    onVisibleChanged: { if (visible) controller.homebrew_monitor_refresh() }
     Connections {
         target: ftpBrowser
         function onChanged() { home.ftpState = JSON.parse(ftpBrowser.state) }
@@ -289,7 +290,7 @@ ColumnLayout {
                 }
                 onClicked: {
                     home.selectApp(modelData)
-                    home.statusText = modelData.community ? "Community listing: review GitHub, then choose a verified release asset; installs require confirmation." : "Right-click " + modelData.name + " for actions."
+                    home.statusText = modelData.community ? "Community listing: review the GitHub release; NRO installation requires confirmation." : "Right-click " + modelData.name + " for actions."
                 }
                 MouseArea {
                     anchors.fill: parent
@@ -313,7 +314,7 @@ ColumnLayout {
                     MenuItem {
                         text: "Download && Install"
                         width: contextMenu.width
-                        enabled: !!home.actionRepo && !projectCard.modelData.community && !home.working
+                        enabled: !!home.actionRepo && !home.working
                         onTriggered: home.requestRelease("install")
                     }
                     MenuSeparator {}
