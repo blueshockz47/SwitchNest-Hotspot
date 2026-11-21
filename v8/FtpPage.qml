@@ -163,16 +163,6 @@ ColumnLayout {
                 Layout.fillWidth: true; Layout.fillHeight: true
                 clip: true
                 model: page.sorted(page.dataState.localRows)
-                Rectangle {
-                    anchors.fill: parent
-                    z: 20
-                    enabled: false
-                    visible: page.dropTarget === "local"
-                    color: "#2252e0ae"
-                    border.color: "#52e0ae"
-                    border.width: 3
-                    radius: 6
-                }
                 delegate: ItemDelegate {
                     required property var modelData
                     width: ListView.view.width
@@ -228,16 +218,6 @@ ColumnLayout {
                 Layout.fillWidth: true; Layout.fillHeight: true
                 clip: true
                 model: page.sorted(page.dataState.remoteRows)
-                Rectangle {
-                    anchors.fill: parent
-                    z: 20
-                    enabled: false
-                    visible: page.dropTarget === "remote"
-                    color: "#2252e0ae"
-                    border.color: "#52e0ae"
-                    border.width: 3
-                    radius: 6
-                }
                 delegate: ItemDelegate {
                     required property var modelData
                     width: ListView.view.width
