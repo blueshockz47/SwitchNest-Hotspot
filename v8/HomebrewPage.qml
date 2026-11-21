@@ -51,7 +51,25 @@ ColumnLayout {
             last = item.category
         }
         results = filtered
+        let groups = []
+        for (let item of filtered) {
+            if (!groups.length || groups[groups.length - 1].name !== item.category)
+                groups.push({name: item.category, items: []})
+            groups[groups.length - 1].items.push(item)
+        }
+        categoryGroups = groups
         statusText = results.length + " projects shown (curated + community, deduplicated). NRO installs require confirmation; publisher checksums may be unavailable."
+    }
+    property var categoryGroups: []
+    function categoryColor(category) {
+        return category === "Emulation" ? "#60a5fa" : category === "Games" ? "#f472b6" :
+               category === "Tools" ? "#fbbf24" : category === "Streaming" ? "#2dd4bf" :
+               category === "Media" ? "#a78bfa" : category === "Fun" ? "#fb923c" : "#94a3b8"
+    }
+    function categoryIcon(category) {
+        return category === "Emulation" ? "🎮" : category === "Games" ? "🕹️" :
+               category === "Tools" ? "🛠️" : category === "Streaming" ? "📺" :
+               category === "Media" ? "🎵" : "✨"
     }
     property var assets: []
     property string selectedRepo: ""
@@ -314,29 +332,92 @@ ColumnLayout {
     Label { text: home.selectedWarning; visible: home.selectedWarning.length > 0; color: "#f59e0b"; font.bold: true; wrapMode: Text.Wrap; Layout.fillWidth: true }
 
     Label { text: "Three-column app catalog • Right-click an app for download options"; font.pixelSize: 11; Layout.fillWidth: true }
-    RowLayout {
+    ScrollView {
+        id: projectScroll
         Layout.fillWidth: true
         Layout.fillHeight: true
-        GridView {
-            id: projectList
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            clip: true
-            cellWidth: width / 3
-            cellHeight: 64
-            model: home.results
-            delegate: ItemDelegate {
+        clip: true
+        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+        Column {
+            width: projectScroll.availableWidth
+            spacing: 14
+            Repeater {
+                model: home.categoryGroups
+                delegate: Column {
+                    id: categorySection
+                    required property var modelData
+                    width: parent.width
+                    spacing: 8
+                    Rectangle {
+                        width: parent.width
+                        height: 42
+                        radius: 9
+                        color: "#1d2c40"
+                        border.color: home.categoryColor(categorySection.modelData.name)
+                        border.width: 1
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 14
+                            anchors.rightMargin: 14
+                            spacing: 10
+                            Label { text: home.categoryIcon(categorySection.modelData.name); font.pixelSize: 21 }
+                            Label {
+                                text: categorySection.modelData.name
+                                font.pixelSize: 17
+                                font.bold: true
+                                color: home.categoryColor(categorySection.modelData.name)
+                            }
+                            Rectangle {
+                                Layout.preferredWidth: countLabel.implicitWidth + 18
+                                Layout.preferredHeight: 24
+                                radius: 12
+                                color: "#33465e"
+                                Label {
+                                    id: countLabel
+                                    anchors.centerIn: parent
+                                    text: categorySection.modelData.items.length + " apps"
+                                    font.pixelSize: 11
+                                    color: "#f8fafc"
+                                }
+                            }
+                            Item { Layout.fillWidth: true }
+                        }
+                    }
+                    GridLayout {
+                        width: parent.width
+                        columns: 3
+                        columnSpacing: 8
+                        rowSpacing: 5
+                        Repeater {
+                            model: categorySection.modelData.items
+                            delegate: Loader {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                Layout.preferredWidth: (categorySection.width - 16) / 3
+                                Layout.preferredHeight: 66
+                                sourceComponent: homebrewCard
+                                onLoaded: item.modelData = modelData
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Component {
+        id: homebrewCard
+        ItemDelegate {
                 id: projectCard
-                required property var modelData
-                width: projectList.cellWidth - 6
-                height: projectList.cellHeight - 4
+                property var modelData: ({})
+                width: parent ? parent.width : 320
+                height: 66
                 padding: 6
                 highlighted: home.selectedRepo !== "" && modelData.repo === home.selectedRepo
                 background: Rectangle {
                     radius: 7
-                    color: projectCard.highlighted ? "#193d43" : projectCard.hovered ? "#252f3b" : "#1a222c"
+                    color: projectCard.highlighted ? "#164e63" : projectCard.hovered ? "#27384e" : "#192637"
                     border.width: projectCard.highlighted ? 2 : 1
-                    border.color: projectCard.highlighted ? "#52e0ae" : "#33404d"
+                    border.color: projectCard.highlighted ? "#5eead4" : projectCard.hovered ? home.categoryColor(modelData.category) : "#35465b"
                 }
                 contentItem: RowLayout {
                     spacing: 8
@@ -344,10 +425,10 @@ ColumnLayout {
                         Layout.preferredWidth: 46
                         Layout.preferredHeight: 46
                         radius: 7
-                        color: modelData.category === "Emulation" ? "#233b62" : modelData.category === "Games" ? "#513451" : modelData.category === "Streaming" ? "#284c4b" : modelData.category === "Tools" ? "#554329" : "#353b50"
+                        color: home.categoryColor(modelData.category)
                         Label {
                             anchors.centerIn: parent
-                            text: modelData.category === "Emulation" ? "🎮" : modelData.category === "Games" ? "🕹️" : modelData.category === "Streaming" ? "📺" : modelData.category === "Tools" ? "🛠️" : modelData.category === "Media" ? "🎵" : "✨"
+                            text: home.categoryIcon(modelData.category)
                             font.pixelSize: 24
                         }
                     }
@@ -355,7 +436,7 @@ ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 1
                         Label {
-                            text: (modelData.categoryStart && home.catalogCategory === "All" ? modelData.category + " (" + modelData.categoryCount + ")  •  " : "") + modelData.name
+                            text: modelData.name
                             font.pixelSize: 15
                             font.bold: true
                             color: "#f2f6fa"
@@ -434,7 +515,6 @@ ColumnLayout {
                     }
                 }
             }
-        }
     }
     RowLayout {
         visible: home.downloadedDirectory.length > 0
