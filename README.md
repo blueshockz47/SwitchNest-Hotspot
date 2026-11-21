@@ -79,6 +79,16 @@ sudo bash ./install-switchnest-plasma67-panel-toggle.sh
 
 This helper allows the Control Center to manage the hotspot. The KDE taskbar toggle itself is optional.
 
+**Add the SwitchNest toggle to your KDE taskbar (Plasma panel):**
+
+1. **Right-click** an empty area of the bottom taskbar and choose **Enter Edit Mode**.
+2. Select **Add Widgets**.
+3. Search for **SwitchNest Hotspot Toggle**.
+4. **Drag the widget onto your taskbar**, then exit Edit Mode.
+5. Click the new Wi-Fi/hotspot icon to turn the offline hotspot **ON** or **OFF**. Turning it off attempts to restore your home Wi-Fi.
+
+**Can't find the widget?** Log out and back into **Desktop Mode**, then open **Add Widgets** and search again. The widget is separate from KDE's built-in Networks icon; the installer does not modify the default network applet.
+
 ### Step 3 — Install and open SwitchNest
 
 **Run this as your normal user — do not use `sudo`:**
