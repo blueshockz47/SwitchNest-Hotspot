@@ -63,8 +63,8 @@ ColumnLayout {
     property var categoryGroups: []
     function categoryColor(category) {
         return category === "Emulation" ? "#60a5fa" : category === "Games" ? "#f472b6" :
-               category === "Tools" ? "#fbbf24" : category === "Streaming" ? "#2dd4bf" :
-               category === "Media" ? "#a78bfa" : category === "Fun" ? "#fb923c" : "#94a3b8"
+               category === "Tools" ? "#38bdf8" : category === "Streaming" ? "#2dd4bf" :
+               category === "Media" ? "#fb7185" : category === "Fun" ? "#fb923c" : "#94a3b8"
     }
     function categoryIcon(category) {
         return category === "Emulation" ? "🎮" : category === "Games" ? "🕹️" :
@@ -352,12 +352,25 @@ ColumnLayout {
                         width: parent.width
                         height: 42
                         radius: 9
-                        color: "#1d2c40"
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0.0; color: "#26364d" }
+                            GradientStop { position: 1.0; color: "#172436" }
+                        }
                         border.color: home.categoryColor(categorySection.modelData.name)
                         border.width: 1
+                        Rectangle {
+                            width: 5
+                            height: parent.height - 10
+                            radius: 3
+                            anchors.left: parent.left
+                            anchors.leftMargin: 4
+                            anchors.verticalCenter: parent.verticalCenter
+                            color: home.categoryColor(categorySection.modelData.name)
+                        }
                         RowLayout {
                             anchors.fill: parent
-                            anchors.leftMargin: 14
+                            anchors.leftMargin: 17
                             anchors.rightMargin: 14
                             spacing: 10
                             Label { text: home.categoryIcon(categorySection.modelData.name); font.pixelSize: 21 }
@@ -415,7 +428,8 @@ ColumnLayout {
                 highlighted: home.selectedRepo !== "" && modelData.repo === home.selectedRepo
                 background: Rectangle {
                     radius: 7
-                    color: projectCard.highlighted ? "#164e63" : projectCard.hovered ? "#27384e" : "#192637"
+                    color: projectCard.highlighted ? "#1b4054" : projectCard.hovered ? "#293e55" : "#192637"
+                    Behavior on color { ColorAnimation { duration: 160 } }
                     border.width: projectCard.highlighted ? 2 : 1
                     border.color: projectCard.highlighted ? "#5eead4" : projectCard.hovered ? home.categoryColor(modelData.category) : "#35465b"
                 }
@@ -425,7 +439,9 @@ ColumnLayout {
                         Layout.preferredWidth: 46
                         Layout.preferredHeight: 46
                         radius: 7
-                        color: home.categoryColor(modelData.category)
+                        color: "#24384e"
+                        border.color: home.categoryColor(modelData.category)
+                        border.width: 2
                         Label {
                             anchors.centerIn: parent
                             text: home.categoryIcon(modelData.category)
