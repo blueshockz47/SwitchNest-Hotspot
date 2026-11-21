@@ -105,6 +105,7 @@ ColumnLayout {
                 home.monitorReddit = data.reddit
                 home.monitorCatalog = data.catalog || []
                 home.installableRepos = ({})
+                home.zipOnlyRepos = ({})
                 home.updateCatalog()
                 if (data.directory && data.directory.url === "https://switch2homebrew.com/" && data.directory.automated === false)
                     home.monitorDirectory = data.directory
@@ -125,6 +126,7 @@ ColumnLayout {
     property string actionName: ""
     property var choices: []
     property var installableRepos: ({})
+    property var zipOnlyRepos: ({})
     property string probingRepo: ""
     function probeRelease(repo) {
         if (!repo || working) return
@@ -181,6 +183,10 @@ ColumnLayout {
                         let next = Object.assign({}, home.installableRepos)
                         next[data.repo] = eligible
                         home.installableRepos = next
+                        let zipOnly = !eligible && data.assets.some(function(asset) { return asset.name.toLowerCase().endsWith(".zip") })
+                        let zipState = Object.assign({}, home.zipOnlyRepos)
+                        zipState[data.repo] = zipOnly
+                        home.zipOnlyRepos = zipState
                         home.statusText = eligible ? "NRO release available for " + data.repo + ". Right-click again to install." : "No NRO release for " + data.repo + "; ZIP-only projects cannot be installed automatically."
                         home.action = ""
                         home.probingRepo = ""
@@ -314,6 +320,15 @@ ColumnLayout {
                             font.pixelSize: 15
                             font.bold: true
                             color: "#f2f6fa"
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                        }
+                        Label {
+                            visible: !!modelData.repo && home.zipOnlyRepos[modelData.repo] === true
+                            text: "ZIP File — Manual Install Required"
+                            font.pixelSize: 10
+                            font.bold: true
+                            color: "#f59e0b"
                             elide: Text.ElideRight
                             Layout.fillWidth: true
                         }
