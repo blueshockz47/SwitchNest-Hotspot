@@ -1,5 +1,8 @@
 """Read-only release monitoring. Reddit discoveries never authorize downloads."""
 import json
+import os
+from pathlib import Path
+from datetime import date
 import urllib.error
 import re
 import urllib.parse
@@ -88,3 +91,40 @@ def refresh(fetch=None, reddit_fetch=reddit_discover, repos=None, catalog_fetch=
                  "automated": False}
     return {"kind": "monitor", "github": github, "reddit": reddit, "catalog": catalog, "directory": directory,
             "warnings": warnings, "checked_at": datetime.now(timezone.utc).isoformat()}
+
+
+CACHE_PATH = Path.home() / ".cache" / "switchnest" / "homebrew" / "discovery.json"
+
+def load_cache(path=CACHE_PATH):
+    try:
+        if path.stat().st_size > 2 * MAX_RESPONSE:
+            return None
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict) or data.get("kind") != "monitor":
+            return None
+        if not all(isinstance(data.get(key), list) for key in ("github", "reddit", "catalog", "warnings")):
+            return None
+        if not isinstance(data.get("checked_at"), str):
+            return None
+        return data
+    except (OSError, ValueError, TypeError, UnicodeError):
+        return None
+
+def cache_is_today(data):
+    try:
+        return datetime.fromisoformat(data["checked_at"]).astimezone().date() == date.today()
+    except (ValueError, TypeError, KeyError):
+        return False
+
+def save_cache(data, path=CACHE_PATH):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    try:
+        with tmp.open("w", encoding="utf-8") as stream:
+            json.dump(data, stream, ensure_ascii=False)
+        os.replace(tmp, path)
+    finally:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
