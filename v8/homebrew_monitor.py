@@ -33,27 +33,31 @@ def reddit_discover(opener=urllib.request.urlopen):
                        "status": "Unverified community discovery", "source": "Reddit"})
     return result[:15]
 
-def github_updates(fetch=None, repos=None):
+def github_updates(fetch=None, repos=None, warnings=None):
     fetch = fetch or homebrew.request_json
     repos = repos if repos is not None else sorted(homebrew.SWITCH2_CANDIDATES)
     result = []
+    failures = 0
     for repo in repos:
         if repo not in homebrew.SWITCH2_CANDIDATES:
             continue
         try:
             release = homebrew.release_assets(repo, fetch=fetch)
-        except (ValueError, KeyError, OSError, TypeError):
+        except (ValueError, KeyError, OSError, TypeError, urllib.error.URLError) as exc:
+            failures += 1
             continue
         if release["assets"]:
             result.append({"repo": repo, "version": release["version"],
                            "asset_count": len(release["assets"]),
                            "url": "https://github.com/" + repo + "/releases",
                            "source": "GitHub", "status": "Official repository release; assets require verification"})
+    if warnings is not None and failures:
+        warnings.append(f"GitHub discovery unavailable for {failures} curated repositories; results may be incomplete")
     return result
 
 def refresh(fetch=None, reddit_fetch=reddit_discover, repos=None):
-    github = github_updates(fetch=fetch, repos=repos)
     warnings = []
+    github = github_updates(fetch=fetch, repos=repos, warnings=warnings)
     try:
         reddit = reddit_fetch()
     except (ValueError, OSError, TypeError, KeyError, json.JSONDecodeError) as exc:
