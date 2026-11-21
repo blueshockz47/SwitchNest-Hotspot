@@ -31,10 +31,26 @@ ColumnLayout {
                        warning: "Unverified community listing. GitHub release NROs can be installed after explicit confirmation, even without a publisher digest; ZIPs are download-only."})
         }
         let q = catalogQuery.toLowerCase().trim()
-        results = rows.filter(function(item) {
+        let filtered = rows.filter(function(item) {
             if (catalogCategory !== "All" && item.category !== catalogCategory) return false
             return !q || [item.name, item.repo, item.category, item.source || ""].join(" ").toLowerCase().indexOf(q) !== -1
         })
+        let order = ["Emulation", "Games", "Tools", "Streaming", "Media", "Fun", "Other"]
+        filtered.sort(function(a, b) {
+            let ai = order.indexOf(a.category), bi = order.indexOf(b.category)
+            if (ai < 0) ai = order.length
+            if (bi < 0) bi = order.length
+            return ai - bi || (a.name || "").localeCompare(b.name || "", undefined, {sensitivity: "base"})
+        })
+        let counts = ({})
+        for (let item of filtered) counts[item.category] = (counts[item.category] || 0) + 1
+        let last = ""
+        for (let item of filtered) {
+            item.categoryStart = item.category !== last
+            item.categoryCount = counts[item.category]
+            last = item.category
+        }
+        results = filtered
         statusText = results.length + " projects shown (curated + community, deduplicated). NRO installs require confirmation; publisher checksums may be unavailable."
     }
     property var assets: []
@@ -96,8 +112,6 @@ ColumnLayout {
                 home.monitorGithub = data.github
                 home.monitorReddit = data.reddit
                 home.monitorCatalog = data.catalog || []
-                home.installableRepos = ({})
-                home.zipOnlyRepos = ({})
                 home.updateCatalog()
                 if (data.directory && data.directory.url === "https://switch2homebrew.com/" && data.directory.automated === false)
                     home.monitorDirectory = data.directory
@@ -121,6 +135,9 @@ ColumnLayout {
     property var zipOnlyRepos: ({})
     property var checkedRepos: ({})
     property var staleRepos: ({})
+    function restoreReleaseStatuses() {
+        controller.homebrew_cached_releases()
+    }
     property string probingRepo: ""
     function probeRelease(repo) {
         if (!repo || working) return
@@ -151,7 +168,7 @@ ColumnLayout {
         }
     }
     spacing: 4
-    Component.onCompleted: { controller.homebrew_search("", "All"); Qt.callLater(function() { controller.homebrew_monitor_refresh(false) }) }
+    Component.onCompleted: { home.restoreReleaseStatuses(); controller.homebrew_search("", "All"); Qt.callLater(function() { controller.homebrew_monitor_refresh(false) }) }
     onVisibleChanged: { if (visible) Qt.callLater(function() { controller.homebrew_monitor_refresh(false) }) }
     Connections {
         target: ftpBrowser
@@ -170,7 +187,24 @@ ColumnLayout {
         function onHomebrewResult(raw) {
             try {
                 let data = JSON.parse(raw)
-                if (data.kind === "search") { home.curatedResults = data.items; home.assets = []; home.readyZip = ""; home.activeCategory = data.category || "All"; home.updateCatalog() }
+                if (data.kind === "cached_releases") {
+                    let available = Object.assign({}, home.installableRepos)
+                    let zipped = Object.assign({}, home.zipOnlyRepos)
+                    let checked = Object.assign({}, home.checkedRepos)
+                    let stale = Object.assign({}, home.staleRepos)
+                    for (let repo in data.releases) {
+                        let info = data.releases[repo]
+                        available[repo] = info.assets.some(function(a) { return a.name.toLowerCase().endsWith(".nro") })
+                        zipped[repo] = !available[repo] && info.assets.some(function(a) { return a.name.toLowerCase().endsWith(".zip") })
+                        checked[repo] = true
+                        stale[repo] = !!info.stale
+                    }
+                    home.installableRepos = available
+                    home.zipOnlyRepos = zipped
+                    home.checkedRepos = checked
+                    home.staleRepos = stale
+                }
+                else if (data.kind === "search") { home.curatedResults = data.items; home.assets = []; home.readyZip = ""; home.activeCategory = data.category || "All"; home.updateCatalog() }
                 else if (data.kind === "assets") {
                     if (home.action === "probe" && data.repo === home.probingRepo) {
                         let eligible = data.assets.some(function(asset) { return asset.name.toLowerCase().endsWith(".nro") })
@@ -321,7 +355,7 @@ ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 1
                         Label {
-                            text: modelData.name
+                            text: (modelData.categoryStart && home.catalogCategory === "All" ? modelData.category + " (" + modelData.categoryCount + ")  •  " : "") + modelData.name
                             font.pixelSize: 15
                             font.bold: true
                             color: "#f2f6fa"
