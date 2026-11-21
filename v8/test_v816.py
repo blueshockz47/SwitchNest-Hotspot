@@ -53,6 +53,33 @@ class MonitorTests(unittest.TestCase):
         self.assertEqual(catalog_sources.normalize_category("Other", "Chromium NX"), "Tools")
         self.assertEqual(catalog_sources.normalize_category("Other", "PKForge"), "Tools")
 
+    def test_unverified_nro_requires_explicit_opt_in(self):
+        import tempfile
+        from pathlib import Path
+        payload = b"sample unverified NRO test payload"
+        class Response:
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def geturl(self): return "https://release-assets.githubusercontent.com/test"
+            def read(self, count): 
+                data = self.data[:count]
+                self.data = self.data[count:]
+                return data
+        def opener(request, timeout):
+            response = Response()
+            response.data = payload
+            return response
+        asset = {"name": "test.nro", "url": "https://github.com/example/repo/releases/download/v1/test.nro", "size": len(payload), "digest": ""}
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, "Verified SHA-256"):
+                homebrew.download_asset(asset, directory, opener=opener)
+            path = homebrew.download_asset(asset, directory, opener=opener, allow_unverified_nro=True)
+            self.assertEqual(Path(path).read_bytes(), payload)
+            Path(path).unlink()
+            asset["name"] = "test.zip"
+            with self.assertRaisesRegex(ValueError, "Verified SHA-256"):
+                homebrew.download_asset(asset, directory, opener=opener, allow_unverified_nro=True)
+
     def test_maximized_preference_registered(self):
         self.assertIn("fullscreen_on_start", preferences.DEFAULTS)
         self.assertIs(type(preferences.DEFAULTS["fullscreen_on_start"]), bool)
