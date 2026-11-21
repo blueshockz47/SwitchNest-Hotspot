@@ -1,22 +1,26 @@
 # SwitchNest (Offline Hotspot + Homebrew Manager)
 
-**A local Nintendo Switch 2 hotspot and file-management hub for SteamOS.**
+**An offline Nintendo Switch 2 Wi-Fi hotspot, FTP File Manager, and Homebrew Manager for SteamOS.**
 
 *Connect locally. Play freely.*
 
-SwitchNest turns your SteamOS PC or Steam Deck into a Wi-Fi hotspot for a Nintendo Switch 2. Use the desktop Control Center to manage the hotspot, transfer files over FTP, browse Switch 2 homebrew releases, and control Sunshine streaming.
+[![Stable release](https://img.shields.io/badge/stable-v8.1.5-blue)](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/tag/v8.1.5) ![Platform](https://img.shields.io/badge/platform-SteamOS%20%7C%20Linux-informational) [![License: GPL-2.0](https://img.shields.io/badge/license-GPL--2.0-green)](LICENSE)
 
-**Current stable version: v8.1.5** · **[Download SwitchNest v8.1.5 for Linux (ZIP)](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/download/v8.1.5/SwitchNest-Hotspot-Linux-v8.1.5.zip)** · [Release notes](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/tag/v8.1.5) · [Report an issue](https://github.com/blueshockz47/SwitchNest-Hotspot/issues)
+**[Download v8.1.5 for Linux (ZIP)](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/download/v8.1.5/SwitchNest-Hotspot-Linux-v8.1.5.zip)** · [Installation](#quick-install-on-steamos) · [Screenshots](#screenshots--v815) · [Release notes](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/tag/v8.1.5) · [Report a bug](https://github.com/blueshockz47/SwitchNest-Hotspot/issues)
 
-> **Important:** The default hotspot is **local-only**, not a Nintendo online connection. The PC can remain online through Ethernet while hotspot clients are intended to remain offline. Verify firewall isolation on your system; an *Isolation: Unverified* indicator is not proof of isolation. SwitchNest does not jailbreak your console or install kaiHEN.
+SwitchNest lets you connect a Nintendo Switch 2 directly to your SteamOS PC over a **local-only Wi-Fi hotspot**, manage files through FTP, browse homebrew releases, and control Sunshine streaming. **The offline hotspot can start without Ethernet/LAN or an internet connection** once its required components are installed and your Wi-Fi adapter supports access-point mode.
+
+**You do not need to use the SwitchNest hotspot for FTP or Homebrew Manager.** If your PC and Switch 2 are on the **same reachable local network** (such as your home router's Wi-Fi/LAN), those tools can connect directly to a compatible FTP server running on the Switch 2. This also works when the Switch 2 uses **90DNS**, provided its network settings still allow local communication and the FTP server is reachable. GitHub downloads still require internet access on the PC.
+
+> **Important:** The SwitchNest hotspot is designed not to share the PC's internet connection with the console. Verify firewall isolation independently; an *Isolation: Unverified* status is not proof of isolation. SwitchNest does not jailbreak the console or install kaiHEN.
 
 ## What can SwitchNest do?
 
 | Feature | Description |
 | --- | --- |
-| **Offline Wi-Fi hotspot** | Connect your Switch 2 to your SteamOS PC without sharing the PC's internet connection. |
-| **FTP File Manager** | Browse local files and transfer files to or from a compatible FTP server running on your Switch 2. |
-| **Switch 2 Homebrew Manager** | Browse a categorized, three-column homebrew catalog, inspect GitHub releases, download eligible files, and install supported verified NRO files over FTP with confirmation. |
+| **Offline Wi-Fi hotspot** | Connect your Switch 2 locally without sharing internet; Ethernet/LAN is **not required** to start the hotspot. |
+| **FTP File Manager** | Transfer files with a compatible Switch 2 FTP server over the SwitchNest hotspot **or any reachable shared local network**, including setups using 90DNS. |
+| **Switch 2 Homebrew Manager** | Browse curated homebrew releases, download eligible files, and install supported verified NRO files over FTP with confirmation; **the SwitchNest hotspot is optional**. |
 | **Sunshine / Moonlight** | Start or stop an existing Sunshine service and open its web interface for local game streaming. |
 | **Wi-Fi settings** | Manage the hotspot SSID, WPA2 password, channel, and saved presets using the existing backend. |
 | **Status and recovery** | View hotspot/DNS status, connected Wi-Fi stations, diagnostics, and restart controls. |
@@ -26,45 +30,34 @@ SwitchNest turns your SteamOS PC or Steam Deck into a Wi-Fi hotspot for a Ninten
 
 ## Screenshots — v8.1.5
 
-### Overview
-See hotspot status, DNS activity, connected Wi-Fi devices, and network details.
+**Overview — hotspot status and network diagnostics**
 
-![SwitchNest v8.1.5 Overview](docs/images/Overview.png)
+![SwitchNest Overview](docs/images/Overview.png)
 
-### Switch 2 Homebrew Manager
-Search or filter the homebrew catalog. Right-click an app to view its GitHub repository or available download actions.
+| Homebrew Manager | FTP File Manager |
+| --- | --- |
+| ![SwitchNest Homebrew Manager](docs/images/HomebrewManager.png) | ![SwitchNest FTP File Manager](docs/images/FTP%20Manager.png) |
+| Browse homebrew releases and supported installation options | Transfer files to and from a compatible Switch 2 FTP server |
 
-![SwitchNest v8.1.5 Homebrew Manager](docs/images/HomebrewManager.png)
-
-### FTP File Manager
-Browse your PC's files and connect to the Switch 2 FTP server for transfers.
-
-![SwitchNest v8.1.5 FTP File Manager](docs/images/FTP%20Manager.png)
-
-### Settings
-Manage Wi-Fi configuration, startup preferences, restart controls, and presets.
-
-![SwitchNest v8.1.5 Settings](docs/images/Settings.png)
-
-### Streaming
-Control a separately installed Sunshine server for Moonlight streaming.
-
-![SwitchNest v8.1.5 Streaming](docs/images/Streaming.png)
+| Wi-Fi Settings | Streaming |
+| --- | --- |
+| ![SwitchNest Wi-Fi Settings](docs/images/Settings.png) | ![SwitchNest Streaming](docs/images/Streaming.png) |
+| Configure hotspot Wi-Fi and recovery controls | Manage a separately installed Sunshine server |
 
 ## Requirements
 
 - **SteamOS with KDE Desktop Mode** and an access-point-capable Wi-Fi adapter.
 - **NetworkManager** and the Linux tools required by the hotspot backend.
 - **Administrator access** for backend/helper installation; install the Control Center as your regular user.
-- An **Ethernet connection** is recommended so your PC can remain online while Wi-Fi is used as the hotspot.
-- Internet access for the first Control Center dependency installation and for GitHub homebrew downloads.
+- **Ethernet/LAN is optional.** The offline hotspot can run without a wired connection or internet access after installation. Ethernet is useful only if you want the PC online at the same time; an adapter cannot normally act as both a Wi-Fi client and access point unless the hardware and driver support it.
+- Internet access for initial downloads/dependency installation and for GitHub homebrew downloads; **not required to start the installed offline hotspot**.
 - Approximately **2 GiB of free space** recommended for installation; more may be needed for downloaded homebrew.
 
 Other Linux distributions and Windows are **not confirmed supported** by this Linux release.
 
-## Install SwitchNest on SteamOS
+## Quick install on SteamOS
 
-Install in this order: **hotspot backend → control helper → Control Center**. If you already have a working v7.1 backend and helper, skip to Step 3.
+Install in this order: **hotspot backend → control helper → Control Center**. If you already have a working v7.1 backend and helper, skip to Step 3. **No Ethernet connection is required to run the offline hotspot.**
 
 ### 1. Download the project
 
@@ -113,6 +106,17 @@ When installation finishes, open **SwitchNest Control Center** from the KDE appl
 
 The hotspot is designed for local connectivity. It does not provide Nintendo online services.
 
+## Use FTP and Homebrew Manager without the SwitchNest hotspot
+
+You can leave the SwitchNest offline hotspot **OFF** and use your existing home network instead:
+
+1. Connect your PC and Switch 2 to the **same local network** (for example, PC on router Ethernet and Switch 2 on router Wi-Fi, or both on the same Wi-Fi).
+2. Start a compatible **FTP server on the Switch 2** and note its IP address and port.
+3. Open SwitchNest's **FTP File Manager** or **Homebrew Manager**, enter that IP and port, and connect. For Homebrew Manager, choose a supported NRO installation workflow when available.
+4. If the Switch 2 uses **90DNS**, you can keep it configured: DNS filtering does not inherently prevent local FTP traffic. Make sure the router, client isolation, firewall, and console network configuration permit devices to reach each other.
+
+**No SwitchNest hotspot or Ethernet cable is required for these file-management features.** The PC still needs internet access to fetch new GitHub homebrew releases, and the console must have a compatible FTP server running. A 90DNS configuration is **not** a guarantee of blocking all Nintendo services or of network security.
+
 ## How to use the Homebrew Manager
 
 1. Start SwitchNest and open **Files → Homebrew Manager**.
@@ -129,7 +133,7 @@ The hotspot is designed for local connectivity. It does not provide Nintendo onl
 
 ## How to use FTP and streaming
 
-**FTP:** Launch a compatible FTP server on the Switch 2 (for example, OunceShell), open **Files → FTP File Manager**, enter the server IP and port, and click **Connect**. Browse the local and remote panels to manage transfers.
+**FTP:** The SwitchNest hotspot is optional: use any reachable shared local network, including a network where the Switch 2 has 90DNS configured. Launch a compatible FTP server on the Switch 2 (for example, OunceShell), open **Files → FTP File Manager**, enter the server IP and port, and click **Connect**. Browse the local and remote panels to manage transfers.
 
 **Streaming:** Install and configure [Sunshine](https://github.com/LizardByte/Sunshine) on your PC and a compatible Moonlight client on your Switch 2. Open SwitchNest's **Streaming** page to control Sunshine. [Detailed streaming guide](docs/SUNSHINE.md).
 
@@ -168,12 +172,12 @@ Both create a Wi-Fi network, but they are designed for different purposes:
 | --- | --- | --- |
 | **Main purpose** | Local connection between your Nintendo Switch 2 and SteamOS PC | Share an internet connection with other devices |
 | **Internet on the Switch 2** | **Not shared by design**; Nintendo online services are not provided | Usually available through the host's internet connection |
-| **Internet on the PC** | Can remain online through Ethernet while the Switch 2 uses the separate Wi-Fi hotspot | The PC typically stays online and forwards that connection to clients |
+| **Internet on the PC** | **Not required**; the hotspot starts without Ethernet/LAN. Ethernet can keep the PC online separately | The PC typically stays online and forwards that connection to clients |
 | **Local file transfers** | Built-in FTP File Manager for a compatible FTP server running on the Switch 2 | Possible only if you set up suitable file-transfer software separately |
 | **Homebrew tools** | Includes a curated Homebrew Manager with supported download and confirmed FTP installation workflows | Not included |
 | **Streaming controls** | Integrates controls for an independently installed Sunshine server | Not included by default |
 
-**Why use SwitchNest?** It provides a dedicated local Wi-Fi link for Switch 2 file management, homebrew workflows, and compatible local streaming **without intentionally sharing the PC's internet connection with the console**.
+**Why use SwitchNest?** Its FTP and Homebrew Manager also work without the SwitchNest hotspot on any reachable shared local network (including with 90DNS configured on the console). The optional offline hotspot provides a dedicated local Wi-Fi link for Switch 2 file management, homebrew workflows, and compatible local streaming **without intentionally sharing the PC's internet connection with the console**.
 
 **Important:** “Offline” describes SwitchNest's intended network configuration, not a guarantee of isolation. Confirm your firewall and forwarding rules before relying on the hotspot to keep the Switch 2 offline. SwitchNest does not jailbreak the console, and the Homebrew Manager does not replace the console-side homebrew prerequisites.
 
