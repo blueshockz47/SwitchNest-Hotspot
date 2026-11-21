@@ -43,7 +43,7 @@ class MonitorTests(unittest.TestCase):
         self.assertEqual(catalog_sources.normalize_category("Emulators", "PPSSPP"), "Emulation")
         self.assertEqual(catalog_sources.normalize_category("Media", "KaiPlayer"), "Media")
         self.assertEqual(catalog_sources.normalize_category("Other", "Moonlight NX"), "Streaming")
-        self.assertEqual(catalog_sources.normalize_category("Other", "Sphaira"), "Other")
+        self.assertEqual(catalog_sources.normalize_category("Other", "Sphaira"), "Tools")
         self.assertEqual(catalog_sources.normalize_category("Tools", "File Browser"), "Tools")
 
     def test_refined_categories(self):
