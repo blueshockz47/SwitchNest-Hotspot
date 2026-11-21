@@ -172,7 +172,10 @@ class Controller(QObject):
         """Restore release availability labels without contacting GitHub."""
         state = homebrew_release_cache._read()
         releases = {}
-        for repo, entry in state.get("releases", {}).items():
+        entries = state.get("releases", {})
+        if not isinstance(entries, dict):
+            entries = {}
+        for repo, entry in entries.items():
             if not isinstance(repo, str) or not homebrew_release_cache.REPO_PATTERN.fullmatch(repo):
                 continue
             cached = homebrew_release_cache.get(repo)
