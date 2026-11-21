@@ -102,8 +102,9 @@ ColumnLayout {
         } else {
             result = [name]
         }
-        if (side === "local") localSelected=result
-        else remoteSelected=result
+        // Selection belongs to the active pane only; changing panes clears stale highlights.
+        if (side === "local") { localSelected=result; remoteSelected=[] }
+        else { remoteSelected=result; localSelected=[] }
         activeSide=side
         entryName=name
     }
