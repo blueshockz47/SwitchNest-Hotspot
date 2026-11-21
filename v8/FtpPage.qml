@@ -205,7 +205,16 @@ ColumnLayout {
                         MenuItem { text: "Upload file / folder"; onTriggered: page.transfer("local",[page.entryName]) }
                         MenuItem { text: "Properties"; onTriggered: { ftpBrowser.properties(page.activeSide,page.entryName); propertiesDialog.open() } }
                         MenuItem { text: "Rename"; onTriggered: page.editEntry("rename") }
-                        MenuItem { text: "Delete"; onTriggered: page.editEntry("delete") }
+                        MenuItem {
+                            text: (page.activeSide === "local" ? page.localSelected : page.remoteSelected).indexOf(page.entryName) >= 0 && (page.activeSide === "local" ? page.localSelected : page.remoteSelected).length > 1 ? "Delete selected (" + (page.activeSide === "local" ? page.localSelected : page.remoteSelected).length + ")" : "Delete"
+                            onTriggered: {
+                                let selected = page.activeSide === "local" ? page.localSelected : page.remoteSelected
+                                if (selected.indexOf(page.entryName) >= 0 && selected.length > 1)
+                                    page.deleteSelected()
+                                else
+                                    page.editEntry("delete")
+                            }
+                        }
                     }
                 }
                 ScrollBar.vertical: ScrollBar {}
@@ -260,7 +269,16 @@ ColumnLayout {
                         MenuItem { text: "Download file / folder"; onTriggered: page.transfer("remote",[page.entryName]) }
                         MenuItem { text: "Properties"; onTriggered: { ftpBrowser.properties(page.activeSide,page.entryName); propertiesDialog.open() } }
                         MenuItem { text: "Rename"; onTriggered: page.editEntry("rename") }
-                        MenuItem { text: "Delete"; onTriggered: page.editEntry("delete") }
+                        MenuItem {
+                            text: (page.activeSide === "local" ? page.localSelected : page.remoteSelected).indexOf(page.entryName) >= 0 && (page.activeSide === "local" ? page.localSelected : page.remoteSelected).length > 1 ? "Delete selected (" + (page.activeSide === "local" ? page.localSelected : page.remoteSelected).length + ")" : "Delete"
+                            onTriggered: {
+                                let selected = page.activeSide === "local" ? page.localSelected : page.remoteSelected
+                                if (selected.indexOf(page.entryName) >= 0 && selected.length > 1)
+                                    page.deleteSelected()
+                                else
+                                    page.editEntry("delete")
+                            }
+                        }
                     }
                 }
                 ScrollBar.vertical: ScrollBar {}
