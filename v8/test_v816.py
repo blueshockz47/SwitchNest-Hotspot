@@ -69,6 +69,16 @@ class MonitorTests(unittest.TestCase):
         self.assertEqual(result["reddit"], [])
         self.assertTrue(result["warnings"])
 
+    def test_directory_is_unverified_and_never_auto_imported(self):
+        result = homebrew_monitor.refresh(fetch=lambda path: (_ for _ in ()).throw(OSError("offline")),
+                                          repos=[], reddit_fetch=lambda: [])
+        directory = result["directory"]
+        self.assertEqual(directory["url"], "https://switch2homebrew.com/")
+        self.assertFalse(directory["automated"])
+        self.assertIn("unverified", directory["status"].lower())
+        self.assertEqual(result["github"], [])
+        self.assertEqual(result["reddit"], [])
+
     def test_no_ftp_or_installer_calls(self):
         with patch.object(homebrew_monitor, "github_updates", return_value=[]), patch.object(homebrew_monitor, "reddit_discover", return_value=[]):
             result = homebrew_monitor.refresh(reddit_fetch=homebrew_monitor.reddit_discover)
