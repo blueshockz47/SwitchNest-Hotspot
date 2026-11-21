@@ -26,15 +26,21 @@ CATEGORY_MAP = {
 # Conservative title/repository hints used only when the source has no useful category.
 HINTS = {
     "Emulation": ("cemu", "ppsspp", "retroarch", "snes", "nes", "gba", "mgba", "dolphin", "scummvm", "psp", "openrac", "nxengine"),
-    "Streaming": ("moonlight", "chiaki", "stream", "sunshine"),
-    "Media": ("youtube", "tube", "radio", "music", "video", "player"),
+    "Streaming": ("moonlight", "chiaki", "stream", "sunshine", "strem"),
+    "Media": ("youtube", "tube", "radio", "music", "video", "player", "torrent"),
     "Games": ("game vault", "donkey kong", "mario", "shipwright", "gravity rush", "starship", "pursuit", "openblops"),
-    "Tools": ("ftp", "file manager", "browser", "installer", "checkpoint", "shell", "90dns", "dns", "transfer", "dump", "patch", "brewstore", "switchfin"),
+    "Tools": ("ftp", "file manager", "browser", "chromium", "installer", "checkpoint", "shell", "90dns", "dns", "transfer", "dump", "patch", "brewstore", "switchfin", "sphaira", "pkforge", "blacklist", "nx2now"),
 }
 
 def normalize_category(category, name="", repo=""):
     """Classify for browsing only; never implies verification or install safety."""
     raw = str(category or "").strip().lower()
+    haystack = (str(name) + " " + str(repo).split("/")[-1]).lower()
+    # Explicit corrections take precedence over vague upstream Media/Other labels.
+    if "moonlight" in haystack or "chiaki" in haystack or "strem" in haystack:
+        return "Streaming"
+    if "switch2now" in haystack or "switch2now" in haystack.replace("-", ""):
+        return "Tools"
     if raw in CATEGORY_MAP:
         return CATEGORY_MAP[raw]
     if raw and raw not in ("other", "misc", "miscellaneous", "unknown", "uncategorized"):
