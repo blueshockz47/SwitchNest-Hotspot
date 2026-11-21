@@ -67,6 +67,22 @@ class Phase2bTests(unittest.TestCase):
         self.assertIn('ftpBrowser.delete_batch(', ui)
         self.assertIn('ftpBrowser.cancel()', ui)
 
+    def test_switch2_quick_access(self):
+        ui = (ROOT / 'FtpPage.qml').read_text()
+        backend = (ROOT / 'ftp_browser.py').read_text()
+        for token in ('function switchBookmarks()', 'function remoteSegments()',
+                      'ftpBrowser.open_remote_path(modelData.path)',
+                      'ftpBrowser.bookmark("remote")',
+                      'ftpBrowser.open_bookmark(modelData.index)',
+                      'ftpBrowser.copy_remote_path()',
+                      'page.openDirectory("remote",modelData.name)'):
+            self.assertIn(token, ui)
+        for token in ('def open_remote_path(self, path):',
+                      'def copy_remote_path(self):',
+                      'remoteRecent=self.remote_recent',
+                      'self.valid_name(part)'):
+            self.assertIn(token, backend)
+
     def test_ui_and_backend_wiring_preserve_worker(self):
         backend = (ROOT / 'ftp_browser.py').read_text()
         ui = (ROOT / 'FtpPage.qml').read_text()
