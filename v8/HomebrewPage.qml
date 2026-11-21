@@ -23,6 +23,7 @@ ColumnLayout {
     property string statusText: "Loading the curated Switch 2 homebrew catalog..."
     property var monitorGithub: []
     property var monitorReddit: []
+    property var monitorCatalog: []
     property var monitorDirectory: ({url: "https://switch2homebrew.com/", automated: false})
     property var monitorKnownVersions: ({})
     property bool monitorInitialized: false
@@ -64,10 +65,12 @@ ColumnLayout {
                 home.monitorInitialized = true
                 home.monitorGithub = data.github
                 home.monitorReddit = data.reddit
+                home.monitorCatalog = data.catalog || []
                 if (data.directory && data.directory.url === "https://switch2homebrew.com/" && data.directory.automated === false)
                     home.monitorDirectory = data.directory
                 home.monitorStatus = data.github.length + " GitHub releases • " +
-                    data.reddit.length + " unverified Reddit discoveries" +
+                    data.reddit.length + " unverified Reddit discoveries • " +
+                    home.monitorCatalog.length + " community catalog projects" +
                     (data.warnings.length ? " • " + data.warnings.join("; ") : "")
                 if (changed) homebrewUpdateNotice.open()
             } catch (e) {
@@ -182,17 +185,18 @@ ColumnLayout {
     }
     ListView {
         Layout.fillWidth: true
-        Layout.preferredHeight: home.monitorVisible ? 170 : 0
+        Layout.preferredHeight: home.monitorVisible ? 230 : 0
         visible: home.monitorVisible
         clip: true
-        model: home.monitorGithub.concat(home.monitorReddit)
+        model: home.monitorGithub.concat(home.monitorReddit).concat(home.monitorCatalog)
         delegate: ItemDelegate {
             required property var modelData
             width: ListView.view.width
             text: modelData.source === "GitHub"
                   ? "GitHub • " + modelData.repo + " • " + modelData.version + " (" + modelData.asset_count + " assets)"
-                  : "Reddit • UNVERIFIED • " + modelData.title
-            onClicked: Qt.openUrlExternally(modelData.url)
+                  : modelData.source === "Reddit" ? "Reddit • UNVERIFIED • " + modelData.title
+                  : modelData.source + " • UNVERIFIED • " + modelData.name + " • " + modelData.repo + " • " + modelData.version
+            onClicked: Qt.openUrlExternally(modelData.url || ("https://github.com/" + modelData.repo))
         }
     }
     RowLayout {
