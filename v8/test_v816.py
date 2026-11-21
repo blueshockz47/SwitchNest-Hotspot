@@ -96,6 +96,16 @@ class MonitorTests(unittest.TestCase):
         self.assertIn("ftpBrowser.tree_batch_into", qml)
         self.assertIn("COPY ONLY", qml)
 
+    def test_ftp_explorer_phase1_status_contract(self):
+        browser = (Path(__file__).parent / "ftp_browser.py").read_text(encoding="utf-8")
+        qml = (Path(__file__).parent / "FtpPage.qml").read_text(encoding="utf-8")
+        self.assertIn('transferItems=self.transfer_items', browser)
+        self.assertIn('self.transfer_items=[dict(name=n, status="Waiting") for n in names]', browser)
+        self.assertIn('item["status"] = "Completed"', browser)
+        self.assertIn('item["status"] = "Active"', browser)
+        self.assertIn('page.dataState.transferItems || []', qml)
+        self.assertIn('ftpBrowser.tree_batch_into', qml)
+
     def test_maximized_preference_registered(self):
         self.assertIn("fullscreen_on_start", preferences.DEFAULTS)
         self.assertIs(type(preferences.DEFAULTS["fullscreen_on_start"]), bool)
