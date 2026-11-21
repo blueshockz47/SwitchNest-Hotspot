@@ -54,7 +54,7 @@ SwitchNest includes an **offline Wi-Fi hotspot**, **FTP File Manager**, **Homebr
 
 ### Step 1 — Download and extract
 
-1. **[Download the stable v8.1.5 Linux ZIP](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/download/v8.1.5/SwitchNest-Hotspot-Linux-v8.1.5.zip)** — not the older v8.0.1 branch or the development ZIP.
+1. **[Download the stable v8.1.5 Linux ZIP](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/download/v8.1.5/SwitchNest-Hotspot-Linux-v8.1.5.zip)** — use the stable release package rather than a development branch ZIP.
 2. Open **Downloads** and extract the ZIP.
 3. Open the extracted folder. Find the folder containing `install-switchnest-v8.sh` and `install-switchnest-pico-connectivity-v7.1-password.sh`.
 4. Right-click inside that folder and choose **Open Terminal Here** (Konsole). **Run all commands below from this folder.**
