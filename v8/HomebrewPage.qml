@@ -6,6 +6,37 @@ ColumnLayout {
     id: home
     property var ftpState: ftpBrowser ? JSON.parse(ftpBrowser.state) : ({host: "", port: "", status: "Initializing FTP...", busy: false, connected: false})
     property var results: []
+    property var curatedResults: []
+    property string catalogQuery: ""
+    property string catalogCategory: "All"
+    property string releaseQuery: ""
+    property string releaseSource: "All"
+    property var releaseRows: {
+        let rows = monitorGithub.concat(monitorReddit).concat(monitorCatalog)
+        return rows.filter(function(item) {
+            if (releaseSource !== "All" && item.source !== releaseSource) return false
+            let haystack = [item.name || "", item.title || "", item.repo || "", item.version || ""].join(" ").toLowerCase()
+            return haystack.indexOf(releaseQuery.toLowerCase()) !== -1
+        })
+    }
+    function updateCatalog() {
+        let rows = curatedResults.slice()
+        let seen = ({})
+        for (let row of rows) if (row.repo) seen[row.repo.toLowerCase()] = true
+        for (let item of monitorCatalog) {
+            if (!item.repo || seen[item.repo.toLowerCase()]) continue
+            seen[item.repo.toLowerCase()] = true
+            rows.push({name: item.name, category: "Community", repo: item.repo,
+                       manual: true, community: true, source: item.sources.join(" + "),
+                       warning: "Unverified community listing. Review its GitHub repository and Switch 2 compatibility before manual downloads."})
+        }
+        let q = catalogQuery.toLowerCase().trim()
+        results = rows.filter(function(item) {
+            if (catalogCategory !== "All" && item.category !== catalogCategory) return false
+            return !q || [item.name, item.repo, item.category, item.source || ""].join(" ").toLowerCase().indexOf(q) !== -1
+        })
+        statusText = results.length + " projects shown (curated + community, deduplicated). Community entries are browse-only."
+    }
     property var assets: []
     property string selectedRepo: ""
     property bool selectedManual: false
@@ -66,6 +97,7 @@ ColumnLayout {
                 home.monitorGithub = data.github
                 home.monitorReddit = data.reddit
                 home.monitorCatalog = data.catalog || []
+                home.updateCatalog()
                 if (data.directory && data.directory.url === "https://switch2homebrew.com/" && data.directory.automated === false)
                     home.monitorDirectory = data.directory
                 home.monitorStatus = data.github.length + " GitHub releases • " +
@@ -123,7 +155,7 @@ ColumnLayout {
         function onHomebrewResult(raw) {
             try {
                 let data = JSON.parse(raw)
-                if (data.kind === "search") { home.results = data.items; home.assets = []; home.readyZip = ""; home.activeCategory = data.category || "All"; home.statusText = data.items.length + " projects in " + home.activeCategory + ". NRO: FTP install; ZIP: manual download." }
+                if (data.kind === "search") { home.curatedResults = data.items; home.assets = []; home.readyZip = ""; home.activeCategory = data.category || "All"; home.updateCatalog() }
                 else if (data.kind === "assets") {
                     if (data.repo !== home.actionRepo || !home.action) return
                     home.choices = data.assets.filter(function(asset) {
@@ -183,12 +215,26 @@ ColumnLayout {
         Button { text: "Check Now"; onClicked: controller.homebrew_monitor_refresh() }
         Button { text: home.monitorVisible ? "Hide Releases" : "Latest Releases"; onClicked: home.monitorVisible = !home.monitorVisible }
     }
+    RowLayout {
+        visible: home.monitorVisible
+        Layout.fillWidth: true
+        TextField {
+            placeholderText: "Filter releases by project or repository"
+            Layout.fillWidth: true
+            onTextChanged: home.releaseQuery = text
+        }
+        ComboBox {
+            model: ["All", "GitHub", "Reddit", "BrewStore", "i2zs"]
+            onActivated: function(index) { home.releaseSource = model[index] }
+        }
+        Label { text: home.releaseRows.length + " entries" }
+    }
     ListView {
         Layout.fillWidth: true
-        Layout.preferredHeight: home.monitorVisible ? 230 : 0
+        Layout.preferredHeight: home.monitorVisible ? 320 : 0
         visible: home.monitorVisible
         clip: true
-        model: home.monitorGithub.concat(home.monitorReddit).concat(home.monitorCatalog)
+        model: home.releaseRows
         delegate: ItemDelegate {
             required property var modelData
             width: ListView.view.width
@@ -200,16 +246,17 @@ ColumnLayout {
         }
     }
     RowLayout {
-        TextField { id: searchBox; placeholderText: "Search Switch 2 homebrew"; Layout.fillWidth: true; onAccepted: controller.homebrew_search(text, categoryBox.currentText) }
+        TextField { id: searchBox; placeholderText: "Search Switch 2 homebrew"; Layout.fillWidth: true; onAccepted: { home.catalogQuery = text; home.updateCatalog() } }
         ComboBox {
             id: categoryBox
-            model: ["All", "Tools", "Games", "Streaming", "Emulation", "Fun", "Media"]
+            model: ["All", "Tools", "Games", "Streaming", "Emulation", "Fun", "Media", "Community"]
             onActivated: function(index) {
-                controller.homebrew_search(searchBox.text, categoryBox.model[index])
+                home.catalogCategory = categoryBox.model[index]
+                home.updateCatalog()
             }
         }
-        Button { text: "Search"; enabled: !home.working; onClicked: controller.homebrew_search(searchBox.text, categoryBox.currentText) }
-        Button { text: "Show all"; enabled: !home.working; onClicked: { searchBox.text = ""; categoryBox.currentIndex = 0; controller.homebrew_search("", "All") } }
+        Button { text: "Search"; enabled: !home.working; onClicked: { home.catalogQuery = searchBox.text; home.updateCatalog() } }
+        Button { text: "Show all"; enabled: !home.working; onClicked: { searchBox.text = ""; categoryBox.currentIndex = 0; home.catalogQuery = ""; home.catalogCategory = "All"; home.updateCatalog() } }
     }
     Label { text: home.statusText; wrapMode: Text.Wrap; Layout.fillWidth: true }
     Label { text: home.selectedWarning; visible: home.selectedWarning.length > 0; color: "#f59e0b"; font.bold: true; wrapMode: Text.Wrap; Layout.fillWidth: true }
@@ -264,7 +311,7 @@ ColumnLayout {
                             Layout.fillWidth: true
                         }
                         Label {
-                            text: modelData.category + "  •  " + (modelData.repo ? "GitHub" : "Manual")
+                            text: modelData.category + "  •  " + (modelData.community ? modelData.source + " • UNVERIFIED" : (modelData.repo ? "GitHub" : "Manual"))
                             font.pixelSize: 11
                             color: "#aab7c6"
                             elide: Text.ElideRight
@@ -274,7 +321,7 @@ ColumnLayout {
                 }
                 onClicked: {
                     home.selectApp(modelData)
-                    home.statusText = "Right-click " + modelData.name + " for actions."
+                    home.statusText = modelData.community ? "Community listing: right-click to view GitHub (downloads disabled)." : "Right-click " + modelData.name + " for actions."
                 }
                 MouseArea {
                     anchors.fill: parent
@@ -292,13 +339,13 @@ ColumnLayout {
                     MenuItem {
                         text: "Download Only"
                         width: contextMenu.width
-                        enabled: !!home.actionRepo && !home.working
+                        enabled: !!home.actionRepo && !projectCard.modelData.community && !home.working
                         onTriggered: home.requestRelease("download")
                     }
                     MenuItem {
                         text: "Download && Install"
                         width: contextMenu.width
-                        enabled: !!home.actionRepo && !home.working
+                        enabled: !!home.actionRepo && !projectCard.modelData.community && !home.working
                         onTriggered: home.requestRelease("install")
                     }
                     MenuSeparator {}
