@@ -36,7 +36,7 @@ ColumnLayout {
     }
     function updateDrag(source, point) {
         if (!dragInProgress) return
-        let p = source.mapToItem(page, point.x, point.y)
+        let p = source.mapToItem(dragOverlay, point.x, point.y)
         dragGhost.x = p.x - dragGhost.width / 2
         dragGhost.y = p.y - dragGhost.height / 2
         dropTarget = targetAt(p)
@@ -374,6 +374,7 @@ ColumnLayout {
     // This overlay is outside the clipped file lists.
     Item {
         id: dragOverlay
+        parent: Overlay.overlay
         anchors.fill: parent
         z: 1000
         visible: page.dragInProgress
