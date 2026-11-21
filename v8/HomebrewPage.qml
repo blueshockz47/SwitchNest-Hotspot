@@ -59,7 +59,8 @@ ColumnLayout {
     property var monitorKnownVersions: ({})
     property bool monitorInitialized: false
     property bool monitorVisible: false
-    property string monitorStatus: "Checking latest Switch 2 releases..."
+    property string monitorStatus: "Ready to check homebrew releases"
+    property bool monitorChecking: false
     // 6-hour refresh; network work runs on a Python background thread.
     Timer {
         id: homebrewRefreshTimer
@@ -80,6 +81,12 @@ ColumnLayout {
         function onHomebrewMonitorResult(raw) {
             try {
                 let data = JSON.parse(raw)
+                if (data.kind === "monitor_progress") {
+                    home.monitorChecking = true
+                    home.monitorStatus = data.message || "Checking homebrew releases..."
+                    return
+                }
+                home.monitorChecking = false
                 if (data.kind !== "monitor") {
                     home.monitorStatus = data.message || "Homebrew refresh failed"
                     return
@@ -106,6 +113,7 @@ ColumnLayout {
                     (data.warnings.length ? " • " + data.warnings.join("; ") : "")
                 if (changed) homebrewUpdateNotice.open()
             } catch (e) {
+                home.monitorChecking = false
                 home.monitorStatus = "Invalid discovery response"
             }
         }
@@ -212,7 +220,12 @@ ColumnLayout {
         Layout.fillWidth: true
         Label { text: "Live Homebrew Updates"; font.bold: true; color: "#52e0ae" }
         Label { text: home.monitorStatus; Layout.fillWidth: true; elide: Text.ElideRight; font.pixelSize: 11 }
-        Button { text: "Check Now"; onClicked: controller.homebrew_monitor_refresh() }
+        Button { text: home.monitorChecking ? "Checking..." : "Check Now"; enabled: !home.monitorChecking; onClicked: controller.homebrew_monitor_refresh() }
+    }
+    ProgressBar {
+        Layout.fillWidth: true
+        visible: home.monitorChecking
+        indeterminate: true
     }
     RowLayout {
         TextField { id: searchBox; placeholderText: "Search Switch 2 homebrew"; Layout.fillWidth: true; onAccepted: { home.catalogQuery = text; home.updateCatalog() } }
