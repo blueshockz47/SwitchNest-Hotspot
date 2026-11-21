@@ -8,6 +8,7 @@ from v8 import homebrew
 
 USER_AGENT = "SwitchNest-Homebrew-Monitor/8.1.6 (read-only)"
 MAX_RESPONSE = 1024 * 1024
+DIRECTORY_URL = "https://switch2homebrew.com/"
 REDDIT_URL = "https://www.reddit.com/r/SwitchHacks/new.json?limit=25"
 REDDIT_TERMS = ("switch 2", "switch2", "kaihen", "libounce", "ounce")
 
@@ -63,5 +64,10 @@ def refresh(fetch=None, reddit_fetch=reddit_discover, repos=None):
     except (ValueError, OSError, TypeError, KeyError, json.JSONDecodeError) as exc:
         reddit = []
         warnings.append("Reddit discovery unavailable: " + type(exc).__name__)
-    return {"kind": "monitor", "github": github, "reddit": reddit,
+    # Directory-only source: no verified feed/API or parser contract yet.
+    # Never treat its listings as confirmed releases or installable assets.
+    directory = {"source": "Switch2Homebrew", "url": DIRECTORY_URL,
+                 "status": "Community directory — unverified; open in browser",
+                 "automated": False}
+    return {"kind": "monitor", "github": github, "reddit": reddit, "directory": directory,
             "warnings": warnings, "checked_at": datetime.now(timezone.utc).isoformat()}
