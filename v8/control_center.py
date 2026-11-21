@@ -1,5 +1,6 @@
 """Qt desktop preview for the installed v7.1 manager. Run as an ordinary user."""
 import json
+import urllib.error
 import ipaddress
 import re
 import shutil
@@ -9,7 +10,7 @@ import sys
 import subprocess
 import threading
 import time
-from v8 import updates, autostart, preferences, wifi_reliability, stability, homebrew, homebrew_zip, homebrew_monitor
+from v8 import updates, autostart, preferences, wifi_reliability, stability, homebrew, homebrew_zip, homebrew_monitor, homebrew_release_cache
 from pathlib import Path
 from v8.ftp_browser import Browser
 from PySide6.QtCore import QObject, Signal, Slot, Property, QLockFile, QStandardPaths, QProcess, QTimer, QUrl
@@ -168,8 +169,21 @@ class Controller(QObject):
 
     @Slot(str)
     def homebrew_releases(self, repo):
+        """Read-only release preview: cached for 24h, with GitHub rate-limit cooldown."""
         if repo not in homebrew.SWITCH2_CANDIDATES and repo not in getattr(self, "_community_repos", frozenset()):
             self.homebrewResult.emit(json.dumps({"kind": "error", "message": "Repository not found in current catalog"}))
+            return
+        cached = homebrew_release_cache.get(repo)
+        if cached and not cached["stale"]:
+            self.homebrewResult.emit(json.dumps({"kind": "assets", "repo": repo, "cached": True, **cached["data"]}))
+            return
+        remaining = homebrew_release_cache.cooldown_remaining()
+        if remaining:
+            if cached:
+                self.homebrewResult.emit(json.dumps({"kind": "assets", "repo": repo, "cached": True, "stale": True, **cached["data"]}))
+            else:
+                self.homebrewResult.emit(json.dumps({"kind": "rate_limited", "repo": repo,
+                    "message": "GitHub API limit reached. Try again in about " + str((remaining + 59) // 60) + " minutes. Saved catalog remains available."}))
             return
         if getattr(self, "_homebrew_busy", False):
             return
@@ -178,9 +192,29 @@ class Controller(QObject):
         def worker():
             try:
                 result = homebrew.release_assets(repo)
+                try:
+                    homebrew_release_cache.put(repo, result)
+                except OSError:
+                    pass
                 self.homebrewResult.emit(json.dumps({"kind": "assets", "repo": repo, **result}))
+            except urllib.error.HTTPError as exc:
+                if exc.code in (403, 429):
+                    try:
+                        homebrew_release_cache.mark_limited()
+                    except OSError:
+                        pass
+                    if cached:
+                        self.homebrewResult.emit(json.dumps({"kind": "assets", "repo": repo, "cached": True, "stale": True, **cached["data"]}))
+                    else:
+                        self.homebrewResult.emit(json.dumps({"kind": "rate_limited", "repo": repo,
+                            "message": "GitHub API limit reached (HTTP " + str(exc.code) + "). Saved catalog remains available; retry later."}))
+                else:
+                    self.homebrewResult.emit(json.dumps({"kind": "error", "message": str(exc)[:200]}))
             except Exception as exc:
-                self.homebrewResult.emit(json.dumps({"kind": "error", "message": str(exc)[:200]}))
+                if cached:
+                    self.homebrewResult.emit(json.dumps({"kind": "assets", "repo": repo, "cached": True, "stale": True, **cached["data"]}))
+                else:
+                    self.homebrewResult.emit(json.dumps({"kind": "error", "message": str(exc)[:200]}))
             finally:
                 self._homebrew_busy = False
                 self.homebrewBusy.emit(False)
