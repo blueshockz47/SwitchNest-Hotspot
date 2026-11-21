@@ -167,6 +167,19 @@ class Controller(QObject):
             self.homebrewResult.emit(json.dumps({
                 "kind": "error", "message": str(exc)[:200]}))
 
+    @Slot()
+    def homebrew_cached_releases(self):
+        """Restore release availability labels without contacting GitHub."""
+        state = homebrew_release_cache._read()
+        releases = {}
+        for repo, entry in state.get("releases", {}).items():
+            if not isinstance(repo, str) or not homebrew_release_cache.REPO_PATTERN.fullmatch(repo):
+                continue
+            cached = homebrew_release_cache.get(repo)
+            if cached:
+                releases[repo] = {"assets": cached["data"]["assets"], "stale": cached["stale"]}
+        self.homebrewResult.emit(json.dumps({"kind": "cached_releases", "releases": releases}))
+
     @Slot(str)
     def homebrew_releases(self, repo):
         """Read-only release preview: cached for 24h, with GitHub rate-limit cooldown."""
