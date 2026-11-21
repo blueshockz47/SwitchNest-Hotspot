@@ -131,6 +131,7 @@ class Controller(QObject):
         if getattr(self, "_homebrew_monitor_busy", False):
             return
         self._homebrew_monitor_busy = True
+        self.homebrewMonitorResult.emit(json.dumps({"kind": "monitor_progress", "message": "Checking GitHub releases, Reddit and community catalogs..."}))
         def worker():
             try:
                 data = homebrew_monitor.refresh()
