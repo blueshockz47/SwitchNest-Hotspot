@@ -83,6 +83,17 @@ class Phase2bTests(unittest.TestCase):
                       'self.valid_name(part)'):
             self.assertIn(token, backend)
 
+    def test_compact_switch_header_and_shortcut(self):
+        ui = (ROOT / 'FtpPage.qml').read_text()
+        for token in ('text: "📁 /switch"',
+                      'ftpBrowser.open_remote_path("/switch/")',
+                      'id: switchQuickMenu', 'id: switchActionsMenu',
+                      'text: "Pin current folder"', 'text: "Copy current path"'):
+            self.assertIn(token, ui)
+        self.assertNotIn('id: switchPlacesExpanded', ui)
+        self.assertNotIn('text: page.switchPlacesExpanded ?', ui)
+        self.assertNotIn('text: page.switchTreeExpanded ?', ui)
+
     def test_ui_and_backend_wiring_preserve_worker(self):
         backend = (ROOT / 'ftp_browser.py').read_text()
         ui = (ROOT / 'FtpPage.qml').read_text()
