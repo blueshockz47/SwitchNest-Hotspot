@@ -104,6 +104,7 @@ ColumnLayout {
                 home.monitorGithub = data.github
                 home.monitorReddit = data.reddit
                 home.monitorCatalog = data.catalog || []
+                home.installableRepos = ({})
                 home.updateCatalog()
                 if (data.directory && data.directory.url === "https://switch2homebrew.com/" && data.directory.automated === false)
                     home.monitorDirectory = data.directory
@@ -195,6 +196,11 @@ ColumnLayout {
                         home.action = ""
                     } else if (home.choices.length > 1) assetPicker.open()
                     else { home.statusText = "No compatible GitHub release asset for " + home.actionName + ". ZIP and download-only actions still require a GitHub SHA-256 digest."; home.action = "" }
+                }
+                else if (data.kind === "error" && home.action === "probe") {
+                    home.statusText = "Release check failed: " + (data.message || "Unknown error")
+                    home.action = ""
+                    home.probingRepo = ""
                 }
                 else if (data.kind === "download_only_ready") {
                     home.transferPercent = 100
