@@ -25,6 +25,26 @@ class Phase2bTests(unittest.TestCase):
         queue.cancel_waiting()
         self.assertEqual([x['status'] for x in queue.snapshot()], ['Completed', 'Cancelled', 'Cancelled'])
 
+    def test_phase3a_dolphin_toolbar_preserves_actions(self):
+        ui = (ROOT / 'FtpPage.qml').read_text()
+        self.assertIn('ToolBar {', ui)
+        self.assertIn('id: ftpActions', ui)
+        self.assertIn('text: "More ▾"', ui)
+        self.assertIn('page.transfer("local",page.localSelected)', ui)
+        self.assertIn('page.transfer("remote",page.remoteSelected)', ui)
+        self.assertIn('ftpBrowser.refresh()', ui)
+        self.assertIn('page.editEntry("mkdir")', ui)
+        self.assertIn('page.deleteSelected()', ui)
+        self.assertIn('ftpBrowser.cancel()', ui)
+        self.assertIn('queueDialog.open()', ui)
+        self.assertIn('historyDialog.open()', ui)
+        self.assertIn('page.copyFiles()', ui)
+        self.assertIn('page.pasteFiles()', ui)
+        self.assertIn('page.selectAll()', ui)
+        self.assertIn('page.clearSelection()', ui)
+        self.assertIn('page.dataState.busy', ui)
+        self.assertEqual(ui.count('page.deleteSelected()'), 3)
+
     def test_ui_and_backend_wiring_preserve_worker(self):
         backend = (ROOT / 'ftp_browser.py').read_text()
         ui = (ROOT / 'FtpPage.qml').read_text()
