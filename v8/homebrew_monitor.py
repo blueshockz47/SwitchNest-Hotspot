@@ -8,7 +8,7 @@ import re
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
-from v8 import homebrew, catalog_sources
+from v8 import homebrew, catalog_sources, homebrew_release_cache
 
 USER_AGENT = "SwitchNest-Homebrew-Monitor/8.1.6 (read-only)"
 MAX_RESPONSE = 1024 * 1024
@@ -39,34 +39,57 @@ def reddit_discover(opener=urllib.request.urlopen):
     return result[:15]
 
 def github_updates(fetch=None, repos=None, warnings=None):
+    use_cache = fetch is None and repos is None
     fetch = fetch or homebrew.request_json
     repos = repos if repos is not None else sorted(homebrew.SWITCH2_CANDIDATES)
     result = []
     failures = 0
     rate_limited = False
+    requests_made = 0
     for repo in repos:
         if repo not in homebrew.SWITCH2_CANDIDATES:
             continue
-        try:
-            release = homebrew.release_assets(repo, fetch=fetch)
-        except urllib.error.HTTPError as exc:
-            failures += 1
-            if exc.code in (403, 429):
-                rate_limited = True
-                break
-            continue
-        except (ValueError, KeyError, OSError, TypeError, urllib.error.URLError):
-            failures += 1
-            continue
+        cached = homebrew_release_cache.get(repo) if use_cache else None
+        if cached and not cached["stale"]:
+            release = cached["data"]
+        elif use_cache and (homebrew_release_cache.cooldown_remaining() or requests_made >= 8):
+            if not cached:
+                continue
+            release = cached["data"]
+        else:
+            try:
+                requests_made += 1
+                release = homebrew.release_assets(repo, fetch=fetch)
+                if use_cache:
+                    try:
+                        homebrew_release_cache.put(repo, release)
+                    except OSError:
+                        pass
+            except urllib.error.HTTPError as exc:
+                failures += 1
+                if exc.code in (403, 429):
+                    rate_limited = True
+                    if use_cache:
+                        try:
+                            homebrew_release_cache.mark_limited()
+                        except OSError:
+                            pass
+                    break
+                continue
+            except (ValueError, KeyError, OSError, TypeError, urllib.error.URLError):
+                failures += 1
+                continue
         if release["assets"]:
             result.append({"repo": repo, "version": release["version"],
                            "asset_count": len(release["assets"]),
                            "url": "https://github.com/" + repo + "/releases",
-                           "source": "GitHub", "status": "Official repository release; assets require verification"})
+                           "source": "GitHub", "status": "GitHub release metadata; cached if previously checked"})
     if warnings is not None and rate_limited:
-        warnings.append("GitHub API rate limit or access restriction (HTTP 403/429); release checks paused. Catalog browsing still works.")
+        warnings.append("GitHub API rate limit (HTTP 403/429); release checks paused. Saved catalog still works.")
     elif warnings is not None and failures:
-        warnings.append(f"GitHub discovery unavailable for {failures} curated repositories; results may be incomplete")
+        warnings.append(f"GitHub discovery unavailable for {failures} repositories; results may be incomplete")
+    if warnings is not None and use_cache and requests_made >= 8:
+        warnings.append("Release discovery limited to 8 repositories per scan to conserve GitHub API quota")
     return result
 
 def refresh(fetch=None, reddit_fetch=reddit_discover, repos=None, catalog_fetch=None):
