@@ -193,5 +193,18 @@ class ReleaseCacheTests(unittest.TestCase):
             self.assertEqual(homebrew_release_cache.cooldown_remaining(now=1000000 + 3601, path=path), 0)
 
 
+class CatalogGroupingTests(unittest.TestCase):
+    def test_all_catalog_grouping_and_cache_restoration_are_wired(self):
+        from pathlib import Path
+        qml = (Path(__file__).parent / "HomebrewPage.qml").read_text(encoding="utf-8")
+        controller = (Path(__file__).parent / "control_center.py").read_text(encoding="utf-8")
+        self.assertIn('filtered.sort(function(a, b)', qml)
+        self.assertIn('item.categoryStart = item.category !== last', qml)
+        self.assertIn('controller.homebrew_cached_releases()', qml)
+        self.assertIn('data.kind === "cached_releases"', qml)
+        self.assertNotIn('home.installableRepos = ({})\\n                home.zipOnlyRepos = ({})', qml)
+        self.assertIn('def homebrew_cached_releases(self):', controller)
+
+
 if __name__ == "__main__":
     unittest.main()
