@@ -4,7 +4,7 @@ import re
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
-from v8 import homebrew
+from v8 import homebrew, catalog_sources
 
 USER_AGENT = "SwitchNest-Homebrew-Monitor/8.1.6 (read-only)"
 MAX_RESPONSE = 1024 * 1024
@@ -56,7 +56,7 @@ def github_updates(fetch=None, repos=None, warnings=None):
         warnings.append(f"GitHub discovery unavailable for {failures} curated repositories; results may be incomplete")
     return result
 
-def refresh(fetch=None, reddit_fetch=reddit_discover, repos=None):
+def refresh(fetch=None, reddit_fetch=reddit_discover, repos=None, catalog_fetch=None):
     warnings = []
     github = github_updates(fetch=fetch, repos=repos, warnings=warnings)
     try:
@@ -64,10 +64,17 @@ def refresh(fetch=None, reddit_fetch=reddit_discover, repos=None):
     except (ValueError, OSError, TypeError, KeyError, json.JSONDecodeError) as exc:
         reddit = []
         warnings.append("Reddit discovery unavailable: " + type(exc).__name__)
+    try:
+        catalog, catalog_warnings = catalog_sources.discover(
+            fetch=catalog_fetch or catalog_sources.get_text)
+        warnings.extend(catalog_warnings)
+    except (ValueError, OSError, TypeError, UnicodeError) as exc:
+        catalog = []
+        warnings.append("Catalog discovery unavailable: " + type(exc).__name__)
     # Directory-only source: no verified feed/API or parser contract yet.
     # Never treat its listings as confirmed releases or installable assets.
     directory = {"source": "Switch2Homebrew", "url": DIRECTORY_URL,
                  "status": "Community directory — unverified; open in browser",
                  "automated": False}
-    return {"kind": "monitor", "github": github, "reddit": reddit, "directory": directory,
+    return {"kind": "monitor", "github": github, "reddit": reddit, "catalog": catalog, "directory": directory,
             "warnings": warnings, "checked_at": datetime.now(timezone.utc).isoformat()}
