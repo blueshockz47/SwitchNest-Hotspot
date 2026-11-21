@@ -280,12 +280,12 @@ class Browser(QObject):
     @Slot(str)
     def retry_failed(self, policy):
         if self.busy or not self.last_failed: return
-        direction,raw,old,local,remote,host,port=self.last_failed
+        direction,raw,old,local,remote,host,port,*destination=self.last_failed
         if (local,remote,host,port)!=(str(self.local),self.remote,self.host,self.port):
             self.status="Return to original directories and endpoint before retry"
             self.changed.emit()
             return
-        self.tree_batch(direction,raw,policy)
+        self._tree_batch(direction,raw,policy,destination[0] if destination else "")
 
     @Slot(str,str)
     def navigate(self,side,action):
@@ -455,6 +455,13 @@ class Browser(QObject):
 
     @Slot(str, str, str)
     def tree_batch(self, direction, raw, policy):
+        self._tree_batch(direction, raw, policy, "")
+
+    @Slot(str, str, str, str)
+    def tree_batch_into(self, direction, raw, policy, folder):
+        self._tree_batch(direction, raw, policy, folder)
+
+    def _tree_batch(self, direction, raw, policy, folder):
         if self.busy or not self.connected or direction not in ("upload","download"):
             return
         try:
@@ -464,13 +471,24 @@ class Browser(QObject):
             if not isinstance(names,list) or not names or len(names)>1000 or any(not isinstance(n,str) or n not in allowed or not self.valid_name(n) for n in names):
                 raise ValueError("Invalid selection")
             names=list(dict.fromkeys(names))
+            if folder:
+                destination_rows=self.remote_rows if direction=="upload" else self.local_rows
+                if not self.valid_name(folder) or not any(x["name"]==folder and x["directory"] for x in destination_rows):
+                    raise ValueError("Destination folder no longer exists")
             local,remote=self.local,self.remote
+            if folder:
+                if direction=="upload":
+                    remote=remote+folder+"/"
+                else:
+                    local=local/folder
+                    if local.is_symlink() or not local.is_dir() or not local.resolve().is_relative_to(self.local.resolve()):
+                        raise ValueError("Invalid local destination")
             tree=Tree(self.host,self.port,policy,self.tree_cancel.is_set,self.tree_event.emit)
             self.tree_cancel.clear()
             self.busy=True
             self.job="tree"
             self.tree_kind="transfer"
-            self.last_request=(direction,raw,policy,str(local),remote,self.host,self.port)
+            self.last_request=(direction,raw,policy,str(self.local),self.remote,self.host,self.port,folder)
             self.pending=names.copy()
             self.last_failed=None
             tree.metric=self.tree_metric.emit
