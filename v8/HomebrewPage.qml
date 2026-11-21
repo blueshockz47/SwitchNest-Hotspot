@@ -28,14 +28,14 @@ ColumnLayout {
             seen[item.repo.toLowerCase()] = true
             rows.push({name: item.name, category: item.category || "Other", repo: item.repo,
                        manual: true, community: true, source: item.sources.join(" + "),
-                       warning: "Unverified community listing. Review its GitHub repository and Switch 2 compatibility before manual downloads."})
+                       warning: "Unverified community listing. Only GitHub release NROs with SHA-256 digests can be installed after explicit confirmation; ZIPs are download-only."})
         }
         let q = catalogQuery.toLowerCase().trim()
         results = rows.filter(function(item) {
             if (catalogCategory !== "All" && item.category !== catalogCategory) return false
             return !q || [item.name, item.repo, item.category, item.source || ""].join(" ").toLowerCase().indexOf(q) !== -1
         })
-        statusText = results.length + " projects shown (curated + community, deduplicated). Community entries are browse-only."
+        statusText = results.length + " projects shown (curated + community, deduplicated). Community release assets require SHA-256 verification and confirmation."
     }
     property var assets: []
     property string selectedRepo: ""
@@ -321,7 +321,7 @@ ColumnLayout {
                 }
                 onClicked: {
                     home.selectApp(modelData)
-                    home.statusText = modelData.community ? "Community listing: right-click to view GitHub (downloads disabled)." : "Right-click " + modelData.name + " for actions."
+                    home.statusText = modelData.community ? "Community listing: review GitHub, then choose a verified release asset; installs require confirmation." : "Right-click " + modelData.name + " for actions."
                 }
                 MouseArea {
                     anchors.fill: parent
@@ -339,7 +339,7 @@ ColumnLayout {
                     MenuItem {
                         text: "Download Only"
                         width: contextMenu.width
-                        enabled: !!home.actionRepo && !projectCard.modelData.community && !home.working
+                        enabled: !!home.actionRepo && !home.working
                         onTriggered: home.requestRelease("download")
                     }
                     MenuItem {
