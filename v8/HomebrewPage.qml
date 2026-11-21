@@ -61,14 +61,6 @@ ColumnLayout {
     property bool monitorVisible: false
     property string monitorStatus: "Ready to check homebrew releases"
     property bool monitorChecking: false
-    // 6-hour refresh; network work runs on a Python background thread.
-    Timer {
-        id: homebrewRefreshTimer
-        interval: 21600000
-        running: true
-        repeat: true
-        onTriggered: controller.homebrew_monitor_refresh()
-    }
     Dialog {
         id: homebrewUpdateNotice
         title: "New Switch 2 homebrew releases"
@@ -157,7 +149,7 @@ ColumnLayout {
         }
     }
     spacing: 4
-    Component.onCompleted: { controller.homebrew_search("", "All"); if (visible) controller.homebrew_monitor_refresh() }
+    Component.onCompleted: { controller.homebrew_search("", "All"); if (visible) controller.homebrew_monitor_refresh(false) }
     onVisibleChanged: { if (visible) controller.homebrew_monitor_refresh() }
     Connections {
         target: ftpBrowser
