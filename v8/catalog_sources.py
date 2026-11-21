@@ -63,21 +63,21 @@ def brewstore_rows(index_text, fetch=get_text):
             data = json.loads(fetch(url))
             if not isinstance(data, dict):
                 continue
-            repo = ""
-            for key in ("repository", "repo", "source", "homepage", "website"):
-                value = data.get(key)
-                if isinstance(value, str):
-                    repo = repo_from_url(value)
-                    if repo:
-                        break
-            if not repo:
+            packages = data.get("packages", [])
+            if not isinstance(packages, list):
                 continue
-            rows.append({"name": str(data.get("name") or data.get("title") or repo.split("/")[-1])[:100],
-                         "category": str(data.get("category") or "Other")[:40],
-                         "version": str(data.get("version") or "")[:50],
-                         "format": "unknown", "description": str(data.get("description") or "")[:240],
-                         "repo": repo, "source": "BrewStore",
-                         "status": "Unverified catalog listing"})
+            for package in packages[:10]:
+                if not isinstance(package, dict):
+                    continue
+                repo = repo_from_url(package.get("url", ""))
+                if not repo:
+                    continue
+                rows.append({"name": str(package.get("title") or package.get("name") or repo.split("/")[-1])[:100],
+                             "category": "Other",
+                             "version": str(package.get("version") or "")[:50],
+                             "format": "unknown", "description": str(package.get("description") or "")[:240],
+                             "repo": repo, "source": "BrewStore",
+                             "status": "Unverified catalog listing"})
         except (ValueError, TypeError, OSError, UnicodeError, json.JSONDecodeError):
             continue
     return rows
