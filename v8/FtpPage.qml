@@ -18,6 +18,8 @@ ColumnLayout {
     property int fileFontSize: 16
     property bool dragInProgress: false
     property string dropTarget: ""
+    property string dropFolder: ""
+    property string transferFolder: ""
     function targetAt(point) {
         if (!dataState.connected || dataState.busy) return ""
         let local = localList.mapToItem(page, 0, 0)
@@ -40,6 +42,14 @@ ColumnLayout {
         dragGhost.x = p.x - dragGhost.width / 2
         dragGhost.y = p.y - dragGhost.height / 2
         dropTarget = targetAt(p)
+        dropFolder = ""
+        if (dropTarget) {
+            let list = dropTarget === "local" ? localList : remoteList
+            let q = list.mapFromItem(page, p.x, p.y)
+            let index = list.indexAt(q.x, q.y + list.contentY)
+            let rows = sorted(dropTarget === "local" ? dataState.localRows : dataState.remoteRows)
+            if (index >= 0 && index < rows.length && rows[index].directory) dropFolder = rows[index].name
+        }
     }
     function finishDrag(source, point) {
         if (!dragInProgress) return
@@ -49,9 +59,11 @@ ColumnLayout {
         let target = dropTarget
         let side = dragGhost.dragSide
         let name = dragGhost.fileName
+        let folder = dropFolder
         dragInProgress = false
         dropTarget = ""
-        if (target && target !== side) transfer(side, [name])
+        dropFolder = ""
+        if (target && target !== side) { transferFolder = folder; transfer(side, [name]) }
     }
     function clearSelection() { localSelected=[]; remoteSelected=[]; entryName="" }
     function selectAll() { if (activeSide==="local") localSelected=sorted(dataState.localRows).map(x=>x.name); else remoteSelected=sorted(dataState.remoteRows).map(x=>x.name) }
@@ -80,6 +92,7 @@ ColumnLayout {
     function droppedFiles(side, name) {
         if (!name || dataState.busy || !dataState.connected) return
         // Use the same conflict-confirmation workflow as the Upload/Download buttons.
+        transferFolder = ""
         transfer(side, [name])
     }
     function transfer(side, names) {
@@ -157,7 +170,7 @@ ColumnLayout {
                     implicitHeight: 52
                     ToolTip.visible: hovered
                     ToolTip.text: modelData.name + "  " + (modelData.date || "")
-                    highlighted: page.localSelected.indexOf(modelData.name) >= 0
+                    highlighted: page.localSelected.indexOf(modelData.name) >= 0 || (modelData.directory && page.dropTarget === "local" && page.dropFolder === modelData.name)
                     enabled: !page.dataState.busy
                     property string fileName: modelData.name
                     onClicked: {
@@ -221,7 +234,7 @@ ColumnLayout {
                     implicitHeight: 52
                     ToolTip.visible: hovered
                     ToolTip.text: modelData.name + "  " + (modelData.date || "")
-                    highlighted: page.remoteSelected.indexOf(modelData.name) >= 0
+                    highlighted: page.remoteSelected.indexOf(modelData.name) >= 0 || (modelData.directory && page.dropTarget === "remote" && page.dropFolder === modelData.name)
                     enabled: !page.dataState.busy
                     property string fileName: modelData.name
                     onClicked: {
@@ -353,14 +366,19 @@ ColumnLayout {
         modal: true
         standardButtons: Dialog.Ok | Dialog.Cancel
         ColumnLayout {
-            Label { text: (page.transferSide === "local" ? "Upload " : "Download ") + page.transferNames.length + " selected entries (including subfolders)."; wrapMode: Text.Wrap; Layout.preferredWidth: 300 }
+            Label { text: (page.transferSide === "local" ? "Upload " : "Download ") + page.transferNames.length + " selected entries into " + (page.transferFolder || "current folder") + "."; wrapMode: Text.Wrap; Layout.preferredWidth: 300 }
             ComboBox { id: policy; model: ["Skip existing", "Keep both (rename)", "Replace existing"] }
             Label { text: "Replace may overwrite files. Interrupted uploads may leave partial files."; wrapMode: Text.Wrap; Layout.preferredWidth: 300 }
         }
         onOpened: policy.currentIndex=0
+        onRejected: page.transferFolder = ""
         onAccepted: {
             let direction = page.transferSide === "local" ? "upload" : "download"
-            ftpBrowser.tree_batch(direction,JSON.stringify(page.transferNames),["skip","rename","replace"][policy.currentIndex])
+            if (page.transferFolder)
+                ftpBrowser.tree_batch_into(direction,JSON.stringify(page.transferNames),["skip","rename","replace"][policy.currentIndex],page.transferFolder)
+            else
+                ftpBrowser.tree_batch(direction,JSON.stringify(page.transferNames),["skip","rename","replace"][policy.currentIndex])
+            page.transferFolder = ""
         }
     }
     Dialog {
