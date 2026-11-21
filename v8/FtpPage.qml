@@ -330,6 +330,10 @@ ColumnLayout {
         ColumnLayout {
             Label { text: page.dataState.status; wrapMode: Text.Wrap; Layout.preferredWidth: 300 }
             Label { text: "Transfer entries: " + (page.dataState.transferItems || []).length }
+            Label { text: "Waiting: " + ((page.dataState.queueSummary || {}).waiting || 0) + "  ·  Active: " + ((page.dataState.queueSummary || {}).active || 0) + "  ·  Completed: " + ((page.dataState.queueSummary || {}).completed || 0); color: "#8cb9c9" }
+            Label { text: "Overall transfer progress: " + Math.round(page.dataState.progress || 0) + "%"; color: "#8cb9c9" }
+            ProgressBar { Layout.preferredWidth: 370; from: 0; to: 100; value: page.dataState.progress || 0 }
+            Label { text: "Queue statuses track top-level entries. Folder byte totals are reported for the overall batch."; wrapMode: Text.Wrap; Layout.preferredWidth: 370; color: "#8cb9c9" }
             ScrollView {
                 Layout.preferredWidth: 390
                 Layout.preferredHeight: 230
