@@ -45,10 +45,17 @@ ColumnLayout {
         dropFolder = ""
         if (dropTarget) {
             let list = dropTarget === "local" ? localList : remoteList
-            let q = list.mapFromItem(page, p.x, p.y)
-            let index = list.indexAt(q.x, q.y + list.contentY)
-            let rows = sorted(dropTarget === "local" ? dataState.localRows : dataState.remoteRows)
-            if (index >= 0 && index < rows.length && rows[index].directory) dropFolder = rows[index].name
+            // Hit-test the actual delegate rectangles rather than ListView
+            // indices: indexAt coordinates can disagree with the viewport.
+            for (let item of list.contentItem.children) {
+                if (!item.fileName || !item.isFolder || !item.visible) continue
+                let corner = item.mapToItem(page, 0, 0)
+                if (p.x >= corner.x && p.x < corner.x + item.width &&
+                    p.y >= corner.y && p.y < corner.y + item.height) {
+                    dropFolder = item.fileName
+                    break
+                }
+            }
         }
     }
     function finishDrag(source, point) {
@@ -173,6 +180,7 @@ ColumnLayout {
                     highlighted: page.localSelected.indexOf(modelData.name) >= 0 || (modelData.directory && page.dropTarget === "local" && page.dropFolder === modelData.name)
                     enabled: !page.dataState.busy
                     property string fileName: modelData.name
+                    property bool isFolder: modelData.directory
                     onClicked: {
                         page.activeSide="local"; page.entryName=modelData.name
                         if (modelData.directory && !page.selectionMode) { page.localSelected=[]; ftpBrowser.local_open(modelData.name); page.entryName="" }
@@ -237,6 +245,7 @@ ColumnLayout {
                     highlighted: page.remoteSelected.indexOf(modelData.name) >= 0 || (modelData.directory && page.dropTarget === "remote" && page.dropFolder === modelData.name)
                     enabled: !page.dataState.busy
                     property string fileName: modelData.name
+                    property bool isFolder: modelData.directory
                     onClicked: {
                         page.activeSide="remote"; page.entryName=modelData.name
                         if (modelData.directory && !page.selectionMode) { page.remoteSelected=[]; ftpBrowser.remote_open(modelData.name); page.entryName="" }
