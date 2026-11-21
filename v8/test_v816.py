@@ -93,14 +93,15 @@ class MonitorTests(unittest.TestCase):
 
     def test_reddit_discovery_unverified_and_url_restricted(self):
         posts = {"data": {"children": [
-            {"data": {"title": "New Switch 2 homebrew", "permalink": "/r/SwitchHacks/comments/abc123/new_switch_2_homebrew/"}},
+            {"data": {"title": "New Switch 2 homebrew", "permalink": "/r/switch2hacks/comments/abc123/new_switch_2_homebrew/"}},
             {"data": {"title": "Switch 2 malicious", "permalink": "https://evil.example/download"}},
-            {"data": {"title": "Unrelated", "permalink": "/r/SwitchHacks/comments/xyz789/unrelated/"}}
+            {"data": {"title": "Unrelated", "permalink": "/r/switch2hacks/comments/xyz789/unrelated/"}}
         ]}}
+        self.assertIn("/r/switch2hacks/new.json", homebrew_monitor.REDDIT_URL)
         rows = homebrew_monitor.reddit_discover(opener=lambda request, timeout: FakeResponse(posts))
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["status"], "Unverified community discovery")
-        self.assertEqual(rows[0]["url"], "https://www.reddit.com/r/SwitchHacks/comments/abc123/new_switch_2_homebrew/")
+        self.assertEqual(rows[0]["url"], "https://www.reddit.com/r/switch2hacks/comments/abc123/new_switch_2_homebrew/")
 
     def test_reddit_failure_does_not_hide_github(self):
         with patch.object(homebrew_monitor, "github_updates", return_value=[{"repo": "example/repo"}]):
