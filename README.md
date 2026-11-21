@@ -1,18 +1,20 @@
 # SwitchNest (Offline Hotspot + Homebrew Manager)
 
-**An offline Nintendo Switch 2 Wi-Fi hotspot, FTP File Manager, and Homebrew Manager for SteamOS.**
+**A simple way to connect your Nintendo Switch 2 to a SteamOS PC, transfer files, and manage homebrew.**
 
 *Connect locally. Play freely.*
 
-[![Stable release](https://img.shields.io/badge/stable-v8.1.5-blue)](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/tag/v8.1.5) ![Platform](https://img.shields.io/badge/platform-SteamOS%20%7C%20Linux-informational) [![License: GPL-2.0](https://img.shields.io/badge/license-GPL--2.0-green)](LICENSE)
+[![Stable v8.1.5](https://img.shields.io/badge/stable-v8.1.5-blue)](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/tag/v8.1.5) ![SteamOS / Linux](https://img.shields.io/badge/platform-SteamOS%20%7C%20Linux-informational) [![GPL-2.0](https://img.shields.io/badge/license-GPL--2.0-green)](LICENSE)
 
-**[Download v8.1.5 for Linux (ZIP)](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/download/v8.1.5/SwitchNest-Hotspot-Linux-v8.1.5.zip)** · [Installation](#quick-install-on-steamos) · [Screenshots](#screenshots--v815) · [Release notes](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/tag/v8.1.5) · [Report a bug](https://github.com/blueshockz47/SwitchNest-Hotspot/issues)
+### [Download SwitchNest v8.1.5 (Linux ZIP)](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/download/v8.1.5/SwitchNest-Hotspot-Linux-v8.1.5.zip)
 
-SwitchNest lets you connect a Nintendo Switch 2 directly to your SteamOS PC over a **local-only Wi-Fi hotspot**, manage files through FTP, browse homebrew releases, and control Sunshine streaming. **The offline hotspot can start without Ethernet/LAN or an internet connection** once its required components are installed and your Wi-Fi adapter supports access-point mode.
+[**Install in 3 steps**](#install-on-steamos) · [Features](#what-can-switchnest-do) · [Screenshots](#screenshots--v815) · [Use without hotspot](#use-ftp-and-homebrew-manager-on-your-home-network) · [Troubleshooting](#troubleshooting)
 
-**You do not need to use the SwitchNest hotspot for FTP or Homebrew Manager.** If your PC and Switch 2 are on the **same reachable local network** (such as your home router's Wi-Fi/LAN), those tools can connect directly to a compatible FTP server running on the Switch 2. This also works when the Switch 2 uses **90DNS**, provided its network settings still allow local communication and the FTP server is reachable. GitHub downloads still require internet access on the PC.
+SwitchNest includes an **offline Wi-Fi hotspot**, **FTP File Manager**, **Homebrew Manager**, and **Sunshine controls**. You can start the offline hotspot **without Ethernet or internet** once everything is installed.
 
-> **Important:** The SwitchNest hotspot is designed not to share the PC's internet connection with the console. Verify firewall isolation independently; an *Isolation: Unverified* status is not proof of isolation. SwitchNest does not jailbreak the console or install kaiHEN.
+**Already have your PC and Switch 2 on the same home network?** You can use FTP and Homebrew Manager **without starting the SwitchNest hotspot**. Local FTP can also work with **90DNS** configured on the Switch 2, provided the devices can reach each other. Downloading homebrew releases from GitHub still needs internet on the PC.
+
+> **Note:** The hotspot is designed to keep the Switch 2 offline, but verify your firewall isolation. SwitchNest does not jailbreak your console or install kaiHEN.
 
 ## What can SwitchNest do?
 
@@ -44,69 +46,63 @@ SwitchNest lets you connect a Nintendo Switch 2 directly to your SteamOS PC over
 | ![SwitchNest Wi-Fi Settings](docs/images/Settings.png) | ![SwitchNest Streaming](docs/images/Streaming.png) |
 | Configure hotspot Wi-Fi and recovery controls | Manage a separately installed Sunshine server |
 
-## Requirements
+## Install on SteamOS
 
-- **SteamOS with KDE Desktop Mode** and an access-point-capable Wi-Fi adapter.
-- **NetworkManager** and the Linux tools required by the hotspot backend.
-- **Administrator access** for backend/helper installation; install the Control Center as your regular user.
-- **Ethernet/LAN is optional.** The offline hotspot can run without a wired connection or internet access after installation. Ethernet is useful only if you want the PC online at the same time; an adapter cannot normally act as both a Wi-Fi client and access point unless the hardware and driver support it.
-- Internet access for initial downloads/dependency installation and for GitHub homebrew downloads; **not required to start the installed offline hotspot**.
-- Approximately **2 GiB of free space** recommended for installation; more may be needed for downloaded homebrew.
+**Supported target:** SteamOS in KDE Desktop Mode, with NetworkManager and a Wi-Fi adapter that supports access-point (AP) mode. You need administrator access for hotspot setup. Other Linux distributions and Windows are not confirmed for this Linux release.
 
-Other Linux distributions and Windows are **not confirmed supported** by this Linux release.
+**Before you start:** Download and install dependencies while your PC has internet. After setup, the offline hotspot can start **without Ethernet/LAN or internet**. Ethernet is optional if you want the PC online while its Wi-Fi adapter hosts the Switch 2 network.
 
-## Quick install on SteamOS
+### Step 1 — Download and extract
 
-Install in this order: **hotspot backend → control helper → Control Center**. If you already have a working v7.1 backend and helper, skip to Step 3. **No Ethernet connection is required to run the offline hotspot.**
+1. **[Download the stable v8.1.5 Linux ZIP](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/download/v8.1.5/SwitchNest-Hotspot-Linux-v8.1.5.zip)** — not the older v8.0.1 branch or the development ZIP.
+2. Open **Downloads** and extract the ZIP.
+3. Open the extracted folder. Find the folder containing `install-switchnest-v8.sh` and `install-switchnest-pico-connectivity-v7.1-password.sh`.
+4. Right-click inside that folder and choose **Open Terminal Here** (Konsole). **Run all commands below from this folder.**
 
-### 1. Download the project
+### Step 2 — Install the hotspot components (first-time setup)
 
-Download the **[SwitchNest Hotspot Linux v8.1.5 ZIP](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/download/v8.1.5/SwitchNest-Hotspot-Linux-v8.1.5.zip)** and extract it. Use this stable release package rather than the development branch ZIP.
+If you already have the working v7.1 hotspot backend and privileged helper installed, **skip to Step 3**.
 
-Open **Konsole** inside the extracted project folder. Run the commands below from that folder.
-
-### 2. Install the hotspot backend and helper
-
-Install the v7.1 hotspot backend:
+**A. Install the hotspot backend:**
 
 ```bash
 sudo bash ./install-switchnest-pico-connectivity-v7.1-password.sh
 ```
 
-Choose **Install/update hotspot**, then configure **WPA2-Personal** and your Wi-Fi password. The default SSID on a fresh backend installation is `SteamDeck-Switch2`; existing installations may use a different name.
+Select **Install/update hotspot**, then set up **WPA2-Personal** and your Wi-Fi password. A new installation normally uses SSID `SteamDeck-Switch2`; existing setups may use a different SSID.
 
-Install the Control Center's privileged ON/OFF helper:
+**B. Install the hotspot control helper:**
 
 ```bash
 sudo bash ./install-switchnest-plasma67-panel-toggle.sh
 ```
 
-The KDE taskbar toggle is optional, but this helper is required for the GUI's privileged hotspot controls.
+This helper allows the Control Center to manage the hotspot. The KDE taskbar toggle itself is optional.
 
-### 3. Install the Control Center
+### Step 3 — Install and open SwitchNest
 
-**Do not use `sudo` for this command.**
+**Run this as your normal user — do not use `sudo`:**
 
 ```bash
 bash ./install-switchnest-v8.sh
 ```
 
-When installation finishes, open **SwitchNest Control Center** from the KDE application menu, or run:
+When the installer finishes, open **SwitchNest Control Center** from the KDE application launcher. Alternatively:
 
 ```bash
 ~/.local/share/switchnest/launch
 ```
 
-### 4. Connect your Nintendo Switch 2
+### Connect your Switch 2 (offline hotspot mode)
 
-1. In SwitchNest, open **Overview** and start the hotspot if necessary.
-2. On the Switch 2, join the Wi-Fi network you configured during installation.
-3. Use **automatic IP/DNS** unless your setup specifically requires manual network settings.
-4. Confirm that the device appears under **Connected Wi-Fi stations**.
+1. In SwitchNest **Overview**, start the hotspot.
+2. On the Switch 2, join the configured Wi-Fi network.
+3. Use **automatic IP and DNS** unless your setup requires manual values.
+4. Check **Connected Wi-Fi stations** in SwitchNest.
 
-The hotspot is designed for local connectivity. It does not provide Nintendo online services.
+**No Ethernet cable needed.** The console's hotspot connection is intended for local services, not Nintendo online play. If you only want FTP/Homebrew Manager over your existing router, follow the next section instead.
 
-## Use FTP and Homebrew Manager without the SwitchNest hotspot
+## Use FTP and Homebrew Manager on your home network
 
 You can leave the SwitchNest offline hotspot **OFF** and use your existing home network instead:
 
@@ -117,9 +113,9 @@ You can leave the SwitchNest offline hotspot **OFF** and use your existing home 
 
 **No SwitchNest hotspot or Ethernet cable is required for these file-management features.** The PC still needs internet access to fetch new GitHub homebrew releases, and the console must have a compatible FTP server running. A 90DNS configuration is **not** a guarantee of blocking all Nintendo services or of network security.
 
-## How to use the Homebrew Manager
+## Homebrew Manager: download and install
 
-1. Start SwitchNest and open **Files → Homebrew Manager**.
+1. Open **Homebrew Manager** in SwitchNest.
 2. Use **Search** or the category filter to find an app.
 3. **Right-click** an app card. Choose **View GitHub Repository**, **Download Only**, or **Download & Install**, depending on the available release and app requirements.
 4. For **Download Only**, select an eligible verified release file and follow the project's installation instructions.
@@ -131,33 +127,36 @@ You can leave the SwitchNest offline hotspot **OFF** and use your existing home 
 
 > **No automatic homebrew installation:** The stable v8.1.5 Homebrew Manager is a curated catalog and verified-download workflow. Automatic GitHub/Reddit release monitoring is planned for **v8.1.6** and is **not** included in v8.1.5.
 
-## How to use FTP and streaming
+## FTP File Manager and streaming
 
-**FTP:** The SwitchNest hotspot is optional: use any reachable shared local network, including a network where the Switch 2 has 90DNS configured. Launch a compatible FTP server on the Switch 2 (for example, OunceShell), open **Files → FTP File Manager**, enter the server IP and port, and click **Connect**. Browse the local and remote panels to manage transfers.
+**FTP:** The SwitchNest hotspot is optional: use any reachable shared local network, including a network where the Switch 2 has 90DNS configured. Launch a compatible FTP server on the Switch 2 (for example, OunceShell), open **FTP File Manager**, enter the server IP and port, and click **Connect**. Browse the local and remote panels to manage transfers.
 
 **Streaming:** Install and configure [Sunshine](https://github.com/LizardByte/Sunshine) on your PC and a compatible Moonlight client on your Switch 2. Open SwitchNest's **Streaming** page to control Sunshine. [Detailed streaming guide](docs/SUNSHINE.md).
 
-## Updating and troubleshooting
+## Troubleshooting
 
-Use the **Updates** page for supported Control Center updates. To inspect or roll back a managed installation from an extracted repository folder:
+| Issue | Try this |
+| --- | --- |
+| **Installer says file not found** | Open Konsole in the extracted folder containing the `.sh` files, not in Downloads or another directory. |
+| **Switch 2 cannot see hotspot** | Check that your Wi-Fi adapter supports AP mode, and confirm the hotspot SSID and status in SwitchNest. |
+| **Hotspot has no internet** | Expected: it is an **offline** hotspot. Ethernet is not required to start it. |
+| **FTP cannot connect** | Start the FTP server on the Switch 2; confirm the correct IP/port and that both devices can reach each other. |
+| **Using 90DNS with FTP** | DNS filtering does not inherently block local FTP, but router isolation, firewall rules, or network settings might. |
+| **Homebrew install unavailable** | Some apps are manual-only or do not offer an eligible SHA-256-verified NRO release. |
+| **Sunshine unavailable** | Install and configure Sunshine separately; it is not bundled. |
+| **Maximized startup preference error** | Known in v8.1.5; the fix is in the v8.1.6 development work. |
+| **Isolation: Unverified** | Verify firewall and forwarding rules independently. |
+
+**Updating:** Use the Control Center **Updates** page for supported updates. For a managed installation, you can inspect status or roll back from the extracted project folder:
 
 ```bash
 python3 -m v8.install status
 python3 -m v8.install rollback
 ```
 
-Rollback requires a previous managed release. The Control Center installer does not reinstall or replace your working hotspot backend.
+Rollback requires a previous managed release. Updating the Control Center does not replace the working hotspot backend.
 
-| Problem | What to check |
-| --- | --- |
-| Switch 2 cannot see the hotspot | Check Wi-Fi adapter AP support, hotspot status, and configured SSID. |
-| FTP won't connect | Start the FTP server on the console and confirm its actual IP and port. |
-| No homebrew install option | The app may be manual-only or lack an eligible SHA-256-verified NRO release. |
-| Sunshine is unavailable | Install/configure Sunshine separately; it is not bundled with SwitchNest. |
-| **Invalid preference** when saving maximized startup | Known v8.1.5 issue; a fix is included in the v8.1.6 development work. |
-| **Isolation: Unverified** | Check firewall forwarding rules and verify isolation independently. |
-
-For additional help, see [Troubleshooting](docs/TROUBLESHOOTING.md), [Security](docs/SECURITY.md), and [Validation](docs/VALIDATION.md).
+More help: [Troubleshooting](docs/TROUBLESHOOTING.md) · [Security](docs/SECURITY.md) · [Validation](docs/VALIDATION.md) · [Sunshine setup](docs/SUNSHINE.md) · [Report an issue](https://github.com/blueshockz47/SwitchNest-Hotspot/issues)
 
 ## Development status
 
