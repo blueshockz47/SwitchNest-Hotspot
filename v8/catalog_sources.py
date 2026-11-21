@@ -10,7 +10,7 @@ BREWSTORE = "https://raw.githubusercontent.com/HerXayah/brewstore-repo/main/pack
 IZ2S = "https://raw.githubusercontent.com/dadadush/switch2-homebrew-catalog/main/catalog/catalog.tsv"
 MAX_BYTES = 512 * 1024
 REPO = re.compile(r"^/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/?$")
-MANIFEST = re.compile(r"^/HerXayah/brewstore-repo/main/packages/[A-Za-z0-9_.-]+/manifest\\.json$")
+MANIFEST = re.compile(r"^/HerXayah/brewstore-repo/main/packages/[A-Za-z0-9_.-]+/manifest\.json$")
 AGENT = "SwitchNest-Homebrew-Catalog/8.1.6"
 
 def get_text(url, opener=urllib.request.urlopen):
