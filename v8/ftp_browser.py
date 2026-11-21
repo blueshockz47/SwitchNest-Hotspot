@@ -82,7 +82,7 @@ class Browser(QObject):
     def state(self):
         return json.dumps(dict(host=self.host, port=self.port, local=str(self.local),
             remote=self.remote, localRows=self.local_rows, remoteRows=self.remote_rows,
-            status=self.status, progress=self.progress, busy=self.busy, connected=self.connected, total=self.total, completed=self.completed, current=self.current_name, history=self.history, speed=self.speed, bytesDone=self.bytes_done, transferSize=self.transfer_size, localFree=self.local_free, pending=self.pending, transferItems=self.smart_queue.snapshot() if self.smart_queue.entries else self.transfer_items, queueSummary=self.queue_summary(), retryAvailable=self.last_failed is not None, details=self.details, bookmarks=self.bookmarks))
+            status=self.status, progress=self.progress, busy=self.busy, connected=self.connected, total=self.total, completed=self.completed, current=self.current_name, history=self.history, speed=self.speed, bytesDone=self.bytes_done, transferSize=self.transfer_size, localFree=self.local_free, pending=self.pending, transferItems=self.transfer_items, queueSummary=self.queue_summary(), retryAvailable=self.last_failed is not None, details=self.details, bookmarks=self.bookmarks))
 
     def queue_summary(self):
         items = self.smart_queue.snapshot()
