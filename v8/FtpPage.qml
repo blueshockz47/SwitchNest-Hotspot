@@ -134,22 +134,48 @@ ColumnLayout {
                         acceptedButtons: Qt.RightButton
                         onTapped: { page.activeSide="local"; page.entryName=modelData.name; entryMenu.popup() }
                     }
-                    Drag.active: dragHandler.active || dragFinishing
+                    // Animated drag preview: a copy of the entry follows the pointer.
+                    Rectangle {
+                        id: dragPreview
+                        property string fileName: modelData.name
+                        width: Math.min(300, Math.max(150, previewLabel.implicitWidth + 30))
+                        height: 42
+                        radius: 9
+                        color: "#243e55"
+                        border.color: "#52e0ae"
+                        border.width: 2
+                        opacity: dragHandler.active ? 0.95 : 0
+                        visible: dragHandler.active || dragFinishing
+                        z: 100
+                        x: 12
+                        y: 5
+                        scale: dragHandler.active ? 1.04 : 0.92
+                        Behavior on opacity { NumberAnimation { duration: 110 } }
+                        Behavior on scale { NumberAnimation { duration: 110 } }
+                        Label {
+                            id: previewLabel
+                            anchors.centerIn: parent
+                            width: Math.min(270, implicitWidth)
+                            elide: Text.ElideRight
+                            text: (modelData.directory ? "📁 " : "▧ ") + modelData.name
+                            color: "#ffffff"
+                            font.pixelSize: 14
+                            font.bold: true
+                        }
+                        Drag.active: dragHandler.active || dragFinishing
+                        Drag.keys: ["local"]
+                        Drag.supportedActions: Qt.CopyAction
+                        Drag.hotSpot.x: width / 2
+                        Drag.hotSpot.y: height / 2
+                    }
                     property bool dragFinishing: false
-                    Drag.keys: ["local"]
-                    Drag.hotSpot.x: width / 2
-                    Drag.hotSpot.y: height / 2
                     DragHandler {
                         id: dragHandler
                         enabled: !page.dataState.busy && page.dataState.connected
-                        target: null
+                        target: dragPreview
                         onActiveChanged: {
-                            if (active) parent.dragFinishing = true
-                            else { parent.Drag.drop(); parent.dragFinishing = false }
-                        }
-                        onCentroidChanged: if (active) {
-                            parent.Drag.hotSpot.x = centroid.position.x
-                            parent.Drag.hotSpot.y = centroid.position.y
+                            if (active) { parent.dragFinishing = true; dragPreview.x = 12; dragPreview.y = 5 }
+                            else { dragPreview.Drag.drop(); parent.dragFinishing = false; dragPreview.x = 12; dragPreview.y = 5 }
                         }
                     }
                     Menu {
@@ -207,22 +233,48 @@ ColumnLayout {
                         acceptedButtons: Qt.RightButton
                         onTapped: { page.activeSide="remote"; page.entryName=modelData.name; entryMenu.popup() }
                     }
-                    Drag.active: dragHandler.active || dragFinishing
+                    // Animated drag preview: a copy of the entry follows the pointer.
+                    Rectangle {
+                        id: dragPreview
+                        property string fileName: modelData.name
+                        width: Math.min(300, Math.max(150, previewLabel.implicitWidth + 30))
+                        height: 42
+                        radius: 9
+                        color: "#243e55"
+                        border.color: "#52e0ae"
+                        border.width: 2
+                        opacity: dragHandler.active ? 0.95 : 0
+                        visible: dragHandler.active || dragFinishing
+                        z: 100
+                        x: 12
+                        y: 5
+                        scale: dragHandler.active ? 1.04 : 0.92
+                        Behavior on opacity { NumberAnimation { duration: 110 } }
+                        Behavior on scale { NumberAnimation { duration: 110 } }
+                        Label {
+                            id: previewLabel
+                            anchors.centerIn: parent
+                            width: Math.min(270, implicitWidth)
+                            elide: Text.ElideRight
+                            text: (modelData.directory ? "📁 " : "▧ ") + modelData.name
+                            color: "#ffffff"
+                            font.pixelSize: 14
+                            font.bold: true
+                        }
+                        Drag.active: dragHandler.active || dragFinishing
+                        Drag.keys: ["remote"]
+                        Drag.supportedActions: Qt.CopyAction
+                        Drag.hotSpot.x: width / 2
+                        Drag.hotSpot.y: height / 2
+                    }
                     property bool dragFinishing: false
-                    Drag.keys: ["remote"]
-                    Drag.hotSpot.x: width / 2
-                    Drag.hotSpot.y: height / 2
                     DragHandler {
                         id: dragHandler
                         enabled: !page.dataState.busy && page.dataState.connected
-                        target: null
+                        target: dragPreview
                         onActiveChanged: {
-                            if (active) parent.dragFinishing = true
-                            else { parent.Drag.drop(); parent.dragFinishing = false }
-                        }
-                        onCentroidChanged: if (active) {
-                            parent.Drag.hotSpot.x = centroid.position.x
-                            parent.Drag.hotSpot.y = centroid.position.y
+                            if (active) { parent.dragFinishing = true; dragPreview.x = 12; dragPreview.y = 5 }
+                            else { dragPreview.Drag.drop(); parent.dragFinishing = false; dragPreview.x = 12; dragPreview.y = 5 }
                         }
                     }
                     Menu {
