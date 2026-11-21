@@ -9,7 +9,7 @@ import sys
 import subprocess
 import threading
 import time
-from v8 import updates, autostart, preferences, wifi_reliability, stability, homebrew, homebrew_zip
+from v8 import updates, autostart, preferences, wifi_reliability, stability, homebrew, homebrew_zip, homebrew_monitor
 from pathlib import Path
 from v8.ftp_browser import Browser
 from PySide6.QtCore import QObject, Signal, Slot, Property, QLockFile, QStandardPaths, QProcess, QTimer, QUrl
@@ -40,6 +40,7 @@ class Controller(QObject):
     homebrewResult = Signal(str)
     homebrewBusy = Signal(bool)
     homebrewProgress = Signal(str)
+    homebrewMonitorResult = Signal(str)
 
     def __init__(self):
         super().__init__()
@@ -123,6 +124,23 @@ class Controller(QObject):
         self.process.setWorkingDirectory(str(Path(__file__).resolve().parent.parent))
         self.process.start(sys.executable, ["-m", "v8.install", "repair"])
 
+
+    @Slot()
+    def homebrew_monitor_refresh(self):
+        """Read-only background discovery; never triggers a download or FTP write."""
+        if getattr(self, "_homebrew_monitor_busy", False):
+            return
+        self._homebrew_monitor_busy = True
+        def worker():
+            try:
+                data = homebrew_monitor.refresh()
+                self.homebrewMonitorResult.emit(json.dumps(data))
+            except Exception as exc:
+                self.homebrewMonitorResult.emit(json.dumps({
+                    "kind": "monitor_error", "message": type(exc).__name__ + ": " + str(exc)[:160]}))
+            finally:
+                self._homebrew_monitor_busy = False
+        threading.Thread(target=worker, daemon=True).start()
 
     @Slot(str, str)
     def homebrew_search(self, query, category):
