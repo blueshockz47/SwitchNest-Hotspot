@@ -15,6 +15,9 @@ ColumnLayout {
     property string deletePath: ""
     property bool selectionMode: false
     property bool showActivity: false
+    property bool queueExpanded: false
+    property string notification: ""
+    property string lastStatus: ""
     property int fileFontSize: 16
     property bool dragInProgress: false
     property string dropTarget: ""
@@ -82,9 +85,36 @@ ColumnLayout {
         }
     }
     function clearSelection() { localSelected=[]; remoteSelected=[]; entryName="" }
+    function selectRange(side, name, modifiers) {
+        let selected = side === "local" ? localSelected : remoteSelected
+        let rows = sorted(side === "local" ? dataState.localRows : dataState.remoteRows)
+        let names = rows.map(x => x.name)
+        let target = names.indexOf(name)
+        if (target < 0) return
+        let anchor = names.indexOf(entryName)
+        let result
+        if ((modifiers & Qt.ShiftModifier) && anchor >= 0) {
+            let range = names.slice(Math.min(anchor,target),Math.max(anchor,target)+1)
+            result = (modifiers & Qt.ControlModifier) ? Array.from(new Set(selected.concat(range))) : range
+        } else if ((modifiers & Qt.ControlModifier) || selectionMode) {
+            result = toggle(selected,name)
+        } else {
+            result = [name]
+        }
+        if (side === "local") localSelected=result
+        else remoteSelected=result
+        activeSide=side
+        entryName=name
+    }
     function selectAll() { if (activeSide==="local") localSelected=sorted(dataState.localRows).map(x=>x.name); else remoteSelected=sorted(dataState.remoteRows).map(x=>x.name) }
     function deleteSelected() { deleteSide=activeSide; deletePath=activeSide==="local"?dataState.local:dataState.remote; deleteNames=(activeSide==="local"?localSelected:remoteSelected).slice(); if(deleteNames.length) batchDelete.open() }
     function navigate(action) { clearSelection(); ftpBrowser.navigate(activeSide,action) }
+    function openDirectory(side, name) {
+        clearSelection()
+        activeSide=side
+        if (side === "local") ftpBrowser.local_open(name)
+        else ftpBrowser.remote_open(name)
+    }
     Shortcut { sequence: "Ctrl+A"; enabled: page.visible && !page.dataState.busy && !search.activeFocus && !host.activeFocus && !port.activeFocus && !editDialog.visible && !conflictDialog.visible && !batchDelete.visible; onActivated: page.selectAll() }
     Shortcut { sequence: "F5"; enabled: page.visible && !page.dataState.busy && page.dataState.connected; onActivated: { page.clearSelection(); ftpBrowser.refresh() } }
     property string transferSide: "local"
@@ -132,7 +162,14 @@ ColumnLayout {
     function sizeText(n) { return n === null || n === undefined ? "" : n >= 1073741824 ? (n/1073741824).toFixed(2)+" GiB" : n >= 1048576 ? (n/1048576).toFixed(1)+" MiB" : n >= 1024 ? (n/1024).toFixed(1)+" KiB" : n+" B" }
     Connections {
         target: ftpBrowser
-        function onChanged() { page.dataState = JSON.parse(ftpBrowser.state) }
+        function onChanged() {
+            page.dataState = JSON.parse(ftpBrowser.state)
+            let next = page.dataState.status || ""
+            if (next !== page.lastStatus) {
+                page.lastStatus = next
+                page.notification = next
+            }
+        }
     }
     RowLayout {
         TextField { id: host; text: page.dataState.host; Layout.fillWidth: true; enabled: !page.dataState.busy && !page.dataState.connected; placeholderText: "Switch 2 FTP address" }
@@ -141,11 +178,11 @@ ColumnLayout {
         Button { text: page.dataState.connected ? "Disconnect" : "Connect"; enabled: !page.dataState.busy; onClicked: { page.remoteSelected=[]; if (page.dataState.connected) ftpBrowser.disconnect(); else ftpBrowser.connect_to(host.text, port.text) } }
     }
     RowLayout {
-        Button { text: "←"; onClicked: page.navigate("back"); enabled: !page.dataState.busy }
-        Button { text: "→"; onClicked: page.navigate("forward"); enabled: !page.dataState.busy }
-        Button { text: "Home"; onClicked: page.navigate("home"); enabled: !page.dataState.busy }
-        Button { text: "★"; onClicked: ftpBrowser.bookmark(page.activeSide); enabled: !page.dataState.busy }
-        Button { text: "Bookmarks"; onClicked: bookmarkDialog.open() }
+        ToolButton { text: "←"; onClicked: page.navigate("back"); enabled: !page.dataState.busy; ToolTip.visible: hovered; ToolTip.text: "Back" }
+        ToolButton { text: "→"; onClicked: page.navigate("forward"); enabled: !page.dataState.busy; ToolTip.visible: hovered; ToolTip.text: "Forward" }
+        ToolButton { text: "⌂ Home"; onClicked: page.navigate("home"); enabled: !page.dataState.busy }
+        ToolButton { text: "★"; onClicked: ftpBrowser.bookmark(page.activeSide); enabled: !page.dataState.busy; ToolTip.visible: hovered; ToolTip.text: "Bookmark current folder" }
+        ToolButton { text: "Bookmarks"; onClicked: bookmarkDialog.open() }
     }
     RowLayout {
         TextField { id: search; placeholderText: "Filter files and folders"; Layout.fillWidth: true; onTextChanged: page.clearSelection() }
@@ -161,8 +198,12 @@ ColumnLayout {
             Layout.fillHeight: true
             Layout.preferredWidth: 1
             Label { text: "Local · " + page.sizeText(page.dataState.localFree) + " free"; font.bold: true }
-            Label { text: page.dataState.local; elide: Text.ElideMiddle; Layout.fillWidth: true }
-            Button { text: "Up"; enabled: !page.dataState.busy; onClicked: { page.activeSide="local"; page.entryName=""; page.localSelected=[]; ftpBrowser.local_open("..") } }
+            RowLayout {
+                Layout.fillWidth: true
+                Label { text: "⌂  " + page.dataState.local; elide: Text.ElideMiddle; Layout.fillWidth: true; ToolTip.visible: hovered; ToolTip.text: page.dataState.local }
+                Label { text: page.localSelected.length + " selected"; visible: page.localSelected.length > 0; color: "#8cb9c9" }
+            }
+            ToolButton { text: "↑ Parent folder"; enabled: !page.dataState.busy; onClicked: page.openDirectory("local","..") }
             ListView {
                 id: localList
                 Layout.fillWidth: true; Layout.fillHeight: true
@@ -173,7 +214,7 @@ ColumnLayout {
                     width: ListView.view.width
                     text: (modelData.directory ? "📁 " : "▧ ") + modelData.name + (modelData.directory ? "" : "  ·  " + page.sizeText(modelData.size))
                     font.pixelSize: page.fileFontSize
-                    implicitHeight: 52
+                    implicitHeight: 42
                     ToolTip.visible: hovered
                     ToolTip.text: modelData.name + "  " + (modelData.date || "")
                     highlighted: page.localSelected.indexOf(modelData.name) >= 0 || (modelData.directory && page.dropTarget === "local" && page.dropFolder === modelData.name)
@@ -181,9 +222,8 @@ ColumnLayout {
                     property string fileName: modelData.name
                     property bool isFolder: modelData.directory
                     onClicked: {
-                        page.activeSide="local"; page.entryName=modelData.name
-                        if (modelData.directory && !page.selectionMode) { page.localSelected=[]; ftpBrowser.local_open(modelData.name); page.entryName="" }
-                        else page.localSelected=page.toggle(page.localSelected, modelData.name)
+                        if (modelData.directory && !page.selectionMode && !(Qt.application.keyboardModifiers & (Qt.ControlModifier | Qt.ShiftModifier))) page.openDirectory("local",modelData.name)
+                        else page.selectRange("local",modelData.name,Qt.application.keyboardModifiers)
                     }
                     onPressAndHold: { page.activeSide="local"; page.entryName=modelData.name; entryMenu.popup() }
                     TapHandler {
@@ -225,8 +265,12 @@ ColumnLayout {
             Layout.fillHeight: true
             Layout.preferredWidth: 1
             Label { text: "Remote · capacity unavailable"; font.bold: true }
-            Label { text: page.dataState.remote; elide: Text.ElideMiddle; Layout.fillWidth: true }
-            Button { text: "Up"; enabled: !page.dataState.busy && page.dataState.connected; onClicked: { page.activeSide="remote"; page.entryName=""; page.remoteSelected=[]; ftpBrowser.remote_open("..") } }
+            RowLayout {
+                Layout.fillWidth: true
+                Label { text: "⌂  " + page.dataState.remote; elide: Text.ElideMiddle; Layout.fillWidth: true; ToolTip.visible: hovered; ToolTip.text: page.dataState.remote }
+                Label { text: page.remoteSelected.length + " selected"; visible: page.remoteSelected.length > 0; color: "#8cb9c9" }
+            }
+            ToolButton { text: "↑ Parent folder"; enabled: !page.dataState.busy && page.dataState.connected; onClicked: page.openDirectory("remote","..") }
             ListView {
                 id: remoteList
                 Layout.fillWidth: true; Layout.fillHeight: true
@@ -237,7 +281,7 @@ ColumnLayout {
                     width: ListView.view.width
                     text: (modelData.directory ? "📁 " : "▧ ") + modelData.name + (modelData.directory ? "" : "  ·  " + page.sizeText(modelData.size))
                     font.pixelSize: page.fileFontSize
-                    implicitHeight: 52
+                    implicitHeight: 42
                     ToolTip.visible: hovered
                     ToolTip.text: modelData.name + "  " + (modelData.date || "")
                     highlighted: page.remoteSelected.indexOf(modelData.name) >= 0 || (modelData.directory && page.dropTarget === "remote" && page.dropFolder === modelData.name)
@@ -245,9 +289,8 @@ ColumnLayout {
                     property string fileName: modelData.name
                     property bool isFolder: modelData.directory
                     onClicked: {
-                        page.activeSide="remote"; page.entryName=modelData.name
-                        if (modelData.directory && !page.selectionMode) { page.remoteSelected=[]; ftpBrowser.remote_open(modelData.name); page.entryName="" }
-                        else page.remoteSelected=page.toggle(page.remoteSelected, modelData.name)
+                        if (modelData.directory && !page.selectionMode && !(Qt.application.keyboardModifiers & (Qt.ControlModifier | Qt.ShiftModifier))) page.openDirectory("remote",modelData.name)
+                        else page.selectRange("remote",modelData.name,Qt.application.keyboardModifiers)
                     }
                     onPressAndHold: { page.activeSide="remote"; page.entryName=modelData.name; entryMenu.popup() }
                     TapHandler {
@@ -349,6 +392,10 @@ ColumnLayout {
                 onClicked: ftpBrowser.cancel()
             }
             ToolButton {
+                text: page.queueExpanded ? "Hide queue" : "Show queue"
+                onClicked: page.queueExpanded = !page.queueExpanded
+            }
+            ToolButton {
                 text: "More ▾"
                 onClicked: ftpActions.popup()
                 Menu {
@@ -376,6 +423,41 @@ ColumnLayout {
     Label { visible: page.dataState.busy && page.dataState.transferSize > 0; text: page.sizeText(page.dataState.bytesDone) + " / " + page.sizeText(page.dataState.transferSize) + " · " + page.sizeText(page.dataState.speed) + "/s" + (page.dataState.speed > 0 ? " · ETA " + Math.max(0,Math.ceil((page.dataState.transferSize-page.dataState.bytesDone)/page.dataState.speed)) + " s" : ""); Layout.fillWidth: true }
     ProgressBar { indeterminate: page.dataState.busy && page.dataState.transferSize === 0 && page.dataState.total === 0; Layout.fillWidth: true; from: 0; to: 100; value: page.dataState.total > 0 && page.dataState.busy && page.dataState.current !== "" ? Math.min(100, (page.dataState.completed + page.dataState.progress/100)*100/page.dataState.total) : page.dataState.progress }
     Label { text: page.dataState.status + (page.dataState.total > 0 ? " · " + page.dataState.completed + "/" + page.dataState.total + " files · " + page.dataState.current : page.dataState.completed > 0 ? " · " + page.dataState.completed + " entries" : ""); wrapMode: Text.Wrap; Layout.fillWidth: true; maximumLineCount: 4 }
+    Frame {
+        Layout.fillWidth: true
+        Layout.preferredHeight: page.queueExpanded ? 165 : 0
+        visible: page.queueExpanded
+        ColumnLayout {
+            anchors.fill: parent
+            RowLayout {
+                Label { text: "Transfer queue"; font.bold: true }
+                Item { Layout.fillWidth: true }
+                Label { text: "Completed: " + ((page.dataState.queueSummary || {}).completed || 0) + " · Waiting: " + ((page.dataState.queueSummary || {}).waiting || 0) }
+                ToolButton { text: "Details"; onClicked: queueDialog.open() }
+            }
+            ProgressBar { Layout.fillWidth: true; from: 0; to: 100; value: page.dataState.progress || 0 }
+            ListView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                model: page.dataState.transferItems || []
+                delegate: Label {
+                    required property var modelData
+                    width: ListView.view.width
+                    text: modelData.status + "  ·  " + modelData.name
+                    elide: Text.ElideMiddle
+                }
+            }
+        }
+    }
+    Label {
+        visible: page.notification.length > 0
+        text: page.notification
+        Layout.fillWidth: true
+        elide: Text.ElideRight
+        color: "#8cb9c9"
+        font.pixelSize: 12
+    }
     Dialog {
         id: retryDialog
         title: "Retry remaining entries"
