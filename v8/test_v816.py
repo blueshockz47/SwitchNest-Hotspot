@@ -46,6 +46,13 @@ class MonitorTests(unittest.TestCase):
         self.assertEqual(catalog_sources.normalize_category("Other", "Sphaira"), "Other")
         self.assertEqual(catalog_sources.normalize_category("Tools", "File Browser"), "Tools")
 
+    def test_refined_categories(self):
+        self.assertEqual(catalog_sources.normalize_category("Media", "Super Moonlight NX2"), "Streaming")
+        self.assertEqual(catalog_sources.normalize_category("Media", "Switch2NOW"), "Tools")
+        self.assertEqual(catalog_sources.normalize_category("Other", "Sphaira"), "Tools")
+        self.assertEqual(catalog_sources.normalize_category("Other", "Chromium NX"), "Tools")
+        self.assertEqual(catalog_sources.normalize_category("Other", "PKForge"), "Tools")
+
     def test_maximized_preference_registered(self):
         self.assertIn("fullscreen_on_start", preferences.DEFAULTS)
         self.assertIs(type(preferences.DEFAULTS["fullscreen_on_start"]), bool)
