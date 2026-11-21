@@ -13,6 +13,7 @@ import shutil
 import tempfile
 from urllib.parse import quote
 from PySide6.QtCore import QObject, Signal, Slot, Property, QProcess, QSettings
+from PySide6.QtGui import QGuiApplication
 
 class Browser(QObject):
     changed = Signal()
@@ -28,6 +29,7 @@ class Browser(QObject):
         if not self.local.is_dir():
             self.local = Path.home()
         self.remote = "/"
+        self.remote_recent = []
         self.local_rows = []
         self.remote_rows = []
         self.status = "Connect to a local FTP server."
@@ -82,7 +84,7 @@ class Browser(QObject):
     def state(self):
         return json.dumps(dict(host=self.host, port=self.port, local=str(self.local),
             remote=self.remote, localRows=self.local_rows, remoteRows=self.remote_rows,
-            status=self.status, progress=self.progress, busy=self.busy, connected=self.connected, total=self.total, completed=self.completed, current=self.current_name, history=self.history, speed=self.speed, bytesDone=self.bytes_done, transferSize=self.transfer_size, localFree=self.local_free, pending=self.pending, transferItems=self.transfer_items, queueSummary=self.queue_summary(), retryAvailable=self.last_failed is not None, details=self.details, bookmarks=self.bookmarks))
+            status=self.status, progress=self.progress, busy=self.busy, connected=self.connected, total=self.total, completed=self.completed, current=self.current_name, history=self.history, speed=self.speed, bytesDone=self.bytes_done, transferSize=self.transfer_size, localFree=self.local_free, pending=self.pending, transferItems=self.transfer_items, queueSummary=self.queue_summary(), retryAvailable=self.last_failed is not None, details=self.details, bookmarks=self.bookmarks, remoteRecent=self.remote_recent))
 
     def queue_summary(self):
         items = self.smart_queue.snapshot()
@@ -212,7 +214,38 @@ class Browser(QObject):
             return
         self.navigation["remote"].append(previous)
         self.forward_paths["remote"].clear()
+        self._remember_remote(previous)
         self.list_remote()
+
+    def _remember_remote(self, path):
+        if path.startswith("/") and path.endswith("/"):
+            self.remote_recent = ([path] + [p for p in self.remote_recent if p != path])[:12]
+
+    @Slot(str)
+    def open_remote_path(self, path):
+        """Navigate only to normalized FTP paths, never outside the current connection."""
+        if self.busy or not self.connected or not isinstance(path, str):
+            return
+        if not path.startswith("/") or not path.endswith("/") or "\\x00" in path:
+            return
+        segments = path.split("/")
+        if any(part in (".", "..") or not self.valid_name(part) for part in segments if part):
+            return
+        if path == self.remote:
+            return
+        previous = self.remote
+        self.navigation["remote"].append(previous)
+        self.forward_paths["remote"].clear()
+        self._remember_remote(previous)
+        self.remote = path
+        self.list_remote()
+
+    @Slot()
+    def copy_remote_path(self):
+        if self.connected:
+            QGuiApplication.clipboard().setText(self.remote)
+            self.status = "Copied Switch 2 path to clipboard."
+            self.changed.emit()
 
     @Slot()
     def refresh(self):
@@ -315,6 +348,7 @@ class Browser(QObject):
             p=Path(target)
             if p.is_dir() and not p.is_symlink(): self.local=p; self.refresh_local()
         else:
+            self._remember_remote(self.remote)
             self.remote=target
             self.list_remote()
 
@@ -341,6 +375,7 @@ class Browser(QObject):
             path=item["path"]
             if path.startswith("/") and path.endswith("/") and all(self.valid_name(n) for n in path.split("/") if n):
                 self.navigation["remote"].append(self.remote)
+                self._remember_remote(self.remote)
                 self.remote=path
                 self.list_remote()
 
