@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from unittest.mock import patch
-from v8 import homebrew_monitor, homebrew, preferences, catalog_sources
+from v8 import homebrew_monitor, homebrew, preferences, catalog_sources, homebrew_release_cache
 
 class FakeResponse:
     def __init__(self, data):
@@ -171,6 +171,26 @@ class DailyDiscoveryCacheTests(unittest.TestCase):
             path = Path(directory) / "discovery.json"
             path.write_text('{"kind":"monitor","catalog":"invalid"}', encoding="utf-8")
             self.assertIsNone(homebrew_monitor.load_cache(path))
+
+
+class ReleaseCacheTests(unittest.TestCase):
+    def test_fresh_stale_and_corrupt_release_cache(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "releases.json"
+            data = {"version": "v1", "assets": [{"name": "app.nro", "url": "https://github.com/x/y/releases/download/v1/app.nro", "size": 10, "digest": ""}]}
+            homebrew_release_cache.put("x/y", data, now=1000000, path=path)
+            self.assertFalse(homebrew_release_cache.get("x/y", now=1000001, path=path)["stale"])
+            self.assertTrue(homebrew_release_cache.get("x/y", now=1000000 + 86401, path=path)["stale"])
+            self.assertIsNone(homebrew_release_cache.get("../../etc", now=1000001, path=path))
+            path.write_text("{broken", encoding="utf-8")
+            self.assertIsNone(homebrew_release_cache.get("x/y", path=path))
+
+    def test_rate_limit_cooldown(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "releases.json"
+            homebrew_release_cache.mark_limited(now=1000000, path=path)
+            self.assertGreater(homebrew_release_cache.cooldown_remaining(now=1000001, path=path), 0)
+            self.assertEqual(homebrew_release_cache.cooldown_remaining(now=1000000 + 3601, path=path), 0)
 
 
 if __name__ == "__main__":
