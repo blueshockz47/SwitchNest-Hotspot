@@ -33,6 +33,7 @@ class Phase2bTests(unittest.TestCase):
         self.assertIn('self.smart_queue.finish(Status.COMPLETED)', backend)
         self.assertIn('tree.upload(local/name,remote)', backend)
         self.assertIn('tree.download(remote,name,local,allowed[name])', backend)
+        self.assertIn('transferItems=self.transfer_items', backend)
         self.assertIn('queueSummary', backend)
         self.assertIn('queueSummary', ui)
         self.assertIn('page.finishDrag(parent, centroid.position)', ui)
