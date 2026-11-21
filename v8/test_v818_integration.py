@@ -37,6 +37,8 @@ class Phase2bTests(unittest.TestCase):
         self.assertIn('queueSummary', backend)
         self.assertIn('queueSummary', ui)
         self.assertIn('page.finishDrag(parent, centroid.position)', ui)
+        self.assertIn('selected.indexOf(name) >= 0 ? selected.slice() : [name]', ui)
+        self.assertIn('transfer(side, names)', ui)
         self.assertIn('ftpBrowser.cancel()', ui)
 
 
