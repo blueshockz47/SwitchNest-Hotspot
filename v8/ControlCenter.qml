@@ -294,6 +294,15 @@ ApplicationWindow {
                 spacing: 10
                 RowLayout {
                     spacing: 8
+                    Image {
+                        source: "assets/switchnest-logo.svg"
+                        sourceSize.width: 48
+                        sourceSize.height: 48
+                        Layout.preferredWidth: 42
+                        Layout.preferredHeight: 42
+                        fillMode: Image.PreserveAspectFit
+                        smooth: true
+                    }
                     Rectangle {
                         width: 13; height: 13; radius: 7
                         color: "#4adeb7"
