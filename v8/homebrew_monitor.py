@@ -10,8 +10,8 @@ from v8 import homebrew, catalog_sources
 USER_AGENT = "SwitchNest-Homebrew-Monitor/8.1.6 (read-only)"
 MAX_RESPONSE = 1024 * 1024
 DIRECTORY_URL = "https://switch2homebrew.com/"
-REDDIT_URL = "https://www.reddit.com/r/SwitchHacks/new.json?limit=25"
-REDDIT_TERMS = ("switch 2", "switch2", "kaihen", "libounce", "ounce")
+REDDIT_URL = "https://www.reddit.com/r/switch2hacks/new.json?limit=25"
+REDDIT_TERMS = ("switch 2", "switch2", "kaihen", "libounce", "ounce", "homebrew", "release", "github", "port", "exploit")
 
 def reddit_discover(opener=urllib.request.urlopen):
     request = urllib.request.Request(REDDIT_URL, headers={"User-Agent": USER_AGENT, "Accept": "application/json"})
@@ -29,7 +29,7 @@ def reddit_discover(opener=urllib.request.urlopen):
             continue
         if not any(term in title.casefold() for term in REDDIT_TERMS):
             continue
-        if not re.fullmatch(r"/r/[A-Za-z0-9_]+/comments/[A-Za-z0-9]+/[^?#]*", permalink):
+        if not re.fullmatch(r"/r/switch2hacks/comments/[A-Za-z0-9]+/[^?#]*", permalink, re.IGNORECASE):
             continue
         result.append({"title": title[:140], "url": "https://www.reddit.com" + permalink,
                        "status": "Unverified community discovery", "source": "Reddit"})
