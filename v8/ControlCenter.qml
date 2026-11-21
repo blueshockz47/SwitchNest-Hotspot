@@ -257,6 +257,8 @@ ApplicationWindow {
     component NavButton: Button {
         required property int page
         Layout.fillWidth: true
+        Layout.minimumWidth: 0
+        Layout.maximumWidth: 10000
         flat: true
         property color pageAccent: page === 0 ? "#5eead4" : page === 1 ? "#60a5fa" :
                                    page === 2 ? "#c084fc" : page === 3 ? "#fbbf24" :
@@ -281,6 +283,9 @@ ApplicationWindow {
         anchors.fill: parent
         spacing: 0
         Rectangle {
+            clip: true
+            Layout.minimumWidth: root.width < 800 ? 145 : 190
+            Layout.maximumWidth: root.width < 800 ? 145 : 190
             gradient: Gradient {
                 GradientStop { position: 0.0; color: "#192d40" }
                 GradientStop { position: 0.55; color: "#172235" }
@@ -293,18 +298,23 @@ ApplicationWindow {
                 anchors.margins: 16
                 spacing: 10
                 RowLayout {
-                    spacing: 8
+                    Layout.fillWidth: true
+                    Layout.maximumWidth: parent.width
+                    spacing: 7
                     Image {
                         source: "assets/switchnest-logo.svg"
                         sourceSize.width: 48
                         sourceSize.height: 48
-                        Layout.preferredWidth: 42
-                        Layout.preferredHeight: 42
+                        Layout.preferredWidth: 34
+                        Layout.preferredHeight: 34
+                        Layout.minimumWidth: 34
                         fillMode: Image.PreserveAspectFit
                         smooth: true
                     }
                     Rectangle {
-                        width: 13; height: 13; radius: 7
+                        Layout.preferredWidth: 9
+                        Layout.preferredHeight: 9
+                        radius: 5
                         color: "#4adeb7"
                         border.color: "#a7f3d0"
                         SequentialAnimation on opacity {
@@ -313,7 +323,15 @@ ApplicationWindow {
                             NumberAnimation { to: 1.0; duration: 1600; easing.type: Easing.InOutSine }
                         }
                     }
-                    Label { text: "SwitchNest"; font.pixelSize: root.width < 800 ? 17 : 23; font.bold: true; color: "#5eead4" }
+                    Label {
+                        text: "SwitchNest"
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        font.pixelSize: root.width < 800 ? 14 : 17
+                        font.bold: true
+                        color: "#5eead4"
+                        elide: Text.ElideRight
+                    }
                 }
                 Label { text: "CONTROL CENTER"; font.pixelSize: 11; color: root.muted }
                 Item { Layout.preferredHeight: 20 }
