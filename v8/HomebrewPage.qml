@@ -211,39 +211,7 @@ ColumnLayout {
         Layout.fillWidth: true
         Label { text: "Live Homebrew Updates"; font.bold: true; color: "#52e0ae" }
         Label { text: home.monitorStatus; Layout.fillWidth: true; elide: Text.ElideRight; font.pixelSize: 11 }
-        Button { text: "Switch2Homebrew Directory"; onClicked: Qt.openUrlExternally(home.monitorDirectory.url); ToolTip.visible: hovered; ToolTip.text: "External community directory; unverified listings, not confirmed releases" }
         Button { text: "Check Now"; onClicked: controller.homebrew_monitor_refresh() }
-        Button { text: home.monitorVisible ? "Hide Releases" : "Latest Releases"; onClicked: home.monitorVisible = !home.monitorVisible }
-    }
-    RowLayout {
-        visible: home.monitorVisible
-        Layout.fillWidth: true
-        TextField {
-            placeholderText: "Filter releases by project or repository"
-            Layout.fillWidth: true
-            onTextChanged: home.releaseQuery = text
-        }
-        ComboBox {
-            model: ["All", "GitHub", "Reddit", "BrewStore", "i2zs"]
-            onActivated: function(index) { home.releaseSource = model[index] }
-        }
-        Label { text: home.releaseRows.length + " entries" }
-    }
-    ListView {
-        Layout.fillWidth: true
-        Layout.preferredHeight: home.monitorVisible ? 320 : 0
-        visible: home.monitorVisible
-        clip: true
-        model: home.releaseRows
-        delegate: ItemDelegate {
-            required property var modelData
-            width: ListView.view.width
-            text: modelData.source === "GitHub"
-                  ? "GitHub • " + modelData.repo + " • " + modelData.version + " (" + modelData.asset_count + " assets)"
-                  : modelData.source === "Reddit" ? "Reddit • UNVERIFIED • " + modelData.title
-                  : modelData.source + " • UNVERIFIED • " + modelData.name + " • " + modelData.repo + " • " + modelData.version
-            onClicked: Qt.openUrlExternally(modelData.url || ("https://github.com/" + modelData.repo))
-        }
     }
     RowLayout {
         TextField { id: searchBox; placeholderText: "Search Switch 2 homebrew"; Layout.fillWidth: true; onAccepted: { home.catalogQuery = text; home.updateCatalog() } }
