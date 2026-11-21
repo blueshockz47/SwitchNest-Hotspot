@@ -133,7 +133,7 @@ ColumnLayout {
         if (action === "download" || action === "zip") downloadOnlyDialog.open()
         else if (action === "install") {
             if (ftpState.connected && !ftpState.busy) installDialog.open()
-            else statusText = "Connect to your Switch 2 FTP server above, then retry Download & Install. Only verified single-file NRO packages can be uploaded to /switch/."
+            else statusText = "Connect to your Switch 2 FTP server above, then retry Download & Install. Only single-file GitHub release NRO packages can be uploaded to /switch/."
         }
     }
     spacing: 4
@@ -160,13 +160,13 @@ ColumnLayout {
                     if (data.repo !== home.actionRepo || !home.action) return
                     home.choices = data.assets.filter(function(asset) {
                         let name = asset.name.toLowerCase()
-                        return !!asset.digest && (home.action === "install" ? name.endsWith(".nro") : (name.endsWith(".nro") || name.endsWith(".zip")))
+                        return home.action === "install" ? name.endsWith(".nro") : (!!asset.digest && (name.endsWith(".nro") || name.endsWith(".zip")))
                     })
                     if (home.choices.length === 1) {
                         home.useAsset(home.choices[0])
                         home.action = ""
                     } else if (home.choices.length > 1) assetPicker.open()
-                    else { home.statusText = "No SHA-256 verified " + (home.action === "zip" ? "official ZIP" : "compatible release asset") + " for " + home.actionName + ". No unverified downloads offered."; home.action = "" }
+                    else { home.statusText = "No compatible GitHub release asset for " + home.actionName + ". ZIP and download-only actions still require a GitHub SHA-256 digest."; home.action = "" }
                 }
                 else if (data.kind === "download_only_ready") {
                     home.transferPercent = 100
@@ -412,7 +412,7 @@ ColumnLayout {
         standardButtons: Dialog.Ok | Dialog.Cancel
         ColumnLayout {
             Label { text: "Upload " + home.selectedAsset + " to /switch/ over your existing FTP connection?"; wrapMode: Text.Wrap; Layout.preferredWidth: 330 }
-            Label { text: "The existing file will not be overwritten. FTP is unencrypted. Install only software you trust."; wrapMode: Text.Wrap; Layout.preferredWidth: 330 }
+            Label { text: "UNVERIFIED NROs may lack a publisher checksum. A locally computed SHA-256 does not prove safety. The existing file will not be overwritten. FTP is unencrypted. Install only software you trust."; wrapMode: Text.Wrap; Layout.preferredWidth: 330 }
         }
         onAccepted: {
             home.transferPercent = 0
