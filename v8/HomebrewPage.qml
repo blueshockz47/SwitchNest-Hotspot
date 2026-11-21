@@ -26,7 +26,7 @@ ColumnLayout {
         for (let item of monitorCatalog) {
             if (!item.repo || seen[item.repo.toLowerCase()]) continue
             seen[item.repo.toLowerCase()] = true
-            rows.push({name: item.name, category: "Community", repo: item.repo,
+            rows.push({name: item.name, category: item.category || "Other", repo: item.repo,
                        manual: true, community: true, source: item.sources.join(" + "),
                        warning: "Unverified community listing. Review its GitHub repository and Switch 2 compatibility before manual downloads."})
         }
@@ -249,7 +249,7 @@ ColumnLayout {
         TextField { id: searchBox; placeholderText: "Search Switch 2 homebrew"; Layout.fillWidth: true; onAccepted: { home.catalogQuery = text; home.updateCatalog() } }
         ComboBox {
             id: categoryBox
-            model: ["All", "Tools", "Games", "Streaming", "Emulation", "Fun", "Media", "Community"]
+            model: ["All", "Tools", "Games", "Streaming", "Emulation", "Fun", "Media", "Other"]
             onActivated: function(index) {
                 home.catalogCategory = categoryBox.model[index]
                 home.updateCatalog()
