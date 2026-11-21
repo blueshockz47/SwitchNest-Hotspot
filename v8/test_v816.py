@@ -3,7 +3,7 @@ import io
 import json
 import unittest
 from unittest.mock import patch
-from v8 import homebrew_monitor, homebrew, preferences
+from v8 import homebrew_monitor, homebrew, preferences, catalog_sources
 
 class FakeResponse:
     def __init__(self, data):
@@ -13,6 +13,25 @@ class FakeResponse:
     def read(self, limit): return self.data[:limit]
 
 class MonitorTests(unittest.TestCase):
+    def setUp(self):
+        patcher = patch.object(catalog_sources, "discover", return_value=([], []))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_iz2s_parser_validates_repositories(self):
+        sample = "IZSTORE2\\napp\\tsw2nes\\tnro\\t2.1\\tSW2NES\\tRodpad\\tEmulators\\tNES emulator\\nrepository\\thttps://github.com/Rodpad/SW2NES\\napp\\tevil\\tnro\\t1\\tEvil\\tBad\\tTools\\tBad\\nrepository\\thttps://evil.example/attack\\n"
+        rows = catalog_sources.iz2s_rows(sample)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["repo"], "Rodpad/SW2NES")
+
+    def test_brewstore_manifest_and_deduplication(self):
+        manifest = json.dumps({"packages": [{"title": "SW2NES", "url": "https://github.com/Rodpad/SW2NES", "version": "v2"}]})
+        index = json.dumps({"include": ["https://raw.githubusercontent.com/HerXayah/brewstore-repo/main/packages/sw2nes/manifest.json",
+                                         "https://evil.example/manifest.json"]})
+        rows = catalog_sources.brewstore_rows(index, fetch=lambda url: manifest)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["repo"], "Rodpad/SW2NES")
+
     def test_maximized_preference_registered(self):
         self.assertIn("fullscreen_on_start", preferences.DEFAULTS)
         self.assertIs(type(preferences.DEFAULTS["fullscreen_on_start"]), bool)
