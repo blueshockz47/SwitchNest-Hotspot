@@ -16,6 +16,23 @@ ColumnLayout {
     property bool selectionMode: false
     property bool showActivity: false
     property int fileFontSize: 16
+    property bool dragInProgress: false
+    function beginDrag(side, name, directory, source, point) {
+        if (dataState.busy || !dataState.connected) return
+        dragGhost.fileName = name
+        dragGhost.dragSide = side
+        dragGhost.isDirectory = directory
+        dragGhost.positionFrom(source, point)
+        dragInProgress = true
+    }
+    function updateDrag(source, point) {
+        if (dragInProgress) dragGhost.positionFrom(source, point)
+    }
+    function finishDrag() {
+        if (!dragInProgress) return
+        dragGhost.Drag.drop()
+        dragInProgress = false
+    }
     function clearSelection() { localSelected=[]; remoteSelected=[]; entryName="" }
     function selectAll() { if (activeSide==="local") localSelected=sorted(dataState.localRows).map(x=>x.name); else remoteSelected=sorted(dataState.remoteRows).map(x=>x.name) }
     function deleteSelected() { deleteSide=activeSide; deletePath=activeSide==="local"?dataState.local:dataState.remote; deleteNames=(activeSide==="local"?localSelected:remoteSelected).slice(); if(deleteNames.length) batchDelete.open() }
@@ -134,49 +151,15 @@ ColumnLayout {
                         acceptedButtons: Qt.RightButton
                         onTapped: { page.activeSide="local"; page.entryName=modelData.name; entryMenu.popup() }
                     }
-                    // Animated drag preview: a copy of the entry follows the pointer.
-                    Rectangle {
-                        id: dragPreview
-                        property string fileName: modelData.name
-                        width: Math.min(300, Math.max(150, previewLabel.implicitWidth + 30))
-                        height: 42
-                        radius: 9
-                        color: "#243e55"
-                        border.color: "#52e0ae"
-                        border.width: 2
-                        opacity: dragHandler.active ? 0.95 : 0
-                        visible: dragHandler.active || dragFinishing
-                        z: 100
-                        x: 12
-                        y: 5
-                        scale: dragHandler.active ? 1.04 : 0.92
-                        Behavior on opacity { NumberAnimation { duration: 110 } }
-                        Behavior on scale { NumberAnimation { duration: 110 } }
-                        Label {
-                            id: previewLabel
-                            anchors.centerIn: parent
-                            width: Math.min(270, implicitWidth)
-                            elide: Text.ElideRight
-                            text: (modelData.directory ? "📁 " : "▧ ") + modelData.name
-                            color: "#ffffff"
-                            font.pixelSize: 14
-                            font.bold: true
-                        }
-                        Drag.active: dragHandler.active || dragFinishing
-                        Drag.keys: ["local"]
-                        Drag.supportedActions: Qt.CopyAction
-                        Drag.hotSpot.x: width / 2
-                        Drag.hotSpot.y: height / 2
-                    }
-                    property bool dragFinishing: false
                     DragHandler {
                         id: dragHandler
                         enabled: !page.dataState.busy && page.dataState.connected
-                        target: dragPreview
+                        target: null
                         onActiveChanged: {
-                            if (active) { parent.dragFinishing = true; dragPreview.x = 12; dragPreview.y = 5 }
-                            else { dragPreview.Drag.drop(); parent.dragFinishing = false; dragPreview.x = 12; dragPreview.y = 5 }
+                            if (active) page.beginDrag("local", modelData.name, modelData.directory, parent, centroid.position)
+                            else page.finishDrag()
                         }
+                        onCentroidChanged: if (active) page.updateDrag(parent, centroid.position)
                     }
                     Menu {
                         id: entryMenu
@@ -233,49 +216,15 @@ ColumnLayout {
                         acceptedButtons: Qt.RightButton
                         onTapped: { page.activeSide="remote"; page.entryName=modelData.name; entryMenu.popup() }
                     }
-                    // Animated drag preview: a copy of the entry follows the pointer.
-                    Rectangle {
-                        id: dragPreview
-                        property string fileName: modelData.name
-                        width: Math.min(300, Math.max(150, previewLabel.implicitWidth + 30))
-                        height: 42
-                        radius: 9
-                        color: "#243e55"
-                        border.color: "#52e0ae"
-                        border.width: 2
-                        opacity: dragHandler.active ? 0.95 : 0
-                        visible: dragHandler.active || dragFinishing
-                        z: 100
-                        x: 12
-                        y: 5
-                        scale: dragHandler.active ? 1.04 : 0.92
-                        Behavior on opacity { NumberAnimation { duration: 110 } }
-                        Behavior on scale { NumberAnimation { duration: 110 } }
-                        Label {
-                            id: previewLabel
-                            anchors.centerIn: parent
-                            width: Math.min(270, implicitWidth)
-                            elide: Text.ElideRight
-                            text: (modelData.directory ? "📁 " : "▧ ") + modelData.name
-                            color: "#ffffff"
-                            font.pixelSize: 14
-                            font.bold: true
-                        }
-                        Drag.active: dragHandler.active || dragFinishing
-                        Drag.keys: ["remote"]
-                        Drag.supportedActions: Qt.CopyAction
-                        Drag.hotSpot.x: width / 2
-                        Drag.hotSpot.y: height / 2
-                    }
-                    property bool dragFinishing: false
                     DragHandler {
                         id: dragHandler
                         enabled: !page.dataState.busy && page.dataState.connected
-                        target: dragPreview
+                        target: null
                         onActiveChanged: {
-                            if (active) { parent.dragFinishing = true; dragPreview.x = 12; dragPreview.y = 5 }
-                            else { dragPreview.Drag.drop(); parent.dragFinishing = false; dragPreview.x = 12; dragPreview.y = 5 }
+                            if (active) page.beginDrag("remote", modelData.name, modelData.directory, parent, centroid.position)
+                            else page.finishDrag()
                         }
+                        onCentroidChanged: if (active) page.updateDrag(parent, centroid.position)
                     }
                     Menu {
                         id: entryMenu
@@ -404,4 +353,49 @@ ColumnLayout {
         Label { text: "Upload " + page.uploadName.length + " selected file(s)? Existing remote file may be replaced. Cancelled uploads may leave a partial file."; wrapMode: Text.Wrap; width: 300 }
         onAccepted: ftpBrowser.batch("upload", JSON.stringify(page.uploadName))
     }
+    // This overlay is outside the clipped file lists.
+    Item {
+        id: dragOverlay
+        anchors.fill: parent
+        z: 1000
+        visible: page.dragInProgress
+        enabled: false
+        Rectangle {
+            id: dragGhost
+            property string fileName: ""
+            property string dragSide: "local"
+            property bool isDirectory: false
+            function positionFrom(source, point) {
+                let p = source.mapToItem(dragOverlay, point.x, point.y)
+                x = p.x - width / 2
+                y = p.y - height / 2
+            }
+            width: Math.min(310, Math.max(155, ghostLabel.implicitWidth + 34))
+            height: 46
+            radius: 9
+            color: "#243e55"
+            border.color: "#52e0ae"
+            border.width: 2
+            opacity: page.dragInProgress ? 0.95 : 0
+            scale: page.dragInProgress ? 1.04 : 0.92
+            Behavior on opacity { NumberAnimation { duration: 110 } }
+            Behavior on scale { NumberAnimation { duration: 110 } }
+            Drag.active: page.dragInProgress
+            Drag.keys: [dragSide]
+            Drag.supportedActions: Qt.CopyAction
+            Drag.hotSpot.x: width / 2
+            Drag.hotSpot.y: height / 2
+            Label {
+                id: ghostLabel
+                anchors.centerIn: parent
+                width: Math.min(280, implicitWidth)
+                elide: Text.ElideRight
+                text: (dragGhost.isDirectory ? "📁 " : "▧ ") + dragGhost.fileName
+                color: "white"
+                font.pixelSize: 15
+                font.bold: true
+            }
+        }
+    }
+
 }
