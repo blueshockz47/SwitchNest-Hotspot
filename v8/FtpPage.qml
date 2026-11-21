@@ -38,23 +38,27 @@ ColumnLayout {
     }
     function updateDrag(source, point) {
         if (!dragInProgress) return
-        let p = source.mapToItem(dragOverlay, point.x, point.y)
-        dragGhost.x = p.x - dragGhost.width / 2
-        dragGhost.y = p.y - dragGhost.height / 2
-        dropTarget = targetAt(p)
+        // Two distinct coordinate systems: hit-test in page space, draw in overlay space.
+        // Overlay.overlay is attached to the window and is offset from this page.
+        let pagePoint = source.mapToItem(page, point.x, point.y)
+        let overlayPoint = source.mapToItem(dragOverlay, point.x, point.y)
+        dragGhost.x = overlayPoint.x - dragGhost.width / 2
+        dragGhost.y = overlayPoint.y - dragGhost.height / 2
+        dropTarget = targetAt(pagePoint)
         dropFolder = ""
         if (dropTarget) {
             let list = dropTarget === "local" ? localList : remoteList
             // Hit-test the actual delegate rectangles rather than ListView
             // indices: indexAt coordinates can disagree with the viewport.
-            for (let item of list.contentItem.children) {
-                if (!item.fileName || !item.isFolder || !item.visible) continue
-                let corner = item.mapToItem(page, 0, 0)
-                if (p.x >= corner.x && p.x < corner.x + item.width &&
-                    p.y >= corner.y && p.y < corner.y + item.height) {
-                    dropFolder = item.fileName
-                    break
-                }
+            // Use the actual delegate at the pointer, not the row index from
+            // an unfiltered model. This remains correct after sorting/scrolling.
+            let inList = list.mapFromItem(page, pagePoint.x, pagePoint.y)
+            let delegate = list.itemAt(inList.x, inList.y + list.contentY)
+            if (delegate && delegate.isFolder && delegate.fileName) {
+                let bounds = delegate.mapToItem(page, 0, 0)
+                if (pagePoint.x >= bounds.x && pagePoint.x < bounds.x + delegate.width &&
+                    pagePoint.y >= bounds.y && pagePoint.y < bounds.y + delegate.height)
+                    dropFolder = delegate.fileName
             }
         }
     }
@@ -278,7 +282,20 @@ ColumnLayout {
             }
         }
     }
-    Label { text: "Drag files or folders between Local and Switch 2 to transfer (confirmation required)"; color: "#8cb9c9"; font.pixelSize: 13; Layout.fillWidth: true }
+    RowLayout {
+        Layout.fillWidth: true
+        Label {
+            text: page.dragInProgress
+                ? (page.dropTarget ? "Copy " + dragGhost.fileName + " → " + (page.dropTarget === "remote" ? "Switch 2" : "SteamOS") + (page.dropFolder ? " / " + page.dropFolder : " / current folder") + " · Release to confirm" : "Move over the opposite panel to choose a destination")
+                : "Drag files onto a folder to copy inside it; drop on empty space for the current directory."
+            color: page.dropTarget ? "#52e0ae" : "#8cb9c9"
+            font.pixelSize: 13
+            font.bold: page.dragInProgress
+            elide: Text.ElideRight
+            Layout.fillWidth: true
+        }
+        Label { text: "COPY ONLY · Originals kept"; color: "#8cb9c9"; font.pixelSize: 12 }
+    }
     RowLayout {
         Button { text: "Upload (" + page.localSelected.length + ")"; enabled: !page.dataState.busy && page.dataState.connected && page.localSelected.length > 0; onClicked: page.transfer("local",page.localSelected) }
         Button { text: "Download (" + page.remoteSelected.length + ")"; enabled: !page.dataState.busy && page.dataState.connected && page.remoteSelected.length > 0; onClicked: page.transfer("remote",page.remoteSelected) }
@@ -293,7 +310,13 @@ ColumnLayout {
         Button { text: "Queue"; onClicked: queueDialog.open() }
         Label { text: page.activeSide; color: "#52e0ae" }
     }
-    Label { visible: page.dataState.busy; text: page.dataState.busy ? "Transfer: " + Math.round(page.dataState.progress || 0) + "%" : ""; font.pixelSize: 14; font.bold: true }
+    RowLayout {
+        visible: page.dataState.busy
+        Label { text: "Transfer " + Math.round(page.dataState.progress || 0) + "%"; font.pixelSize: 14; font.bold: true }
+        Label { text: page.dataState.pending && page.dataState.pending.length ? page.dataState.pending.length + " pending" : ""; color: "#8cb9c9" }
+        Item { Layout.fillWidth: true }
+        Button { text: "View Queue"; onClicked: queueDialog.open() }
+    }
     Label { visible: page.dataState.busy && page.dataState.transferSize > 0; text: page.sizeText(page.dataState.bytesDone) + " / " + page.sizeText(page.dataState.transferSize) + " · " + page.sizeText(page.dataState.speed) + "/s" + (page.dataState.speed > 0 ? " · ETA " + Math.max(0,Math.ceil((page.dataState.transferSize-page.dataState.bytesDone)/page.dataState.speed)) + " s" : ""); Layout.fillWidth: true }
     ProgressBar { indeterminate: page.dataState.busy && page.dataState.transferSize === 0 && page.dataState.total === 0; Layout.fillWidth: true; from: 0; to: 100; value: page.dataState.total > 0 && page.dataState.busy && page.dataState.current !== "" ? Math.min(100, (page.dataState.completed + page.dataState.progress/100)*100/page.dataState.total) : page.dataState.progress }
     Label { text: page.dataState.status + (page.dataState.total > 0 ? " · " + page.dataState.completed + "/" + page.dataState.total + " files · " + page.dataState.current : page.dataState.completed > 0 ? " · " + page.dataState.completed + " entries" : ""); wrapMode: Text.Wrap; Layout.fillWidth: true; maximumLineCount: 4 }
