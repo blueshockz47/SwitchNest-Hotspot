@@ -204,6 +204,10 @@ class CatalogGroupingTests(unittest.TestCase):
         self.assertIn('data.kind === "cached_releases"', qml)
         self.assertNotIn('home.installableRepos = ({})\\n                home.zipOnlyRepos = ({})', qml)
         self.assertIn('def homebrew_cached_releases(self):', controller)
+        self.assertIn('category === "Tools" ? "#38bdf8"', qml)
+        self.assertIn('category === "Media" ? "#fb7185"', qml)
+        self.assertIn('categorySection.modelData.items.length + " apps"', qml)
+        self.assertIn('Behavior on color { ColorAnimation { duration: 160 } }', qml)
 
 
 if __name__ == "__main__":
