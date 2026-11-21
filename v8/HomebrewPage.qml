@@ -23,6 +23,7 @@ ColumnLayout {
     property string statusText: "Loading the curated Switch 2 homebrew catalog..."
     property var monitorGithub: []
     property var monitorReddit: []
+    property var monitorDirectory: ({url: "https://switch2homebrew.com/", automated: false})
     property var monitorKnownVersions: ({})
     property bool monitorInitialized: false
     property bool monitorVisible: false
@@ -63,6 +64,8 @@ ColumnLayout {
                 home.monitorInitialized = true
                 home.monitorGithub = data.github
                 home.monitorReddit = data.reddit
+                if (data.directory && data.directory.url === "https://switch2homebrew.com/" && data.directory.automated === false)
+                    home.monitorDirectory = data.directory
                 home.monitorStatus = data.github.length + " GitHub releases • " +
                     data.reddit.length + " unverified Reddit discoveries" +
                     (data.warnings.length ? " • " + data.warnings.join("; ") : "")
@@ -173,6 +176,7 @@ ColumnLayout {
         Layout.fillWidth: true
         Label { text: "Live Homebrew Updates"; font.bold: true; color: "#52e0ae" }
         Label { text: home.monitorStatus; Layout.fillWidth: true; elide: Text.ElideRight; font.pixelSize: 11 }
+        Button { text: "Switch2Homebrew Directory"; onClicked: Qt.openUrlExternally(home.monitorDirectory.url); ToolTip.visible: hovered; ToolTip.text: "External community directory; unverified listings, not confirmed releases" }
         Button { text: "Check Now"; onClicked: controller.homebrew_monitor_refresh() }
         Button { text: home.monitorVisible ? "Hide Releases" : "Latest Releases"; onClicked: home.monitorVisible = !home.monitorVisible }
     }
