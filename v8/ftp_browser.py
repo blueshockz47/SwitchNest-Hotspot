@@ -51,6 +51,7 @@ class Browser(QObject):
         self.reconnect = False
         self.after_list_status = ""
         self.pending = []
+        self.transfer_items = []
         self.last_failed = None
         self.last_request = None
         self.details = ""
@@ -79,7 +80,7 @@ class Browser(QObject):
     def state(self):
         return json.dumps(dict(host=self.host, port=self.port, local=str(self.local),
             remote=self.remote, localRows=self.local_rows, remoteRows=self.remote_rows,
-            status=self.status, progress=self.progress, busy=self.busy, connected=self.connected, total=self.total, completed=self.completed, current=self.current_name, history=self.history, speed=self.speed, bytesDone=self.bytes_done, transferSize=self.transfer_size, localFree=self.local_free, pending=self.pending, retryAvailable=self.last_failed is not None, details=self.details, bookmarks=self.bookmarks))
+            status=self.status, progress=self.progress, busy=self.busy, connected=self.connected, total=self.total, completed=self.completed, current=self.current_name, history=self.history, speed=self.speed, bytesDone=self.bytes_done, transferSize=self.transfer_size, localFree=self.local_free, pending=self.pending, transferItems=self.transfer_items, retryAvailable=self.last_failed is not None, details=self.details, bookmarks=self.bookmarks))
 
     def refresh_local(self):
         try:
@@ -490,6 +491,7 @@ class Browser(QObject):
             self.tree_kind="transfer"
             self.last_request=(direction,raw,policy,str(self.local),self.remote,self.host,self.port,folder)
             self.pending=names.copy()
+            self.transfer_items=[dict(name=n, status="Waiting") for n in names]
             self.last_failed=None
             tree.metric=self.tree_metric.emit
             self.root_total=len(names)
@@ -529,15 +531,21 @@ class Browser(QObject):
     def on_tree_event(self,name,result):
         self.current_name=name
         if result=="Active":
+            for item in self.transfer_items:
+                if item["name"] == name: item["status"] = "Active"
             self.status="Active: "+name
             self.changed.emit()
             return
         if result=="Entry finished":
+            for item in self.transfer_items:
+                if item["name"] == name: item["status"] = "Completed"
             if name in self.pending: self.pending.remove(name)
             if not self.transfer_size:
                 self.progress=100*(self.root_total-len(self.pending))/self.root_total
             self.changed.emit()
             return
+        for item in self.transfer_items:
+            if item["name"] == name: item["status"] = result
         self.completed+=1
         self.history=([dict(name=name,direction=getattr(self,"tree_kind","transfer"),result=result,date=datetime.datetime.now().isoformat(timespec="seconds"))]+self.history)[:100]
         self.settings.setValue("history",json.dumps(self.history))
@@ -554,6 +562,10 @@ class Browser(QObject):
             return
         if getattr(self,"tree_kind","")=="transfer" and status!="Transfer complete" and self.last_request:
             self.last_failed=self.last_request[:1]+(json.dumps(self.pending),)+self.last_request[2:]
+        if status!="Transfer complete":
+            for item in self.transfer_items:
+                if item["status"] in ("Waiting", "Active"):
+                    item["status"] = "Cancelled" if self.tree_cancel.is_set() else "Interrupted"
         self.pending=[]
         if status=="Transfer complete": self.progress=100
         if status not in ("Transfer complete","Deletion complete"):
