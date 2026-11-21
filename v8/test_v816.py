@@ -155,10 +155,6 @@ class MonitorTests(unittest.TestCase):
             result = homebrew_monitor.refresh(reddit_fetch=homebrew_monitor.reddit_discover)
         self.assertEqual(result["kind"], "monitor")
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class DailyDiscoveryCacheTests(unittest.TestCase):
     def test_cache_round_trip_and_daily_refresh(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -175,3 +171,7 @@ class DailyDiscoveryCacheTests(unittest.TestCase):
             path = Path(directory) / "discovery.json"
             path.write_text('{"kind":"monitor","catalog":"invalid"}', encoding="utf-8")
             self.assertIsNone(homebrew_monitor.load_cache(path))
+
+
+if __name__ == "__main__":
+    unittest.main()
