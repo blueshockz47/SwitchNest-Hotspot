@@ -249,23 +249,42 @@ ApplicationWindow {
         }
     }
     component Panel: Rectangle {
-        color: "#1b222d"
+        color: "#1b293a"
         radius: 14
-        border.color: "#303b49"
+        border.color: "#36516a"
         Layout.fillWidth: true
     }
     component NavButton: Button {
         required property int page
         Layout.fillWidth: true
-        flat: pages.currentIndex !== page
-        highlighted: pages.currentIndex === page
+        flat: true
+        property color pageAccent: page === 0 ? "#5eead4" : page === 1 ? "#60a5fa" :
+                                   page === 2 ? "#c084fc" : page === 3 ? "#fbbf24" :
+                                   page === 4 ? "#fb7185" : page === 5 ? "#34d399" : "#a78bfa"
+        contentItem: Label {
+            text: parent.text
+            color: pages.currentIndex === page ? "#0b1524" : "#d1deee"
+            font.bold: pages.currentIndex === page
+            verticalAlignment: Text.AlignVCenter
+            leftPadding: 12
+        }
+        background: Rectangle {
+            radius: 10
+            color: pages.currentIndex === page ? pageAccent : parent.hovered ? "#28394e" : "transparent"
+            border.width: pages.currentIndex === page ? 1 : 0
+            border.color: "#ffffff"
+        }
         onClicked: pages.currentIndex = page
     }
     RowLayout {
         anchors.fill: parent
         spacing: 0
         Rectangle {
-            color: "#161c25"
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: "#192d40" }
+                GradientStop { position: 0.55; color: "#172235" }
+                GradientStop { position: 1.0; color: "#111827" }
+            }
             Layout.preferredWidth: root.width < 800 ? 145 : 190
             Layout.fillHeight: true
             ColumnLayout {
