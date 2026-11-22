@@ -7,12 +7,20 @@ ROOT = Path(__file__).resolve().parent
 class WindowsStyleShellTests(unittest.TestCase):
     def test_dedicated_sidebar_routes_to_existing_file_tabs(self):
         qml = (ROOT / "ControlCenter.qml").read_text()
-        self.assertIn('NavButton { text: "▣    FTP Manager"; page: 3; fileTab: 0 }', qml)
-        self.assertIn('NavButton { text: "◆    Homebrew"; page: 3; fileTab: 1 }', qml)
+        self.assertIn('NavButton { text: "FTP Manager"; navIcon: "▣"; page: 3; fileTab: 0 }', qml)
+        self.assertIn('NavButton { text: "Homebrew"; navIcon: "◆"; page: 3; fileTab: 1 }', qml)
         self.assertIn('if (fileTab >= 0) fileTabs.currentIndex = fileTab', qml)
         self.assertIn('FtpPage {}', qml)
         self.assertIn('HomebrewPage {}', qml)
         self.assertIn('currentIndex: fileTabs.currentIndex', qml)
+
+    def test_sidebar_fixed_icon_column(self):
+        qml = (ROOT / "ControlCenter.qml").read_text()
+        self.assertIn("property string navIcon:", qml)
+        self.assertIn("Layout.preferredWidth: 24", qml)
+        self.assertIn("text: navEntry.navIcon", qml)
+        self.assertIn("text: navEntry.text", qml)
+        self.assertIn("Layout.preferredHeight: 42", qml)
 
     def test_overview_status_tiles_and_station_table(self):
         qml = (ROOT / "ControlCenter.qml").read_text()
