@@ -304,11 +304,27 @@ ColumnLayout {
         Button { text: home.ftpState.busy ? "Working..." : home.ftpState.connected ? "Disconnect" : "Connect"; enabled: !home.ftpState.busy && !home.working; onClicked: { if (home.ftpState.connected) ftpBrowser.disconnect(); else ftpBrowser.connect_to(ftpHost.text, ftpPort.text) } }
     }
     Label { text: home.ftpState.discoveryStatus || ""; visible: text.length > 0; color: "#8cb9c9"; wrapMode: Text.Wrap; Layout.fillWidth: true }
-    RowLayout {
+    ColumnLayout {
         Layout.fillWidth: true
-        Label { text: "RELEASE MONITOR"; font.bold: true; color: "#40c9b7"; font.pixelSize: 12 }
-        Label { text: home.monitorStatus; Layout.fillWidth: true; elide: Text.ElideRight; font.pixelSize: 11 }
-        Button { text: home.monitorChecking ? "Checking..." : "Check Now"; enabled: !home.monitorChecking; onClicked: controller.homebrew_monitor_refresh(true) }
+        spacing: 3
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 12
+            Label { text: "RELEASE MONITOR"; font.bold: true; color: "#40c9b7"; font.pixelSize: 12 }
+            Button {
+                text: home.monitorChecking ? "Checking..." : "Check Releases"
+                enabled: !home.monitorChecking
+                onClicked: controller.homebrew_monitor_refresh(true)
+            }
+            Item { Layout.fillWidth: true }
+        }
+        Label {
+            text: home.monitorStatus
+            Layout.fillWidth: true
+            wrapMode: Text.Wrap
+            font.pixelSize: 11
+            color: "#aab7c6"
+        }
     }
     ProgressBar {
         Layout.fillWidth: true
