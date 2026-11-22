@@ -537,6 +537,7 @@ ApplicationWindow {
                 }
                 ColumnLayout {
                     Label { text: "Sunshine / Moonlight"; font.pixelSize: 22 }
+                    Label { text: "Reminder: Sunshine and Moonlight are not included with SwitchNest. Install and configure them separately before using streaming. SwitchNest only provides controls for an existing Sunshine installation."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Label { text: !root.report.sunshine_installed ? "Checking installation" : !root.report.sunshine_installed.ok ? "Flatpak installation unavailable" : root.report.sunshine_processes && root.report.sunshine_processes.ok ? (root.report.sunshine_processes.output.indexOf("dev.lizardbyte.app.Sunshine") >= 0 ? "Sunshine running" : "Sunshine stopped") : "Process state unavailable"; color: root.accent; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     RowLayout {
                         Button { text: "Start"; enabled: !root.busy; onClicked: controller.sunshine("start") }
