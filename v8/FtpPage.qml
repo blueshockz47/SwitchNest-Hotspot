@@ -198,8 +198,10 @@ ColumnLayout {
         Label { text: "Port"; color: "#a9bfd7" }
         TextField { id: port; text: page.dataState.port; Layout.preferredWidth: 85; enabled: !page.dataState.busy && !page.dataState.connected }
         Label { text: page.dataState.connected ? "● Connected" : (page.dataState.busy ? "● Working…" : "● Disconnected"); color: page.dataState.connected ? "#52e0ae" : (page.dataState.busy ? "#f4bd53" : "#98a5b5"); font.bold: true; font.pixelSize: 14 }
+        Button { text: page.dataState.discoveryBusy ? "Searching..." : "Find Switch 2 IP"; enabled: !page.dataState.discoveryBusy && !page.dataState.busy && !page.dataState.connected; onClicked: ftpBrowser.find_switch_ip() }
         Button { text: page.dataState.connected ? "Disconnect" : "Connect"; enabled: !page.dataState.busy; onClicked: { page.remoteSelected=[]; if (page.dataState.connected) ftpBrowser.disconnect(); else ftpBrowser.connect_to(host.text, port.text) } }
     }
+    Label { text: page.dataState.discoveryStatus || ""; visible: text.length > 0; color: "#8cb9c9"; wrapMode: Text.Wrap; Layout.fillWidth: true }
     Label { text: "Switch 2 FTP connection  ·  " + (page.dataState.connected ? "Ready to transfer" : "Connect to browse Switch 2 files"); color: page.dataState.connected ? "#40c9b7" : "#9cb3cd"; font.pixelSize: 12 }
     RowLayout {
         CheckBox { text: "Select"; checked: page.selectionMode; onToggled: { page.selectionMode=checked; page.clearSelection() } }
