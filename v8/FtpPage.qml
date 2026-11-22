@@ -202,7 +202,7 @@ ColumnLayout {
         Button { text: page.dataState.busy ? "Working..." : page.dataState.connected ? "Disconnect" : "Connect"; enabled: !page.dataState.busy; onClicked: { page.remoteSelected=[]; if (page.dataState.connected) ftpBrowser.disconnect(); else ftpBrowser.connect_to(host.text, port.text) } }
     }
     Label { text: page.dataState.discoveryStatus || ""; visible: text.length > 0; color: "#8cb9c9"; wrapMode: Text.Wrap; Layout.fillWidth: true }
-    Label { text: (page.dataState.connected ? "Connected to " + page.dataState.host + ":" + page.dataState.port : page.dataState.busy ? "FTP operation in progress" : "Not connected") + " — " + page.dataState.status; color: page.dataState.connected ? "#52e0ae" : "#9cb3cd"; font.pixelSize: 13; wrapMode: Text.Wrap; Layout.fillWidth: true }
+    Label { text: (page.dataState.connected ? "Connected to " + page.dataState.host + ":" + page.dataState.port : page.dataState.busy ? "FTP operation in progress" : "Not connected") + " — " + page.dataState.status; color: !page.dataState.connected && (String(page.dataState.status || "").toLowerCase().indexOf("connection refused") >= 0 || String(page.dataState.status || "").toLowerCase().indexOf("could not connect to server") >= 0) ? "#ff454f" : page.dataState.connected ? "#52e0ae" : "#9cb3cd"; font.bold: !page.dataState.connected && String(page.dataState.status || "").toLowerCase().indexOf("connection refused") >= 0; font.pixelSize: 13; wrapMode: Text.Wrap; Layout.fillWidth: true }
     RowLayout {
         CheckBox { text: "Select"; checked: page.selectionMode; onToggled: { page.selectionMode=checked; page.clearSelection() } }
         CheckBox { text: "Hidden"; checked: page.showHidden; onToggled: { page.showHidden=checked; page.clearSelection() } }
