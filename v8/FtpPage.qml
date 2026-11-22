@@ -202,13 +202,6 @@ ColumnLayout {
     }
     Label { text: "Switch 2 FTP connection  ·  " + (page.dataState.connected ? "Ready to transfer" : "Connect to browse Switch 2 files"); color: page.dataState.connected ? "#40c9b7" : "#9cb3cd"; font.pixelSize: 12 }
     RowLayout {
-        ToolButton { text: "←"; onClicked: page.navigate("back"); enabled: !page.dataState.busy; ToolTip.visible: hovered; ToolTip.text: "Back" }
-        ToolButton { text: "→"; onClicked: page.navigate("forward"); enabled: !page.dataState.busy; ToolTip.visible: hovered; ToolTip.text: "Forward" }
-        ToolButton { text: "⌂ Home"; onClicked: page.navigate("home"); enabled: !page.dataState.busy }
-        ToolButton { text: "★"; onClicked: ftpBrowser.bookmark(page.activeSide); enabled: !page.dataState.busy; ToolTip.visible: hovered; ToolTip.text: "Bookmark current folder" }
-        ToolButton { text: "Bookmarks"; onClicked: bookmarkDialog.open() }
-    }
-    RowLayout {
         TextField { id: search; placeholderText: "Filter files and folders"; Layout.fillWidth: true; onTextChanged: page.clearSelection() }
         CheckBox { text: "Select"; checked: page.selectionMode; onToggled: { page.selectionMode=checked; page.clearSelection() } }
         CheckBox { text: "Hidden"; checked: page.showHidden; onToggled: { page.showHidden=checked; page.clearSelection() } }
