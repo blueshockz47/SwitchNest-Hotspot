@@ -441,9 +441,9 @@ ApplicationWindow {
                             rowSpacing: 8
                             Repeater {
                                 model: [
-                                    {heading: "HOTSPOT", value: root.hotspot.state === "on" ? "Active" : root.hotspot.state === "off" ? "Inactive" : "Unknown", ok: root.hotspot.state === "on"},
-                                    {heading: "DNS", value: root.dns, ok: root.dns === "active"},
-                                    {heading: "HTTP", value: root.http, ok: root.http === "active"}
+                                    {heading: "HOTSPOT", value: root.hotspot.state === "on" ? "ACTIVE" : root.hotspot.state === "off" ? "INACTIVE" : "UNKNOWN", ok: root.hotspot.state === "on"},
+                                    {heading: "DNS", value: String(root.dns).toUpperCase(), ok: root.dns === "active"},
+                                    {heading: "HTTP", value: String(root.http).toUpperCase(), ok: root.http === "active"}
                                 ]
                                 delegate: Rectangle {
                                     required property var modelData
