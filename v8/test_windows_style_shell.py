@@ -32,7 +32,7 @@ class WindowsStyleShellTests(unittest.TestCase):
                       'text: "THIS PC  /  FILE EXPLORER"',
                       'text: "NINTENDO SWITCH 2  /  FTP"',
                       'text: "Host"', 'text: "Port"',
-                      'id: fileSplit', 'page.fileLabel(modelData)',
+                      'id: fileSplit', 'contentItem: RowLayout',
                       'page.localSelected.indexOf(modelData.name) >= 0',
                       'page.remoteSelected.indexOf(modelData.name) >= 0',
                       'page.finishDrag(parent, centroid.position)',
@@ -40,8 +40,11 @@ class WindowsStyleShellTests(unittest.TestCase):
                       'function transfer(side, names)',
                       'function deleteSelected()'):
             self.assertIn(token, qml)
-        self.assertEqual(qml.count('implicitHeight: 34'), 2)
+        self.assertEqual(qml.count('implicitHeight: 44'), 2)
         self.assertEqual(qml.count('Behavior on color { ColorAnimation { duration: 100 } }'), 2)
+        self.assertIn('id: localSearch', qml)
+        self.assertIn('id: remoteSearch', qml)
+        self.assertIn('Layout.preferredWidth: 112', qml)
 
     def test_phase4_homebrew_catalog_preserves_release_safety(self):
         qml = (ROOT / "HomebrewPage.qml").read_text()
