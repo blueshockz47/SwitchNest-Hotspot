@@ -362,23 +362,61 @@ ApplicationWindow {
                         Rectangle {
                             Layout.fillWidth: true
                             implicitHeight: readFirstContent.implicitHeight + 32
-                            radius: 8
-                            color: "#253346"
-                            border.color: "#f2bf69"
-                            border.width: 2
+                            radius: 10
+                            color: "#1d293a"
+                            border.color: "#43556a"
+                            border.width: 1
                             ColumnLayout {
                                 id: readFirstContent
                                 anchors.left: parent.left
                                 anchors.right: parent.right
                                 anchors.top: parent.top
                                 anchors.margins: 16
-                                spacing: 9
-                                Label { text: "⚠  READ THIS BEFORE CONNECTING"; font.pixelSize: 17; font.bold: true; color: "#ffd58a"; Layout.fillWidth: true; wrapMode: Text.Wrap }
-                                Label { text: "Quick safety checklist for your Nintendo Switch 2"; font.pixelSize: 12; color: "#cbd9e8"; Layout.fillWidth: true; wrapMode: Text.Wrap }
-                                Label { text: "1  ENABLE AIRPLANE MODE — Turn on Airplane Mode on your Switch 2."; font.pixelSize: 13; color: "#edf6ff"; Layout.fillWidth: true; wrapMode: Text.Wrap }
-                                Label { text: "2  CHECK SERVICES — Start SwitchNest and confirm the hotspot, DNS and HTTP services are running."; font.pixelSize: 13; color: "#edf6ff"; Layout.fillWidth: true; wrapMode: Text.Wrap }
-                                Label { text: "3  TEST WITH YOUR PHONE — Connect your phone to the SwitchNest hotspot. Verify that your phone is connected to SwitchNest and that internet access is unavailable (offline) before connecting your Switch 2."; font.pixelSize: 13; color: "#edf6ff"; Layout.fillWidth: true; wrapMode: Text.Wrap }
-                                Label { text: "4  CONNECT WITH CARE — After completing the checks, enable Wi-Fi on your Switch 2 and connect to the SwitchNest hotspot. Network isolation is not guaranteed. Use at your own risk, and enjoy!"; font.pixelSize: 13; font.bold: true; color: "#ffd58a"; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                                spacing: 10
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 10
+                                    Label { text: "◆"; font.pixelSize: 21; color: "#f2bf69" }
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 2
+                                        Label { text: "Before You Connect"; font.pixelSize: 18; font.bold: true; color: "#edf6ff" }
+                                        Label { text: "Follow these 5 quick steps before using SwitchNest."; font.pixelSize: 12; color: "#a6b9cc"; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                                    }
+                                }
+                                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#43556a" }
+                                Repeater {
+                                    model: [
+                                        {symbol: "✈", heading: "1. Airplane Mode", detail: "Turn on Airplane Mode on your Switch 2."},
+                                        {symbol: "▣", heading: "2. Start Services", detail: "Make sure all SwitchNest services are running."},
+                                        {symbol: "▤", heading: "3. Test With Your Phone", detail: "Connect to SwitchNest Wi-Fi and confirm you're offline."},
+                                        {symbol: "◈", heading: "4. Connect Your Switch 2", detail: "Enable Wi-Fi, connect to SwitchNest, and disable IPv6 in its network settings."},
+                                        {symbol: "⚠", heading: "5. Use at Your Own Risk!", detail: "An offline phone test does not guarantee complete network isolation."}
+                                    ]
+                                    delegate: RowLayout {
+                                        required property var modelData
+                                        Layout.fillWidth: true
+                                        spacing: 12
+                                        Rectangle {
+                                            Layout.preferredWidth: 38
+                                            Layout.preferredHeight: 38
+                                            radius: 8
+                                            color: "#253346"
+                                            Label {
+                                                anchors.centerIn: parent
+                                                text: modelData.symbol
+                                                font.pixelSize: 20
+                                                color: modelData.heading.indexOf("5.") === 0 ? "#f2bf69" : "#edf6ff"
+                                            }
+                                        }
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 2
+                                            Label { text: modelData.heading; font.pixelSize: 13; font.bold: true; color: "#edf6ff"; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                                            Label { text: modelData.detail; font.pixelSize: 12; color: "#a6b9cc"; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                                        }
+                                    }
+                                }
                             }
                         }
                         GridLayout {
