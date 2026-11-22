@@ -321,7 +321,7 @@ ApplicationWindow {
                     Layout.topMargin: 14
                     spacing: 8
                     Image {
-                        source: "assets/switchnest-logo.svg"
+                        source: switchNestBrandIcon
                         sourceSize.width: 32
                         sourceSize.height: 32
                         Layout.preferredWidth: 28
