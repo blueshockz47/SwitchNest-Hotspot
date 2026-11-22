@@ -359,9 +359,11 @@ ApplicationWindow {
                         spacing: 12
                         Label { text: "Network overview"; font.pixelSize: 20; font.bold: true; color: "#f0f5ff" }
                         Label { text: "Your local Switch 2 connection and SteamOS background services"; color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
-                        RowLayout {
+                        GridLayout {
                             Layout.fillWidth: true
-                            spacing: 6
+                            columns: root.width < 1180 ? 2 : 4
+                            columnSpacing: 8
+                            rowSpacing: 8
                             Repeater {
                                 model: [
                                     {heading: "HOTSPOT", value: root.hotspot.state === "on" ? "Active" : root.hotspot.state === "off" ? "Inactive" : "Unknown", ok: root.hotspot.state === "on"},
@@ -372,7 +374,7 @@ ApplicationWindow {
                                 delegate: Rectangle {
                                     required property var modelData
                                     Layout.fillWidth: true
-                                    Layout.minimumWidth: 115
+                                    Layout.minimumWidth: 130
                                     Layout.preferredHeight: 82
                                     color: "#1d293a"
                                     radius: 4
