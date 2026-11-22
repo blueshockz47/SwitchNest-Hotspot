@@ -59,6 +59,19 @@ class WindowsStyleShellTests(unittest.TestCase):
                       'ZIP File — Manual Install Required'):
             self.assertIn(token, qml)
 
+    def test_linux_overview_connection_reminder(self):
+        shell = (ROOT / "ControlCenter.qml").read_text()
+        for instruction in (
+            "REMINDER BEFORE CONNECTING",
+            "Turn on Airplane Mode on your Switch 2",
+            "Make sure all SwitchNest services are running",
+            "Test the SwitchNest hotspot connection with your phone first",
+            "Use at your own risk and enjoy!",
+            "Network isolation remains unverified",
+        ):
+            self.assertIn(instruction, shell)
+        self.assertNotIn("Turn ON Windows Mobile Hotspot before starting", shell)
+
     def test_phase5_responsive_layout_and_backend_separation(self):
         shell = (ROOT / "ControlCenter.qml").read_text()
         ftp = (ROOT / "FtpPage.qml").read_text()
