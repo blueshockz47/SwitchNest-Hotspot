@@ -8,7 +8,7 @@
 
 ### [Download SwitchNest v8.1.7 (Linux ZIP)](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/download/v8.1.7/SwitchNest-Hotspot-Linux-v8.1.7.zip)
 
-[**Install in 3 steps**](#install-on-steamos) · [Features](#what-can-switchnest-do) · [Screenshots](#screenshots--v815) · [Use without hotspot](#use-ftp-and-homebrew-manager-on-your-home-network) · [Troubleshooting](#troubleshooting)
+[**Install in 3 steps**](#install-on-steamos) · [Features](#what-can-switchnest-do) · [Screenshots](#screenshots--switchnest-linux) · [Video demo](#video-demonstration) · [Use without hotspot](#use-ftp-and-homebrew-manager-on-your-home-network) · [Troubleshooting](#troubleshooting)
 
 SwitchNest includes an **offline Wi-Fi hotspot**, **FTP File Manager**, **Homebrew Manager**, and **Sunshine controls**. You can start the offline hotspot **without Ethernet or internet** once everything is installed.
 
@@ -30,7 +30,7 @@ SwitchNest includes an **offline Wi-Fi hotspot**, **FTP File Manager**, **Homebr
 
 **Homebrew safety:** Catalog entries are not automatically approved for installation. A compatible release with a verifiable SHA-256 digest is required for supported downloads. Some apps need additional setup or manual installation. ZIP files are download-only in the stable Homebrew Manager.
 
-## Screenshots — SwitchNest Linux
+## Screenshots — SwitchNest Linux 8.1.7-Stable-Final
 
 **Overview — hotspot status and network diagnostics**
 
@@ -45,6 +45,12 @@ SwitchNest includes an **offline Wi-Fi hotspot**, **FTP File Manager**, **Homebr
 | --- | --- |
 | ![SwitchNest Wi-Fi Settings](docs/images/Settings.png) | ![SwitchNest Streaming](docs/images/Streaming.png) |
 | Configure hotspot Wi-Fi and recovery controls | Manage a separately installed Sunshine server |
+
+## Video demonstration
+
+See the redesigned Control Center, FTP Manager, and Homebrew Manager in action.
+
+**Video pending upload:** The privacy-redacted MP4 will be linked here after it has been attached to the `8.1.7-Stable-Final` GitHub Release and visually checked. Do not publish the earlier unredacted recording.
 
 ## Install on SteamOS
 
