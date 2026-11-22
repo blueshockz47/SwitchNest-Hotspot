@@ -14,7 +14,7 @@ from v8 import updates, autostart, preferences, wifi_reliability, stability, hom
 from pathlib import Path
 from v8.ftp_browser import Browser
 from PySide6.QtCore import QObject, Signal, Slot, Property, QLockFile, QStandardPaths, QProcess, QTimer, QUrl
-from PySide6.QtGui import QGuiApplication, QDesktopServices
+from PySide6.QtGui import QGuiApplication, QDesktopServices, QIcon
 from PySide6.QtQml import QQmlApplicationEngine
 
 class Controller(QObject):
@@ -831,6 +831,19 @@ def main():
         sys.exit("Run the control center as your normal desktop user, not root.")
     app = QGuiApplication(sys.argv)
     app.setApplicationName("SwitchNest Control Center")
+    # Set the native window icon before loading QML so KDE shows SwitchNest
+    # in the title bar, task manager, and Alt+Tab instead of Qt's default W.
+    icon_path = Path.home() / ".local/share/icons/switchnest.svg"
+    if not icon_path.is_file():
+        icon_path.parent.mkdir(parents=True, exist_ok=True)
+        icon_path.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
+            '<rect width="64" height="64" rx="14" fill="#161c25"/>'
+            '<g fill="none" stroke="#52e0ae" stroke-width="5" stroke-linecap="round">'
+            '<path d="M10 24 Q32 5 54 24 M18 33 Q32 20 46 33 M26 42 Q32 36 38 42"/>'
+            '</g><circle cx="32" cy="49" r="3" fill="#52e0ae"/></svg>'
+        )
+    app.setWindowIcon(QIcon(str(icon_path)))
     runtime=Path(QStandardPaths.writableLocation(QStandardPaths.RuntimeLocation))
     lock=QLockFile(str(runtime/"switchnest-control-center.lock"))
     if not lock.tryLock(0):
