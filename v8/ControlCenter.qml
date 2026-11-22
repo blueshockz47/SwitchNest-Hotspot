@@ -686,16 +686,6 @@ ApplicationWindow {
                 ColumnLayout {
                     Label { text: "Software updates"; font.pixelSize: 22 }
                     Label { text: "Installed: v" + controller.version; color: root.accent }
-                    GroupBox {
-                        title: "Update preferences"
-                        Layout.fillWidth: true
-                        contentItem: ColumnLayout {
-                            spacing: 9
-                            CheckBox { text: "Check for updates at startup"; checked: root.updatePrefs.check_at_startup; onToggled: controller.set_update_preference("check_at_startup", checked) }
-                            CheckBox { text: "Show update available popup"; checked: root.updatePrefs.show_update_popup; onToggled: controller.set_update_preference("show_update_popup", checked) }
-                            CheckBox { text: "Stable releases only for startup checks"; checked: root.updatePrefs.stable_only; onToggled: controller.set_update_preference("stable_only", checked) }
-                        }
-                    }
                     ComboBox { id: channel; model: ["Stable", "Development"]; enabled: !root.updateBusy }
                     Label { text: root.updateStatus; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Button { text: root.updateBusy ? "Checking..." : "Check for Updates"; enabled: !root.updateBusy; onClicked: controller.check_updates(channel.currentIndex===0?"stable":"development") }
@@ -706,8 +696,17 @@ ApplicationWindow {
                     Label { visible: root.updateInProgress && root.updateStage === "download"; text: root.downloadedMB.toFixed(1) + " MB" + (root.totalMB > 0 ? " / " + root.totalMB.toFixed(1) + " MB (" + root.downloadPercent.toFixed(0) + "%)" : " downloaded"); color: root.muted }
                     Button { text: "Restore Previous Version"; enabled: !root.busy && !root.updateBusy && controller && controller.rollbackAvailable; onClicked: rollbackDialog.open() }
                     Button { text: "Open GitHub releases"; onClicked: controller.open_updates(false) }
-                    Button { text: "Open development downloads"; onClicked: controller.open_updates(true) }
                     Label { text: "Private repository: sign in using GitHub CLI for automatic lookup, or use your browser. Download & Install uses a GitHub release ZIP with a published SHA-256 digest. It installs without sudo and keeps the previous version for rollback. Restart SwitchNest after installation."; wrapMode: Text.Wrap; Layout.fillWidth: true; color: root.muted }
+                    GroupBox {
+                        title: "Update preferences"
+                        Layout.fillWidth: true
+                        contentItem: ColumnLayout {
+                            spacing: 9
+                            CheckBox { text: "Check for updates at startup"; checked: root.updatePrefs.check_at_startup; onToggled: controller.set_update_preference("check_at_startup", checked) }
+                            CheckBox { text: "Show update available popup"; checked: root.updatePrefs.show_update_popup; onToggled: controller.set_update_preference("show_update_popup", checked) }
+                            CheckBox { text: "Stable releases only for startup checks"; checked: root.updatePrefs.stable_only; onToggled: controller.set_update_preference("stable_only", checked) }
+                        }
+                    }
                     Item { Layout.fillHeight: true }
                 }
             }
