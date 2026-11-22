@@ -304,6 +304,17 @@ ColumnLayout {
         Button { text: home.ftpState.busy ? "Working..." : home.ftpState.connected ? "Disconnect" : "Connect"; enabled: !home.ftpState.busy && !home.working; onClicked: { if (home.ftpState.connected) ftpBrowser.disconnect(); else ftpBrowser.connect_to(ftpHost.text, ftpPort.text) } }
     }
     Label { text: home.ftpState.discoveryStatus || ""; visible: text.length > 0; color: "#8cb9c9"; wrapMode: Text.Wrap; Layout.fillWidth: true }
+    Label {
+        text: "⚠ FTP connection failed. Be sure to start your FTP server on the Switch 2 first, then click Connect again."
+        visible: !home.ftpState.connected && !home.ftpState.busy &&
+                 (String(home.ftpState.status || "").toLowerCase().indexOf("connection refused") >= 0 ||
+                  String(home.ftpState.status || "").toLowerCase().indexOf("could not connect to server") >= 0)
+        color: "#ff454f"
+        font.bold: true
+        font.pixelSize: 13
+        wrapMode: Text.Wrap
+        Layout.fillWidth: true
+    }
     ColumnLayout {
         Layout.fillWidth: true
         spacing: 3
