@@ -44,6 +44,21 @@ class WindowsStyleShellTests(unittest.TestCase):
         self.assertEqual(qml.count('implicitHeight: 34'), 2)
         self.assertEqual(qml.count('Behavior on color { ColorAnimation { duration: 100 } }'), 2)
 
+    def test_phase4_homebrew_catalog_preserves_release_safety(self):
+        qml = (ROOT / "HomebrewPage.qml").read_text()
+        for token in ('text: "Homebrew Manager"', 'text: "RELEASE MONITOR"',
+                      'text: "APP CATALOG"', 'id: categoryBox',
+                      'model: home.categoryGroups', 'columns: 3',
+                      'sourceComponent: homebrewCard', 'color: "#1d293a"',
+                      'home.installableRepos[home.actionRepo] === true',
+                      'controller.homebrew_monitor_refresh(true)',
+                      'controller.homebrew_releases(actionRepo)',
+                      'ftpBrowser.connect_to(ftpHost.text, ftpPort.text)',
+                      'home.selectApp(projectCard.modelData)',
+                      'downloadOnlyDialog.open()', 'installDialog.open()',
+                      'ZIP File — Manual Install Required'):
+            self.assertIn(token, qml)
+
     def test_hotspot_and_diagnostics_controls_remain(self):
         qml = (ROOT / "ControlCenter.qml").read_text()
         for token in ('controller.action(', 'controller.refresh()', 'controller.wifi_restart()', 'controller.install_update()', 'controller.sunshine("start")'):
