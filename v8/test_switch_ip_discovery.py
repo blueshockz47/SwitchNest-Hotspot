@@ -13,6 +13,14 @@ class DiscoveryWiringTests(unittest.TestCase):
         block = source.split("def _apply_discovery(self, matches):", 1)[1].split("def queue_summary(self):", 1)[0]
         self.assertNotIn("self.connect_to(", block)
 
+    def test_connection_status_moved_to_ftp_manager(self):
+        home = (ROOT / "HomebrewPage.qml").read_text()
+        ftp = (ROOT / "FtpPage.qml").read_text()
+        self.assertNotIn('" — " + home.ftpState.status', home)
+        self.assertIn('" — " + page.dataState.status', ftp)
+        self.assertEqual(home.count('ftpBrowser.disconnect()'), 1)
+        self.assertIn('home.ftpState.connected ? "Disconnect" : "Connect"', home)
+
     def test_both_managers_expose_shared_discovery(self):
         for filename in ("FtpPage.qml", "HomebrewPage.qml"):
             ui = (ROOT / filename).read_text()
