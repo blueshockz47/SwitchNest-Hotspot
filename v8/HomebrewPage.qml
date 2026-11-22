@@ -346,7 +346,6 @@ ColumnLayout {
         Button { text: "Show all"; enabled: !home.working; onClicked: { searchBox.text = ""; categoryBox.currentIndex = 0; home.catalogQuery = ""; home.catalogCategory = "All"; home.updateCatalog() } }
     }
     Label { text: home.statusText; wrapMode: Text.Wrap; Layout.fillWidth: true }
-    Label { text: home.selectedWarning; visible: home.selectedWarning.length > 0; color: "#f59e0b"; font.bold: true; wrapMode: Text.Wrap; Layout.fillWidth: true }
 
     Label { text: home.results.length + " apps shown  •  Right-click an app to inspect download and install options"; font.pixelSize: 11; color: "#9fb2c9"; Layout.fillWidth: true }
     ScrollView {
