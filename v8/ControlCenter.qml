@@ -20,14 +20,14 @@ ApplicationWindow {
         if (root.updatePrefs.fullscreen_on_start)
             startupMaximize.start()
     }
-    width: 960
-    height: 620
-    minimumWidth: 620
-    minimumHeight: 480
+    width: 1440
+    height: 900
+    minimumWidth: 900
+    minimumHeight: 620
     title: "SwitchNest Control Center"
     Material.theme: Material.Dark
     Material.accent: Material.Teal
-    color: "#101a2a"
+    color: "#10151e"
     property var report: ({})
     property bool busy: false
     property bool updateBusy: false
@@ -57,7 +57,7 @@ ApplicationWindow {
     property string http: report.http_service ? report.http_service.output : "Unknown"
     property string dns: report.dns_service ? report.dns_service.output : "Unknown"
     property color muted: "#a6b9cc"
-    property color accent: "#52e0ae"
+    property color accent: "#40c9b7"
     Connections {
         target: controller
         function onRefreshed(raw) {
@@ -249,121 +249,102 @@ ApplicationWindow {
         }
     }
     component Panel: Rectangle {
-        color: "#1c2b40"
-        radius: 14
-        border.color: "#3a5673"
+        color: "#1d293a"
+        radius: 6
+        border.color: "#304053"
         Layout.fillWidth: true
     }
     component NavButton: Button {
         required property int page
+        property int fileTab: -1
+        property bool selected: pages.currentIndex === page && (fileTab < 0 || fileTabs.currentIndex === fileTab)
         Layout.fillWidth: true
-        Layout.minimumWidth: 0
-        Layout.maximumWidth: 10000
+        Layout.preferredHeight: 38
         flat: true
-        property color pageAccent: page === 0 ? "#5eead4" : page === 1 ? "#60a5fa" :
-                                   page === 2 ? "#c084fc" : page === 3 ? "#fbbf24" :
-                                   page === 4 ? "#fb7185" : page === 5 ? "#34d399" : "#a78bfa"
+        leftPadding: 12
         contentItem: Label {
             text: parent.text
-            color: pages.currentIndex === page ? "#0b1524" : "#d1deee"
-            font.bold: pages.currentIndex === page
+            color: parent.selected ? "#40c9b7" : "#d5e1f0"
+            font.pixelSize: 14
+            font.bold: parent.selected
             verticalAlignment: Text.AlignVCenter
-            leftPadding: 12
+            leftPadding: 8
         }
         background: Rectangle {
-            radius: 10
-            color: pages.currentIndex === page ? pageAccent : parent.hovered ? "#2e435d" : "transparent"
-            Behavior on color { ColorAnimation { duration: 170 } }
-            border.width: pages.currentIndex === page ? 1 : 0
-            border.color: "#ffffff"
+            radius: 3
+            color: parent.selected ? "#23364d" : parent.hovered ? "#1d2b3e" : "transparent"
+            Rectangle {
+                visible: parent.parent.selected
+                width: 3
+                height: parent.height
+                anchors.left: parent.left
+                color: "#40c9b7"
+            }
         }
-        onClicked: pages.currentIndex = page
+        onClicked: {
+            if (fileTab >= 0) fileTabs.currentIndex = fileTab
+            pages.currentIndex = page
+        }
     }
     RowLayout {
         anchors.fill: parent
         spacing: 0
         Rectangle {
             clip: true
-            Layout.minimumWidth: root.width < 800 ? 145 : 190
-            Layout.maximumWidth: root.width < 800 ? 145 : 190
-            gradient: Gradient {
-                GradientStop { position: 0.0; color: "#192d40" }
-                GradientStop { position: 0.55; color: "#172235" }
-                GradientStop { position: 1.0; color: "#111827" }
-            }
-            Layout.preferredWidth: root.width < 800 ? 145 : 190
+            Layout.minimumWidth: 194
+            Layout.maximumWidth: 194
+            Layout.preferredWidth: 194
             Layout.fillHeight: true
+            color: "#131c2a"
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 16
-                spacing: 10
+                anchors.margins: 10
+                spacing: 5
                 RowLayout {
                     Layout.fillWidth: true
-                    Layout.maximumWidth: parent.width
-                    spacing: 7
+                    Layout.topMargin: 14
+                    spacing: 8
                     Image {
                         source: "assets/switchnest-logo.svg"
-                        sourceSize.width: 48
-                        sourceSize.height: 48
-                        Layout.preferredWidth: 34
-                        Layout.preferredHeight: 34
-                        Layout.minimumWidth: 34
+                        sourceSize.width: 32
+                        sourceSize.height: 32
+                        Layout.preferredWidth: 28
+                        Layout.preferredHeight: 28
                         fillMode: Image.PreserveAspectFit
-                        smooth: true
                     }
-                    Rectangle {
-                        Layout.preferredWidth: 9
-                        Layout.preferredHeight: 9
-                        radius: 5
-                        color: "#4adeb7"
-                        border.color: "#a7f3d0"
-                        SequentialAnimation on opacity {
-                            running: true; loops: Animation.Infinite
-                            NumberAnimation { to: 0.55; duration: 1600; easing.type: Easing.InOutSine }
-                            NumberAnimation { to: 1.0; duration: 1600; easing.type: Easing.InOutSine }
-                        }
-                    }
-                    Label {
-                        text: "SwitchNest"
-                        Layout.fillWidth: true
-                        Layout.minimumWidth: 0
-                        font.pixelSize: root.width < 800 ? 14 : 17
-                        font.bold: true
-                        color: "#5eead4"
-                        elide: Text.ElideRight
-                    }
+                    Label { text: "SwitchNest"; font.pixelSize: 22; font.bold: true; color: root.accent }
                 }
-                Label { text: "CONTROL CENTER"; font.pixelSize: 11; color: root.muted }
-                Item { Layout.preferredHeight: 20 }
-                NavButton { text: "Overview"; page: 0 }
-                NavButton { text: "Network"; page: 1 }
-                NavButton { text: "Streaming"; page: 2 }
-                NavButton { text: "Files"; page: 3 }
-                NavButton { text: "Diagnostics"; page: 4 }
-                NavButton { text: "Settings"; page: 5 }
-                NavButton { text: root.updateStatus.startsWith("Update available") ? "Updates •" : "Updates"; page: 6 }
+                Label { text: "LINUX CONTROL CENTER"; font.pixelSize: 10; font.bold: true; color: "#93aac5"; Layout.bottomMargin: 14 }
+                NavButton { text: "⌂    Overview"; page: 0 }
+                NavButton { text: "▣    FTP Manager"; page: 3; fileTab: 0 }
+                NavButton { text: "◆    Homebrew"; page: 3; fileTab: 1 }
+                NavButton { text: "◉    Network"; page: 1 }
+                NavButton { text: "◈    Streaming"; page: 2 }
+                NavButton { text: "⚙    Settings"; page: 5 }
+                NavButton { text: "☷    Diagnostics"; page: 4 }
+                NavButton { text: "↻    Updates"; page: 6 }
                 Item { Layout.fillHeight: true }
-                Label { text: "v" + controller.version; color: root.accent }
-                Label { text: "Linux stable"; color: root.muted; font.pixelSize: 12 }
+                Label { text: "● SwitchNest Linux v" + controller.version; font.pixelSize: 11; color: root.accent; wrapMode: Text.Wrap; Layout.fillWidth: true }
             }
         }
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.margins: root.width < 800 ? 12 : 22
-            spacing: 14
+            Layout.margins: 18
+            spacing: 12
             RowLayout {
                 Layout.fillWidth: true
                 Rectangle {
+                    visible: false
                     width: 5; height: 31; radius: 3
                     color: pages.currentIndex === 0 ? "#5eead4" : pages.currentIndex === 1 ? "#60a5fa" :
                            pages.currentIndex === 2 ? "#c084fc" : pages.currentIndex === 3 ? "#fbbf24" :
                            pages.currentIndex === 4 ? "#fb7185" : pages.currentIndex === 5 ? "#34d399" : "#a78bfa"
                     Behavior on color { ColorAnimation { duration: 180 } }
                 }
-                Label { text: ["Overview","Network","Streaming","Files","Diagnostics","Settings","Updates"][pages.currentIndex]; font.pixelSize: 28; font.bold: true; color: "#edf6ff" }
+                Label { text: pages.currentIndex === 3 ? (fileTabs.currentIndex === 0 ? "FTP Manager" : "Homebrew") : ["Overview","Network","Streaming","Files","Diagnostics","Settings","Updates"][pages.currentIndex]; font.pixelSize: 28; font.bold: true; color: "#edf6ff" }
                 Item { Layout.fillWidth: true }
-                Button { text: "Refresh"; enabled: !root.busy; onClicked: controller.refresh() }
+                Button { text: "⟳ Refresh"; enabled: !root.busy; onClicked: controller.refresh() }
             }
             StackLayout {
                 id: pages
@@ -479,6 +460,7 @@ ApplicationWindow {
                 ColumnLayout {
                     TabBar {
                         id: fileTabs
+                        visible: false
                         Layout.fillWidth: true
                         TabButton {
                             text: "FTP File Manager"
