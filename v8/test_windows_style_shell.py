@@ -22,7 +22,6 @@ class WindowsStyleShellTests(unittest.TestCase):
                       'model: root.clients', 'modelData.mac || "Unavailable"',
                       'modelData.ip || "Unavailable"',
                       'text: "Refresh devices"',
-                      'association does not prove FTP connectivity',
                       'association does not prove FTP connectivity'):
             self.assertIn(token, qml)
         self.assertIn('controller.action(root.hotspot.state === "on" ? "off" : "on")', qml)
