@@ -66,8 +66,7 @@ class WindowsStyleShellTests(unittest.TestCase):
 
     def test_phase3_ftp_windows_style_preserves_transfer_interactions(self):
         qml = (ROOT / "FtpPage.qml").read_text()
-        for token in ('text: "FTP File Manager"',
-                      'text: "THIS PC  /  FILE EXPLORER"',
+        for token in ('text: "THIS PC  /  FILE EXPLORER"',
                       'text: "NINTENDO SWITCH 2  /  FTP"',
                       'text: "Host"', 'text: "Port"',
                       'id: fileSplit', 'contentItem: RowLayout',
@@ -78,6 +77,7 @@ class WindowsStyleShellTests(unittest.TestCase):
                       'function transfer(side, names)',
                       'function deleteSelected()'):
             self.assertIn(token, qml)
+        self.assertNotIn('text: "FTP File Manager"', qml)
         self.assertEqual(qml.count('implicitHeight: 44'), 2)
         self.assertEqual(qml.count('Behavior on color { ColorAnimation { duration: 100 } }'), 2)
         self.assertIn('id: localSearch', qml)
@@ -86,7 +86,7 @@ class WindowsStyleShellTests(unittest.TestCase):
 
     def test_phase4_homebrew_catalog_preserves_release_safety(self):
         qml = (ROOT / "HomebrewPage.qml").read_text()
-        for token in ('text: "Homebrew Manager"', 'text: "RELEASE MONITOR"',
+        for token in ('text: "RELEASE MONITOR"',
                       'text: "APP CATALOG"', 'id: categoryBox',
                       'model: home.categoryGroups', 'columns: 3',
                       'sourceComponent: homebrewCard', 'projectCard.hovered ? "#293e55" : "#1d293a"',
