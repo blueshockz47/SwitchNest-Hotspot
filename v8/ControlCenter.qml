@@ -666,8 +666,11 @@ ApplicationWindow {
                     Label { text: "2.4 GHz Wi-Fi channel"; color: root.muted }
                     ComboBox {
                         id: wifiChannelChoice
+                        Layout.preferredWidth: 190
+                        implicitWidth: 190
                         model: ["Channel 1", "Channel 6", "Channel 11"]
                         currentIndex: root.wifiChannel === 6 ? 1 : root.wifiChannel === 11 ? 2 : 0
+                        displayText: "Channel " + (root.wifiChannel === 6 || root.wifiChannel === 11 ? root.wifiChannel : 1)
                         onActivated: root.wifiChannel = [1, 6, 11][currentIndex]
                     }
                     Button { text: "Apply Wi-Fi Settings"; highlighted: true; enabled: !root.busy && root.hotspot.state === "off" && root.wifiName.length > 0; onClicked: wifiConfirmDialog.open() }
