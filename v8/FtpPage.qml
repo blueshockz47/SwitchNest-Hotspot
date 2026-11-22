@@ -228,7 +228,6 @@ ColumnLayout {
             }
         }
     }
-    Label { text: "FTP File Manager"; font.pixelSize: 20; font.bold: true; color: "#eef5ff" }
     Label { text: "Manage files on your Switch 2 without leaving SwitchNest"; font.pixelSize: 12; color: "#9cb3cd" }
     RowLayout {
         Label { text: "Host"; color: "#a9bfd7" }
