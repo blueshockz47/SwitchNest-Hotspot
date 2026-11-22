@@ -22,6 +22,19 @@ class WindowsStyleShellTests(unittest.TestCase):
         self.assertIn("text: navEntry.text", qml)
         self.assertIn("Layout.preferredHeight: 42", qml)
 
+    def test_settings_grouped_layout_preserves_actions(self):
+        qml = (ROOT / "ControlCenter.qml").read_text()
+        for title in ("App preferences", "Hotspot Wi-Fi", "Restart & recovery",
+                      "Wi-Fi presets", "Diagnostics & maintenance",
+                      "Network event history", "Advanced tools", "Update preferences"):
+            self.assertIn('title: "' + title + '"', qml)
+        self.assertIn('width: Math.min(parent.width, 960)', qml)
+        for action in ("controller.wifi_status()", "wifiConfirmDialog.open()",
+                       "controller.wifi_save_preset(", "controller.run_self_test()",
+                       "controller.export_diagnostics()", "controller.wifi_events()",
+                       "controller.set_update_preference("):
+            self.assertIn(action, qml)
+
     def test_overview_status_tiles_and_station_table(self):
         qml = (ROOT / "ControlCenter.qml").read_text()
         for token in ('text: "Network overview"', 'heading: "HOTSPOT"',
