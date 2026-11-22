@@ -457,7 +457,7 @@ ApplicationWindow {
                                         anchors.margins: 12
                                         spacing: 8
                                         Label { text: modelData.heading; font.pixelSize: 11; font.bold: true; color: "#a6b9cc" }
-                                        Label { text: modelData.value; font.pixelSize: 16; font.bold: true; color: modelData.ok ? root.accent : "#f2bf69"; elide: Text.ElideRight; Layout.fillWidth: true }
+                                        Label { text: modelData.value; font.pixelSize: 16; font.bold: true; color: modelData.ok ? "#43f5b0" : (String(modelData.value).toLowerCase() === "inactive" || String(modelData.value).toLowerCase() === "failed" ? "#ff454f" : "#f2bf69"); elide: Text.ElideRight; Layout.fillWidth: true }
                                     }
                                 }
                             }
@@ -496,9 +496,9 @@ ApplicationWindow {
                                         anchors.fill: parent
                                         anchors.leftMargin: 10
                                         anchors.rightMargin: 10
-                                        Label { text: "IP address"; Layout.fillWidth: true; font.bold: true }
-                                        Label { text: "MAC address"; Layout.fillWidth: true; font.bold: true }
-                                        Label { text: "Association"; Layout.fillWidth: true; font.bold: true }
+                                        Label { text: "IP address"; Layout.fillWidth: true; Layout.preferredWidth: 1; font.bold: true; horizontalAlignment: Text.AlignLeft }
+                                        Label { text: "MAC address"; Layout.fillWidth: true; Layout.preferredWidth: 1; font.bold: true; horizontalAlignment: Text.AlignLeft }
+                                        Label { text: "Association"; Layout.fillWidth: true; Layout.preferredWidth: 1; font.bold: true; horizontalAlignment: Text.AlignLeft }
                                     }
                                 }
                                 Repeater {
@@ -513,9 +513,9 @@ ApplicationWindow {
                                             anchors.fill: parent
                                             anchors.leftMargin: 10
                                             anchors.rightMargin: 10
-                                            Label { text: modelData.ip || "Unavailable"; Layout.fillWidth: true; elide: Text.ElideRight }
-                                            Label { text: modelData.mac || "Unavailable"; Layout.fillWidth: true; elide: Text.ElideRight }
-                                            Label { text: modelData.status || "Unknown"; Layout.fillWidth: true; elide: Text.ElideRight }
+                                            Label { text: modelData.ip || "Unavailable"; Layout.fillWidth: true; Layout.preferredWidth: 1; elide: Text.ElideRight; horizontalAlignment: Text.AlignLeft }
+                                            Label { text: modelData.mac || "Unavailable"; Layout.fillWidth: true; Layout.preferredWidth: 1; elide: Text.ElideRight; horizontalAlignment: Text.AlignLeft }
+                                            Label { text: modelData.status || "Unknown"; Layout.fillWidth: true; Layout.preferredWidth: 1; elide: Text.ElideRight; horizontalAlignment: Text.AlignLeft }
                                         }
                                     }
                                 }
