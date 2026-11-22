@@ -14,7 +14,7 @@ import re
 import shutil
 import tempfile
 from urllib.parse import quote
-from PySide6.QtCore import QObject, Signal, Slot, Property, QProcess, QSettings
+from PySide6.QtCore import QObject, Signal, Slot, Property, QProcess, QSettings, QUrl
 from PySide6.QtGui import QGuiApplication
 
 class Browser(QObject):
@@ -248,6 +248,29 @@ class Browser(QObject):
         self.connected = False
         self.remote_rows = []
         self.start("list", ["--", self.url(directory=True)])
+
+    @Slot(QUrl)
+    def open_local_folder(self, folder_url):
+        """Navigate to a directory selected in the native folder picker."""
+        if self.busy or not folder_url.isLocalFile():
+            return
+        target = Path(folder_url.toLocalFile()).expanduser()
+        if not target.is_dir():
+            self.status = "Selected folder is not available. Mount the removable drive first."
+            self.changed.emit()
+            return
+        self.navigation["local"].append(str(self.local))
+        self.forward_paths["local"].clear()
+        self.local = target
+        self.refresh_local()
+
+    @Slot(result=str)
+    def removable_root_url(self):
+        """Best available mount-point root; the picker still allows other locations."""
+        for candidate in (Path("/run/media") / Path.home().name, Path("/run/media"), Path("/media"), Path("/mnt")):
+            if candidate.is_dir():
+                return QUrl.fromLocalFile(str(candidate)).toString()
+        return QUrl.fromLocalFile(str(Path.home())).toString()
 
     @Slot(str)
     def open_local_shortcut(self, folder):
