@@ -257,6 +257,14 @@ ColumnLayout {
                     width: ListView.view.width
                     contentItem: RowLayout {
                         spacing: 8
+                        CheckBox {
+                            Layout.preferredWidth: 28
+                            checked: page.localSelected.indexOf(modelData.name) >= 0
+                            enabled: !page.dataState.busy
+                            onClicked: page.selectRange("local", modelData.name, Qt.ControlModifier)
+                            ToolTip.visible: hovered
+                            ToolTip.text: "Select " + modelData.name
+                        }
                         Label {
                             text: (modelData.directory ? "📁  " : "▧  ") + modelData.name
                             Layout.fillWidth: true
@@ -388,6 +396,14 @@ ColumnLayout {
                     width: ListView.view.width
                     contentItem: RowLayout {
                         spacing: 8
+                        CheckBox {
+                            Layout.preferredWidth: 28
+                            checked: page.remoteSelected.indexOf(modelData.name) >= 0
+                            enabled: !page.dataState.busy
+                            onClicked: page.selectRange("remote", modelData.name, Qt.ControlModifier)
+                            ToolTip.visible: hovered
+                            ToolTip.text: "Select " + modelData.name
+                        }
                         Label {
                             text: (modelData.directory ? "📁  " : "▧  ") + modelData.name
                             Layout.fillWidth: true
