@@ -197,7 +197,7 @@ ColumnLayout {
         TextField { id: host; text: page.dataState.host; Layout.fillWidth: true; enabled: !page.dataState.busy && !page.dataState.connected; placeholderText: "Switch 2 FTP address" }
         Label { text: "Port"; color: "#a9bfd7" }
         TextField { id: port; text: page.dataState.port; Layout.preferredWidth: 85; enabled: !page.dataState.busy && !page.dataState.connected }
-        Label { text: page.dataState.connected ? "● Connected" : (page.dataState.busy ? "● Working…" : "● Disconnected"); color: page.dataState.connected ? "#52e0ae" : (page.dataState.busy ? "#f4bd53" : "#98a5b5"); font.bold: true; font.pixelSize: 14 }
+        Label { text: page.dataState.connected ? "● CONNECTED" : (page.dataState.busy ? "● CONNECTING…" : "● DISCONNECTED"); color: page.dataState.connected ? "#43f5b0" : (page.dataState.busy ? "#f4bd53" : "#ff454f"); font.bold: true; font.pixelSize: 14 }
         Button { text: page.dataState.discoveryBusy ? "Searching..." : "Find Switch 2 IP"; enabled: !page.dataState.discoveryBusy && !page.dataState.busy && !page.dataState.connected; onClicked: ftpBrowser.find_switch_ip() }
         Button { text: page.dataState.busy ? "Working..." : page.dataState.connected ? "Disconnect" : "Connect"; enabled: !page.dataState.busy; onClicked: { page.remoteSelected=[]; if (page.dataState.connected) ftpBrowser.disconnect(); else ftpBrowser.connect_to(host.text, port.text) } }
     }
