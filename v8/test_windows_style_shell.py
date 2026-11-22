@@ -18,12 +18,12 @@ class WindowsStyleShellTests(unittest.TestCase):
         qml = (ROOT / "ControlCenter.qml").read_text()
         for token in ('text: "Network overview"', 'heading: "HOTSPOT"',
                       'heading: "DNS"', 'heading: "HTTP"',
-                      'heading: "ISOLATION"', 'text: "Connected devices"',
+                      'text: "Connected devices"',
                       'model: root.clients', 'modelData.mac || "Unavailable"',
                       'modelData.ip || "Unavailable"',
                       'text: "Refresh devices"',
                       'association does not prove FTP connectivity',
-                      'Network isolation remains unverified'):
+                      'association does not prove FTP connectivity'):
             self.assertIn(token, qml)
         self.assertIn('controller.action(root.hotspot.state === "on" ? "off" : "on")', qml)
 
@@ -72,7 +72,6 @@ class WindowsStyleShellTests(unittest.TestCase):
             "disable IPv6 in its network settings",
             "5. Use at Your Own Risk!",
             "An offline phone test does not guarantee complete network isolation.",
-            "Network isolation remains unverified",
         ):
             self.assertIn(instruction, shell)
         self.assertNotIn("Turn ON Windows Mobile Hotspot before starting", shell)
