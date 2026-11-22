@@ -112,6 +112,17 @@ class Phase2bTests(unittest.TestCase):
         self.assertIn('else { remoteSelected=result; localSelected=[] }', ui)
         self.assertIn('selected.indexOf(name) >= 0 ? selected.slice() : [name]', ui)
 
+    def test_navigation_polish_preserves_shortcuts(self):
+        ui = (ROOT / 'FtpPage.qml').read_text()
+        self.assertEqual(ui.count('text: "↑  Up one level"'), 2)
+        self.assertIn('highlighted: page.dataState.remote === "/"', ui)
+        self.assertIn('highlighted: page.dataState.remote === "/switch/"', ui)
+        self.assertIn('ftpBrowser.open_remote_path("/")', ui)
+        self.assertIn('ftpBrowser.open_remote_path("/switch/")', ui)
+        self.assertIn('page.openDirectory("local","..")', ui)
+        self.assertIn('page.openDirectory("remote","..")', ui)
+        self.assertIn('Behavior on color { ColorAnimation { duration: 120 } }', ui)
+
     def test_ui_and_backend_wiring_preserve_worker(self):
         backend = (ROOT / 'ftp_browser.py').read_text()
         ui = (ROOT / 'FtpPage.qml').read_text()
