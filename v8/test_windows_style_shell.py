@@ -66,6 +66,7 @@ class WindowsStyleShellTests(unittest.TestCase):
             "ENABLE AIRPLANE MODE",
             "CHECK SERVICES",
             "TEST WITH YOUR PHONE",
+            "internet access is unavailable (offline)",
             "CONNECT WITH CARE",
             "enable Wi-Fi on your Switch 2 and connect to the SwitchNest hotspot",
             "Network isolation is not guaranteed",
