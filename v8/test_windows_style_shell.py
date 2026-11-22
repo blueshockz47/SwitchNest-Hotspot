@@ -27,6 +27,23 @@ class WindowsStyleShellTests(unittest.TestCase):
             self.assertIn(token, qml)
         self.assertIn('controller.action(root.hotspot.state === "on" ? "off" : "on")', qml)
 
+    def test_phase3_ftp_windows_style_preserves_transfer_interactions(self):
+        qml = (ROOT / "FtpPage.qml").read_text()
+        for token in ('text: "FTP File Manager"',
+                      'text: "THIS PC  /  FILE EXPLORER"',
+                      'text: "NINTENDO SWITCH 2  /  FTP"',
+                      'text: "Host"', 'text: "Port"',
+                      'id: fileSplit', 'page.fileLabel(modelData)',
+                      'page.localSelected.indexOf(modelData.name) >= 0',
+                      'page.remoteSelected.indexOf(modelData.name) >= 0',
+                      'page.finishDrag(parent, centroid.position)',
+                      'ftpBrowser.open_remote_path("/switch/")',
+                      'function transfer(side, names)',
+                      'function deleteSelected()'):
+            self.assertIn(token, qml)
+        self.assertEqual(qml.count('implicitHeight: 34'), 2)
+        self.assertEqual(qml.count('Behavior on color { ColorAnimation { duration: 100 } }'), 2)
+
     def test_hotspot_and_diagnostics_controls_remain(self):
         qml = (ROOT / "ControlCenter.qml").read_text()
         for token in ('controller.action(', 'controller.refresh()', 'controller.wifi_restart()', 'controller.install_update()', 'controller.sunshine("start")'):
