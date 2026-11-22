@@ -62,15 +62,17 @@ class WindowsStyleShellTests(unittest.TestCase):
     def test_linux_overview_connection_reminder(self):
         shell = (ROOT / "ControlCenter.qml").read_text()
         for instruction in (
-            "REMINDER BEFORE CONNECTING",
-            "Turn on Airplane Mode on your Switch 2",
-            "Make sure all SwitchNest services are running",
-            "Test the SwitchNest hotspot connection with your phone first",
-            "Use at your own risk and enjoy!",
+            "READ THIS BEFORE CONNECTING",
+            "ENABLE AIRPLANE MODE",
+            "CHECK SERVICES",
+            "TEST WITH YOUR PHONE",
+            "USE AT YOUR OWN RISK",
+            "Network isolation is not guaranteed",
             "Network isolation remains unverified",
         ):
             self.assertIn(instruction, shell)
         self.assertNotIn("Turn ON Windows Mobile Hotspot before starting", shell)
+        self.assertLess(shell.index("READ THIS BEFORE CONNECTING"), shell.index('heading: "HOTSPOT"'))
 
     def test_phase5_responsive_layout_and_backend_separation(self):
         shell = (ROOT / "ControlCenter.qml").read_text()
