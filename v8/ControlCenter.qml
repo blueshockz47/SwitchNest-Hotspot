@@ -448,6 +448,23 @@ ApplicationWindow {
                             }
                         }
                         Button { text: "Refresh devices"; enabled: !root.busy; onClicked: controller.refresh() }
+                        Panel {
+                            Layout.fillWidth: true
+                            implicitHeight: safetyReminder.implicitHeight + 24
+                            ColumnLayout {
+                                id: safetyReminder
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.top: parent.top
+                                anchors.margins: 12
+                                spacing: 7
+                                Label { text: "REMINDER BEFORE CONNECTING"; color: root.accent; font.bold: true; font.pixelSize: 13 }
+                                Label { text: "1. Turn on Airplane Mode on your Switch 2 before connecting to the SwitchNest hotspot."; color: "#edf6ff"; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                                Label { text: "2. Make sure all SwitchNest services are running before connecting."; color: "#edf6ff"; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                                Label { text: "3. Test the SwitchNest hotspot connection with your phone first."; color: "#edf6ff"; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                                Label { text: "4. Use at your own risk and enjoy!"; color: "#edf6ff"; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                            }
+                        }
                         Label { text: "Network isolation remains unverified until separately tested. Service status alone does not confirm blocked internet access."; color: "#f2bf69"; Layout.fillWidth: true; wrapMode: Text.Wrap }
                     }
                 }
