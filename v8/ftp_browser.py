@@ -4,6 +4,8 @@ import json
 import datetime
 import time
 import threading
+import socket
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from v8.ftp_tree import Tree, delete_local
 from v8.transfer_queue import TransferQueue, Status
 import os
@@ -17,11 +19,15 @@ from PySide6.QtGui import QGuiApplication
 
 class Browser(QObject):
     changed = Signal()
+    discovery_finished = Signal(object)
     tree_event = Signal(str, str)
     tree_metric = Signal(object, object, object)
     tree_finished = Signal(str)
     def __init__(self):
         super().__init__()
+        self.discovery_finished.connect(self._apply_discovery)
+        self.discovery_busy = False
+        self.discovery_status = ""
         self.settings = QSettings("SwitchNest", "FTP")
         self.host = str(self.settings.value("host", "10.42.60.99"))
         self.port = str(self.settings.value("port", "1337"))
@@ -84,7 +90,60 @@ class Browser(QObject):
     def state(self):
         return json.dumps(dict(host=self.host, port=self.port, local=str(self.local),
             remote=self.remote, localRows=self.local_rows, remoteRows=self.remote_rows,
-            status=self.status, progress=self.progress, busy=self.busy, connected=self.connected, total=self.total, completed=self.completed, current=self.current_name, history=self.history, speed=self.speed, bytesDone=self.bytes_done, transferSize=self.transfer_size, localFree=self.local_free, pending=self.pending, transferItems=self.transfer_items, queueSummary=self.queue_summary(), retryAvailable=self.last_failed is not None, details=self.details, bookmarks=self.bookmarks, remoteRecent=self.remote_recent))
+            status=self.status, discoveryBusy=self.discovery_busy, discoveryStatus=self.discovery_status, progress=self.progress, busy=self.busy, connected=self.connected, total=self.total, completed=self.completed, current=self.current_name, history=self.history, speed=self.speed, bytesDone=self.bytes_done, transferSize=self.transfer_size, localFree=self.local_free, pending=self.pending, transferItems=self.transfer_items, queueSummary=self.queue_summary(), retryAvailable=self.last_failed is not None, details=self.details, bookmarks=self.bookmarks, remoteRecent=self.remote_recent))
+
+    @Slot()
+    def find_switch_ip(self):
+        """Find FTP listeners on the dedicated SwitchNest subnet without modifying networking."""
+        if self.discovery_busy or self.busy or self.connected:
+            return
+        try:
+            port = int(self.port)
+            if not 1 <= port <= 65535:
+                raise ValueError()
+        except ValueError:
+            self.discovery_status = "Enter a valid FTP port before scanning."
+            self.changed.emit()
+            return
+        self.discovery_busy = True
+        self.discovery_status = "Searching 10.42.60.0/24 for FTP on port " + str(port) + "..."
+        self.changed.emit()
+
+        def probe(address):
+            try:
+                with socket.create_connection((address, port), timeout=0.3):
+                    return address
+            except (OSError, TimeoutError):
+                return None
+
+        def worker():
+            matches = []
+            try:
+                with ThreadPoolExecutor(max_workers=32) as pool:
+                    futures = [pool.submit(probe, "10.42.60." + str(i)) for i in range(2, 255)]
+                    for future in as_completed(futures):
+                        address = future.result()
+                        if address:
+                            matches.append(address)
+                matches.sort(key=lambda x: int(x.split(".")[-1]))
+                self.discovery_finished.emit(matches)
+            except Exception:
+                self.discovery_finished.emit([])
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    @Slot(object)
+    def _apply_discovery(self, matches):
+        self.discovery_busy = False
+        if len(matches) == 1:
+            self.host = matches[0]
+            self.settings.setValue("host", self.host)
+            self.discovery_status = "FTP endpoint found at " + self.host + ". Click Connect to verify."
+        elif matches:
+            self.discovery_status = "Multiple FTP endpoints found: " + ", ".join(matches) + ". Select the correct IP manually."
+        else:
+            self.discovery_status = "No FTP listener found. Check hotspot connection, FTP server and port."
+        self.changed.emit()
 
     def queue_summary(self):
         items = self.smart_queue.snapshot()
