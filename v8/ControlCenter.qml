@@ -471,6 +471,7 @@ ApplicationWindow {
                                 onClicked: controller.action(root.hotspot.state === "on" ? "off" : "on")
                             }
                             Button { text: "Refresh"; enabled: !root.busy; onClicked: controller.refresh() }
+                            Button { text: "Restart Hotspot"; enabled: !root.busy && root.hotspot.state === "on"; onClicked: controller.wifi_restart() }
                             BusyIndicator { running: root.busy; visible: running; implicitWidth: 28; implicitHeight: 28 }
                         }
                         Label { text: "Hotspot: " + (root.hotspot.ssid || "SSID unavailable") + "  ·  Gateway: " + (root.hotspot.ip || "Unavailable") + "  ·  Security: " + (root.hotspot.security || "Unknown"); color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
