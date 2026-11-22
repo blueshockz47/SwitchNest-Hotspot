@@ -220,10 +220,36 @@ ColumnLayout {
             Label { text: "Local · " + page.sizeText(page.dataState.localFree) + " free"; font.bold: true }
             RowLayout {
                 Layout.fillWidth: true
-                Label { text: "⌂  " + page.dataState.local; elide: Text.ElideMiddle; Layout.fillWidth: true; ToolTip.visible: hovered; ToolTip.text: page.dataState.local }
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 34
+                    radius: 8
+                    color: "#17283a"
+                    border.color: "#30485d"
+                    Label { anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 10; verticalAlignment: Text.AlignVCenter; text: "⌂  " + page.dataState.local; elide: Text.ElideMiddle; ToolTip.visible: pathHover.hovered; ToolTip.text: page.dataState.local }
+                    HoverHandler { id: pathHover }
+                }
                 Label { text: page.localSelected.length + " selected"; visible: page.localSelected.length > 0; color: "#8cb9c9" }
             }
-            ToolButton { text: "↑ Parent folder"; enabled: !page.dataState.busy; onClicked: page.openDirectory("local","..") }
+            RowLayout {
+                Layout.fillWidth: true
+                ToolButton {
+                    text: "↑  Up one level"
+                    enabled: !page.dataState.busy
+                    onClicked: page.openDirectory("local","..")
+                    ToolTip.visible: hovered; ToolTip.text: "Go to parent folder"
+                    font.pixelSize: 13
+                    padding: 8
+                    background: Rectangle {
+                        radius: 8
+                        color: parent.down ? "#28516a" : parent.hovered ? "#253c50" : parent.highlighted ? "#21445b" : "#182a3c"
+                        border.color: parent.hovered ? "#5b9ebc" : "#30485d"
+                        border.width: 1
+                        Behavior on color { ColorAnimation { duration: 120 } }
+                    }
+                }
+                Item { Layout.fillWidth: true }
+            }
             ListView {
                 id: localList
                 Layout.fillWidth: true; Layout.fillHeight: true
@@ -296,13 +322,33 @@ ColumnLayout {
                 spacing: 4
                 ToolButton {
                     text: "⌂ /"
+                    highlighted: page.dataState.remote === "/"
                     enabled: !page.dataState.busy && page.dataState.connected
+                    font.pixelSize: 13
+                    padding: 8
+                    background: Rectangle {
+                        radius: 8
+                        color: parent.down ? "#28516a" : parent.hovered ? "#253c50" : parent.highlighted ? "#21445b" : "#182a3c"
+                        border.color: parent.hovered ? "#5b9ebc" : "#30485d"
+                        border.width: 1
+                        Behavior on color { ColorAnimation { duration: 120 } }
+                    }
                     onClicked: { page.clearSelection(); ftpBrowser.open_remote_path("/") }
                     ToolTip.visible: hovered; ToolTip.text: "FTP root"
                 }
                 ToolButton {
                     text: "📁 /switch"
+                    highlighted: page.dataState.remote === "/switch/"
                     enabled: !page.dataState.busy && page.dataState.connected
+                    font.pixelSize: 13
+                    padding: 8
+                    background: Rectangle {
+                        radius: 8
+                        color: parent.down ? "#28516a" : parent.hovered ? "#253c50" : parent.highlighted ? "#21445b" : "#182a3c"
+                        border.color: parent.hovered ? "#5b9ebc" : "#30485d"
+                        border.width: 1
+                        Behavior on color { ColorAnimation { duration: 120 } }
+                    }
                     onClicked: { page.clearSelection(); ftpBrowser.open_remote_path("/switch/") }
                     ToolTip.visible: hovered; ToolTip.text: "Switch homebrew folder"
                 }
@@ -376,7 +422,25 @@ ColumnLayout {
                     }
                 }
             }
-            ToolButton { text: "↑ Parent folder"; enabled: !page.dataState.busy && page.dataState.connected; onClicked: page.openDirectory("remote","..") }
+            RowLayout {
+                Layout.fillWidth: true
+                ToolButton {
+                    text: "↑  Up one level"
+                    enabled: !page.dataState.busy && page.dataState.connected
+                    onClicked: page.openDirectory("remote","..")
+                    ToolTip.visible: hovered; ToolTip.text: "Go to parent folder on Switch 2"
+                    font.pixelSize: 13
+                    padding: 8
+                    background: Rectangle {
+                        radius: 8
+                        color: parent.down ? "#28516a" : parent.hovered ? "#253c50" : parent.highlighted ? "#21445b" : "#182a3c"
+                        border.color: parent.hovered ? "#5b9ebc" : "#30485d"
+                        border.width: 1
+                        Behavior on color { ColorAnimation { duration: 120 } }
+                    }
+                }
+                Item { Layout.fillWidth: true }
+            }
             ListView {
                 id: remoteList
                 Layout.fillWidth: true; Layout.fillHeight: true
