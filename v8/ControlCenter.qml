@@ -356,85 +356,97 @@ ApplicationWindow {
                     contentWidth: availableWidth
                     ColumnLayout {
                         width: parent.width
-                        spacing: 8
-                        Panel {
-                            implicitHeight: hotspotLayout.implicitHeight + 32
-                            ColumnLayout {
-                                id: hotspotLayout
-                                anchors.fill: parent
-                                anchors.margins: 16
-                                Label { text: "OFFLINE HOTSPOT"; color: root.muted; font.pixelSize: 12 }
-                                RowLayout {
+                        spacing: 12
+                        Label { text: "Network overview"; font.pixelSize: 20; font.bold: true; color: "#f0f5ff" }
+                        Label { text: "Your local Switch 2 connection and SteamOS background services"; color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 6
+                            Repeater {
+                                model: [
+                                    {heading: "HOTSPOT", value: root.hotspot.state === "on" ? "Active" : root.hotspot.state === "off" ? "Inactive" : "Unknown", ok: root.hotspot.state === "on"},
+                                    {heading: "DNS", value: root.dns, ok: root.dns === "active"},
+                                    {heading: "HTTP", value: root.http, ok: root.http === "active"},
+                                    {heading: "ISOLATION", value: "Not verified", ok: false}
+                                ]
+                                delegate: Rectangle {
+                                    required property var modelData
                                     Layout.fillWidth: true
-                                    Label { text: root.hotspot.state === "on" ? "Hotspot Active" : root.hotspot.state === "off" ? "Hotspot Inactive" : "Status unknown"; font.pixelSize: root.width < 800 ? 18 : 25; font.bold: true; color: root.hotspot.state === "on" ? root.accent : root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
-                                    Button { text: root.hotspot.state === "on" ? "Turn OFF" : "Turn ON"; highlighted: root.hotspot.state !== "on"; enabled: !root.busy && (root.hotspot.state === "on" || root.hotspot.state === "off"); onClicked: controller.action(root.hotspot.state === "on" ? "off" : "on") }
-                                    BusyIndicator { running: root.busy; visible: running; implicitWidth: 30; implicitHeight: 30 }
+                                    Layout.minimumWidth: 115
+                                    Layout.preferredHeight: 82
+                                    color: "#1d293a"
+                                    radius: 4
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 12
+                                        spacing: 8
+                                        Label { text: modelData.heading; font.pixelSize: 11; font.bold: true; color: "#a6b9cc" }
+                                        Label { text: modelData.value; font.pixelSize: 16; font.bold: true; color: modelData.ok ? root.accent : "#f2bf69"; elide: Text.ElideRight; Layout.fillWidth: true }
+                                    }
                                 }
-                                Label { text: "v7.1 backend"; color: root.muted }
-                                Label { text: "Gateway: " + (root.hotspot.ip || "Unavailable"); color: root.muted }
                             }
                         }
                         RowLayout {
+                            spacing: 8
+                            Button {
+                                text: root.hotspot.state === "on" ? "Stop hotspot" : "Start hotspot"
+                                highlighted: true
+                                enabled: !root.busy && (root.hotspot.state === "on" || root.hotspot.state === "off")
+                                onClicked: controller.action(root.hotspot.state === "on" ? "off" : "on")
+                            }
+                            Button { text: "Refresh"; enabled: !root.busy; onClicked: controller.refresh() }
+                            BusyIndicator { running: root.busy; visible: running; implicitWidth: 28; implicitHeight: 28 }
+                        }
+                        Label { text: "Hotspot: " + (root.hotspot.ssid || "SSID unavailable") + "  ·  Gateway: " + (root.hotspot.ip || "Unavailable") + "  ·  Security: " + (root.hotspot.security || "Unknown"); color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                        Label { text: "Connected devices"; font.pixelSize: 20; font.bold: true; color: "#f0f5ff"; Layout.topMargin: 8 }
+                        Label { text: "Only associated Wi-Fi stations are listed; association does not prove FTP connectivity."; color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                        Rectangle {
                             Layout.fillWidth: true
-                            Panel {
-                                implicitHeight: 76
-                                ColumnLayout {
-                                    anchors.fill: parent; anchors.margins: 14
-                                    Label { text: "DNS SERVICE"; color: root.muted; font.pixelSize: 12 }
-                                    Label { text: root.dns; color: root.dns === "active" ? root.accent : root.muted; font.pixelSize: 18; elide: Text.ElideRight; Layout.fillWidth: true }
-                                }
-                            }
-                            Panel {
-                                implicitHeight: 76
-                                ColumnLayout {
-                                    anchors.fill: parent; anchors.margins: 14
-                                    Label { text: "ISOLATION"; color: root.muted; font.pixelSize: 12 }
-                                    Label { text: "Unverified"; font.pixelSize: 18; color: "#f2bf69" }
-                                }
-                            }
-                        }
-                        Panel {
-                            implicitHeight: networkInfo.implicitHeight + 28
+                            Layout.preferredHeight: stationsColumn.implicitHeight + 16
+                            color: "#1d293a"
+                            radius: 4
                             ColumnLayout {
-                                id: networkInfo
-                                anchors.fill: parent; anchors.margins: 14
-                                Label { text: "Network information"; font.bold: true }
-                                Label { text: "SSID: " + (root.hotspot.ssid || "Unavailable"); Layout.fillWidth: true; wrapMode: Text.Wrap }
-                                Label { text: "Host IPv4: " + (root.hotspot.ip || "Unavailable"); Layout.fillWidth: true; wrapMode: Text.Wrap }
-                                Label { text: "Security: " + (root.hotspot.security || "Unavailable"); Layout.fillWidth: true; wrapMode: Text.Wrap }
-                                Label { text: "HTTP service: " + root.http; color: root.http === "active" ? root.accent : root.muted }
-                                Label { text: "DNS: " + root.dns; color: root.dns === "active" ? root.accent : root.muted }
-                                Label { text: "Connection health: " + (root.hotspot.state === "on" && root.dns === "active" ? "Hotspot and DNS active (isolation unverified)" : "Requires attention"); wrapMode: Text.Wrap; Layout.fillWidth: true }
-                            }
-                        }
-                        Panel {
-                            implicitHeight: clientsInfo.implicitHeight + 28
-                            ColumnLayout {
-                                id: clientsInfo
-                                anchors.fill: parent; anchors.margins: 14
-                                Label { text: "Connected Wi-Fi stations"; font.bold: true }
-                                Label { text: Array.isArray(root.hotspot.stations) ? String(root.hotspot.stations.length) + " associated stations" : "Station count unavailable"; color: root.accent }
-                                Repeater {
-                                    model: root.clients
-                                    delegate: Label {
-                                        required property var modelData
-                                        text: modelData.mac + "  •  " + (modelData.ip || "IP unavailable") + "  •  " + modelData.status + (modelData.signal !== undefined ? "  •  " + modelData.signal + " dBm" : "") + (modelData.connected_seconds !== undefined ? "  •  " + modelData.connected_seconds + "s" : "") + (modelData.rx_bytes !== undefined ? "  •  RX " + modelData.rx_bytes + " B" : "") + (modelData.tx_bytes !== undefined ? "  •  TX " + modelData.tx_bytes + " B" : "")
-                                        color: root.muted
-                                        wrapMode: Text.Wrap
-                                        Layout.fillWidth: true
+                                id: stationsColumn
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.top: parent.top
+                                anchors.margins: 8
+                                spacing: 4
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 32
+                                    color: "#24364c"
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 10
+                                        anchors.rightMargin: 10
+                                        Label { text: "IP address"; Layout.fillWidth: true; font.bold: true }
+                                        Label { text: "MAC address"; Layout.fillWidth: true; font.bold: true }
+                                        Label { text: "Association"; Layout.fillWidth: true; font.bold: true }
                                     }
                                 }
-                                Button { text: "Refresh clients"; enabled: !root.busy; onClicked: controller.refresh() }
+                                Repeater {
+                                    model: root.clients
+                                    delegate: Rectangle {
+                                        required property var modelData
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 32
+                                        color: index % 2 === 0 ? "#1d293a" : "#223248"
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            anchors.leftMargin: 10
+                                            anchors.rightMargin: 10
+                                            Label { text: modelData.ip || "Unavailable"; Layout.fillWidth: true; elide: Text.ElideRight }
+                                            Label { text: modelData.mac || "Unavailable"; Layout.fillWidth: true; elide: Text.ElideRight }
+                                            Label { text: modelData.status || "Unknown"; Layout.fillWidth: true; elide: Text.ElideRight }
+                                        }
+                                    }
+                                }
+                                Label { visible: root.clients.length === 0; text: "No associated stations reported"; color: root.muted; Layout.margins: 12 }
                             }
                         }
-                        Panel {
-                            implicitHeight: 90
-                            ColumnLayout {
-                                anchors.fill: parent; anchors.margins: 14
-                                Label { text: "Network profiles"; font.bold: true }
-                                Label { text: "Offline backend available • Filtered Internet pending"; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
-                            }
-                        }
+                        Button { text: "Refresh devices"; enabled: !root.busy; onClicked: controller.refresh() }
+                        Label { text: "Network isolation remains unverified until separately tested. Service status alone does not confirm blocked internet access."; color: "#f2bf69"; Layout.fillWidth: true; wrapMode: Text.Wrap }
                     }
                 }
                 ColumnLayout {
