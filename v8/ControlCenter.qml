@@ -490,6 +490,7 @@ ApplicationWindow {
                                     model: root.clients
                                     delegate: Rectangle {
                                         required property var modelData
+                                        required property int index
                                         Layout.fillWidth: true
                                         Layout.preferredHeight: 32
                                         color: index % 2 === 0 ? "#1d293a" : "#223248"
