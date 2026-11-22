@@ -90,7 +90,7 @@ ColumnLayout {
     function clearSelection() { localSelected=[]; remoteSelected=[]; entryName="" }
     function selectRange(side, name, modifiers) {
         let selected = side === "local" ? localSelected : remoteSelected
-        let rows = sorted(side === "local" ? dataState.localRows : dataState.remoteRows)
+        let rows = sorted(side === "local" ? dataState.localRows : dataState.remoteRows, side)
         let names = rows.map(x => x.name)
         let target = names.indexOf(name)
         if (target < 0) return
