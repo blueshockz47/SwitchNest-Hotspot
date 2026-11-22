@@ -24,11 +24,16 @@ class WindowsStyleShellTests(unittest.TestCase):
 
     def test_settings_simplified_and_hotspot_stop_guard(self):
         qml = (ROOT / "ControlCenter.qml").read_text()
-        for title in ("App preferences", "Hotspot Wi-Fi", "Update preferences"):
+        for title in ("App preferences", "Hotspot Wi-Fi"):
             self.assertIn('title: "' + title + '"', qml)
         for title in ("Restart & recovery", "Wi-Fi presets",
                       "Diagnostics & maintenance", "Network event history", "Advanced tools"):
             self.assertNotIn('title: "' + title + '"', qml)
+        settings = qml.split('title: "Hotspot Wi-Fi"', 1)[1].split('Label { text: "Software updates"', 1)[0]
+        updates = qml.split('Label { text: "Software updates"', 1)[1]
+        self.assertNotIn('title: "Update preferences"', settings)
+        self.assertIn('title: "Update preferences"', updates)
+        self.assertEqual(qml.count('title: "Update preferences"'), 1)
         self.assertIn('Stop the hotspot before changing the Wi-Fi name', qml)
         self.assertIn('enabled: !root.busy && root.hotspot.state === "off" && root.wifiName.length > 0', qml)
         for action in ("controller.wifi_status()", "wifiConfirmDialog.open()",
