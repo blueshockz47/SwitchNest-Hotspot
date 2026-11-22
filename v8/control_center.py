@@ -843,7 +843,10 @@ def main():
             '<path d="M10 24 Q32 5 54 24 M18 33 Q32 20 46 33 M26 42 Q32 36 38 42"/>'
             '</g><circle cx="32" cy="49" r="3" fill="#52e0ae"/></svg>'
         )
-    app.setWindowIcon(QIcon(str(icon_path)))
+    # Prefer the official SwitchNest artwork when installed locally.
+    # The SVG remains a compatibility fallback for older installations.
+    official_icon = Path.home() / ".local/share/icons/switchnest.png"
+    app.setWindowIcon(QIcon(str(official_icon if official_icon.is_file() else icon_path)))
     runtime=Path(QStandardPaths.writableLocation(QStandardPaths.RuntimeLocation))
     lock=QLockFile(str(runtime/"switchnest-control-center.lock"))
     if not lock.tryLock(0):
