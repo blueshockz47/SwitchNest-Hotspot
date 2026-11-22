@@ -428,8 +428,7 @@ ApplicationWindow {
                                 model: [
                                     {heading: "HOTSPOT", value: root.hotspot.state === "on" ? "Active" : root.hotspot.state === "off" ? "Inactive" : "Unknown", ok: root.hotspot.state === "on"},
                                     {heading: "DNS", value: root.dns, ok: root.dns === "active"},
-                                    {heading: "HTTP", value: root.http, ok: root.http === "active"},
-                                    {heading: "ISOLATION", value: "Not verified", ok: false}
+                                    {heading: "HTTP", value: root.http, ok: root.http === "active"}
                                 ]
                                 delegate: Rectangle {
                                     required property var modelData
