@@ -5,6 +5,12 @@ import unittest
 ROOT = Path(__file__).resolve().parent
 
 class WindowsStyleShellTests(unittest.TestCase):
+    def test_native_window_uses_switchnest_icon(self):
+        source = (ROOT / "control_center.py").read_text()
+        self.assertIn("QIcon", source)
+        self.assertIn('app.setWindowIcon(QIcon(str(icon_path)))', source)
+        self.assertIn('icons/switchnest.svg', source)
+
     def test_dedicated_sidebar_routes_to_existing_file_tabs(self):
         qml = (ROOT / "ControlCenter.qml").read_text()
         self.assertIn('NavButton { text: "FTP Manager"; navIcon: "▣"; page: 3; fileTab: 0 }', qml)
