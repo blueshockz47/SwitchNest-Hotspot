@@ -20,14 +20,14 @@ ApplicationWindow {
         if (root.updatePrefs.fullscreen_on_start)
             startupMaximize.start()
     }
-    width: 960
-    height: 620
-    minimumWidth: 620
-    minimumHeight: 480
+    width: 1440
+    height: 900
+    minimumWidth: 900
+    minimumHeight: 620
     title: "SwitchNest Control Center"
     Material.theme: Material.Dark
     Material.accent: Material.Teal
-    color: "#101a2a"
+    color: "#10151e"
     property var report: ({})
     property bool busy: false
     property bool updateBusy: false
@@ -57,7 +57,7 @@ ApplicationWindow {
     property string http: report.http_service ? report.http_service.output : "Unknown"
     property string dns: report.dns_service ? report.dns_service.output : "Unknown"
     property color muted: "#a6b9cc"
-    property color accent: "#52e0ae"
+    property color accent: "#40c9b7"
     Connections {
         target: controller
         function onRefreshed(raw) {
@@ -249,121 +249,118 @@ ApplicationWindow {
         }
     }
     component Panel: Rectangle {
-        color: "#1c2b40"
-        radius: 14
-        border.color: "#3a5673"
+        color: "#1d293a"
+        radius: 6
+        border.color: "#304053"
         Layout.fillWidth: true
     }
     component NavButton: Button {
+        id: navEntry
         required property int page
+        property int fileTab: -1
+        property string navIcon: ""
+        property bool selected: pages.currentIndex === page && (fileTab < 0 || fileTabs.currentIndex === fileTab)
         Layout.fillWidth: true
-        Layout.minimumWidth: 0
-        Layout.maximumWidth: 10000
+        Layout.preferredHeight: 42
         flat: true
-        property color pageAccent: page === 0 ? "#5eead4" : page === 1 ? "#60a5fa" :
-                                   page === 2 ? "#c084fc" : page === 3 ? "#fbbf24" :
-                                   page === 4 ? "#fb7185" : page === 5 ? "#34d399" : "#a78bfa"
-        contentItem: Label {
-            text: parent.text
-            color: pages.currentIndex === page ? "#0b1524" : "#d1deee"
-            font.bold: pages.currentIndex === page
-            verticalAlignment: Text.AlignVCenter
-            leftPadding: 12
+        leftPadding: 0
+        rightPadding: 0
+        contentItem: RowLayout {
+            spacing: 12
+            anchors.leftMargin: 14
+            Label {
+                text: navEntry.navIcon
+                Layout.preferredWidth: 24
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                color: navEntry.selected ? "#40c9b7" : "#d5e1f0"
+                font.pixelSize: 16
+            }
+            Label {
+                text: navEntry.text
+                Layout.fillWidth: true
+                verticalAlignment: Text.AlignVCenter
+                color: navEntry.selected ? "#40c9b7" : "#d5e1f0"
+                font.pixelSize: 14
+                font.bold: navEntry.selected
+                elide: Text.ElideRight
+            }
         }
         background: Rectangle {
-            radius: 10
-            color: pages.currentIndex === page ? pageAccent : parent.hovered ? "#2e435d" : "transparent"
-            Behavior on color { ColorAnimation { duration: 170 } }
-            border.width: pages.currentIndex === page ? 1 : 0
-            border.color: "#ffffff"
+            radius: 3
+            color: parent.selected ? "#23364d" : parent.hovered ? "#1d2b3e" : "transparent"
+            Rectangle {
+                visible: navEntry.selected
+                width: 3
+                height: parent.height
+                anchors.left: parent.left
+                color: "#40c9b7"
+            }
         }
-        onClicked: pages.currentIndex = page
+        onClicked: {
+            if (fileTab >= 0) fileTabs.currentIndex = fileTab
+            pages.currentIndex = page
+        }
     }
     RowLayout {
         anchors.fill: parent
         spacing: 0
         Rectangle {
             clip: true
-            Layout.minimumWidth: root.width < 800 ? 145 : 190
-            Layout.maximumWidth: root.width < 800 ? 145 : 190
-            gradient: Gradient {
-                GradientStop { position: 0.0; color: "#192d40" }
-                GradientStop { position: 0.55; color: "#172235" }
-                GradientStop { position: 1.0; color: "#111827" }
-            }
-            Layout.preferredWidth: root.width < 800 ? 145 : 190
+            Layout.minimumWidth: 194
+            Layout.maximumWidth: 194
+            Layout.preferredWidth: 194
             Layout.fillHeight: true
+            color: "#131c2a"
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 16
-                spacing: 10
+                anchors.margins: 10
+                spacing: 5
                 RowLayout {
                     Layout.fillWidth: true
-                    Layout.maximumWidth: parent.width
-                    spacing: 7
+                    Layout.topMargin: 14
+                    spacing: 8
                     Image {
                         source: "assets/switchnest-logo.svg"
-                        sourceSize.width: 48
-                        sourceSize.height: 48
-                        Layout.preferredWidth: 34
-                        Layout.preferredHeight: 34
-                        Layout.minimumWidth: 34
+                        sourceSize.width: 32
+                        sourceSize.height: 32
+                        Layout.preferredWidth: 28
+                        Layout.preferredHeight: 28
                         fillMode: Image.PreserveAspectFit
-                        smooth: true
                     }
-                    Rectangle {
-                        Layout.preferredWidth: 9
-                        Layout.preferredHeight: 9
-                        radius: 5
-                        color: "#4adeb7"
-                        border.color: "#a7f3d0"
-                        SequentialAnimation on opacity {
-                            running: true; loops: Animation.Infinite
-                            NumberAnimation { to: 0.55; duration: 1600; easing.type: Easing.InOutSine }
-                            NumberAnimation { to: 1.0; duration: 1600; easing.type: Easing.InOutSine }
-                        }
-                    }
-                    Label {
-                        text: "SwitchNest"
-                        Layout.fillWidth: true
-                        Layout.minimumWidth: 0
-                        font.pixelSize: root.width < 800 ? 14 : 17
-                        font.bold: true
-                        color: "#5eead4"
-                        elide: Text.ElideRight
-                    }
+                    Label { text: "SwitchNest"; font.pixelSize: 22; font.bold: true; color: root.accent }
                 }
-                Label { text: "CONTROL CENTER"; font.pixelSize: 11; color: root.muted }
-                Item { Layout.preferredHeight: 20 }
-                NavButton { text: "Overview"; page: 0 }
-                NavButton { text: "Network"; page: 1 }
-                NavButton { text: "Streaming"; page: 2 }
-                NavButton { text: "Files"; page: 3 }
-                NavButton { text: "Diagnostics"; page: 4 }
-                NavButton { text: "Settings"; page: 5 }
-                NavButton { text: root.updateStatus.startsWith("Update available") ? "Updates •" : "Updates"; page: 6 }
+                Label { text: "LINUX CONTROL CENTER"; font.pixelSize: 10; font.bold: true; color: "#93aac5"; Layout.bottomMargin: 14 }
+                NavButton { text: "Overview"; navIcon: "⌂"; page: 0 }
+                NavButton { text: "Homebrew"; navIcon: "◆"; page: 3; fileTab: 1 }
+                NavButton { text: "FTP Manager"; navIcon: "▣"; page: 3; fileTab: 0 }
+                NavButton { text: "Streaming"; navIcon: "◈"; page: 2 }
+                NavButton { text: "Network"; navIcon: "◉"; page: 1 }
+                NavButton { text: "Diagnostics"; navIcon: "☷"; page: 4 }
+                NavButton { text: "Settings"; navIcon: "⚙"; page: 5 }
+                NavButton { text: "Updates"; navIcon: "↻"; page: 6 }
                 Item { Layout.fillHeight: true }
-                Label { text: "v" + controller.version; color: root.accent }
-                Label { text: "Linux stable"; color: root.muted; font.pixelSize: 12 }
+                Label { text: "● SwitchNest Linux v" + controller.version; font.pixelSize: 11; color: root.accent; wrapMode: Text.Wrap; Layout.fillWidth: true }
             }
         }
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.margins: root.width < 800 ? 12 : 22
-            spacing: 14
+            Layout.margins: 18
+            spacing: 12
             RowLayout {
                 Layout.fillWidth: true
                 Rectangle {
+                    visible: false
                     width: 5; height: 31; radius: 3
                     color: pages.currentIndex === 0 ? "#5eead4" : pages.currentIndex === 1 ? "#60a5fa" :
                            pages.currentIndex === 2 ? "#c084fc" : pages.currentIndex === 3 ? "#fbbf24" :
                            pages.currentIndex === 4 ? "#fb7185" : pages.currentIndex === 5 ? "#34d399" : "#a78bfa"
                     Behavior on color { ColorAnimation { duration: 180 } }
                 }
-                Label { text: ["Overview","Network","Streaming","Files","Diagnostics","Settings","Updates"][pages.currentIndex]; font.pixelSize: 28; font.bold: true; color: "#edf6ff" }
+                Label { text: pages.currentIndex === 3 ? (fileTabs.currentIndex === 0 ? "FTP Manager" : "Homebrew") : ["Overview","Network","Streaming","Files","Diagnostics","Settings","Updates"][pages.currentIndex]; font.pixelSize: 28; font.bold: true; color: "#edf6ff" }
                 Item { Layout.fillWidth: true }
-                Button { text: "Refresh"; enabled: !root.busy; onClicked: controller.refresh() }
+                Button { text: "⟳ Refresh"; enabled: !root.busy; onClicked: controller.refresh() }
             }
             StackLayout {
                 id: pages
@@ -374,85 +371,159 @@ ApplicationWindow {
                     contentWidth: availableWidth
                     ColumnLayout {
                         width: parent.width
-                        spacing: 8
-                        Panel {
-                            implicitHeight: hotspotLayout.implicitHeight + 32
+                        spacing: 12
+                        Label { text: "Network overview"; font.pixelSize: 20; font.bold: true; color: "#f0f5ff" }
+                        Label { text: "Your local Switch 2 connection and SteamOS background services"; color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                        Rectangle {
+                            Layout.fillWidth: true
+                            implicitHeight: readFirstContent.implicitHeight + 32
+                            radius: 10
+                            color: "#1d293a"
+                            border.color: "#43556a"
+                            border.width: 1
                             ColumnLayout {
-                                id: hotspotLayout
-                                anchors.fill: parent
+                                id: readFirstContent
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.top: parent.top
                                 anchors.margins: 16
-                                Label { text: "OFFLINE HOTSPOT"; color: root.muted; font.pixelSize: 12 }
+                                spacing: 10
                                 RowLayout {
                                     Layout.fillWidth: true
-                                    Label { text: root.hotspot.state === "on" ? "Hotspot Active" : root.hotspot.state === "off" ? "Hotspot Inactive" : "Status unknown"; font.pixelSize: root.width < 800 ? 18 : 25; font.bold: true; color: root.hotspot.state === "on" ? root.accent : root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
-                                    Button { text: root.hotspot.state === "on" ? "Turn OFF" : "Turn ON"; highlighted: root.hotspot.state !== "on"; enabled: !root.busy && (root.hotspot.state === "on" || root.hotspot.state === "off"); onClicked: controller.action(root.hotspot.state === "on" ? "off" : "on") }
-                                    BusyIndicator { running: root.busy; visible: running; implicitWidth: 30; implicitHeight: 30 }
+                                    spacing: 10
+                                    Label { text: "◆"; font.pixelSize: 21; color: "#f2bf69" }
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 2
+                                        Label { text: "Before You Connect"; font.pixelSize: 18; font.bold: true; color: "#edf6ff" }
+                                        Label { text: "Follow these 5 quick steps before using SwitchNest."; font.pixelSize: 12; color: "#a6b9cc"; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                                    }
                                 }
-                                Label { text: "v7.1 backend"; color: root.muted }
-                                Label { text: "Gateway: " + (root.hotspot.ip || "Unavailable"); color: root.muted }
+                                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#43556a" }
+                                Repeater {
+                                    model: [
+                                        {symbol: "✈", heading: "1. Airplane Mode", detail: "Turn on Airplane Mode on your Switch 2."},
+                                        {symbol: "▣", heading: "2. Start Services", detail: "Start the SwitchNest hotspot and make sure DNS and HTTP both show Active."},
+                                        {symbol: "▤", heading: "3. Test With Your Phone", detail: "Connect to SwitchNest Wi-Fi and confirm you're offline."},
+                                        {symbol: "◈", heading: "4. Connect Your Switch 2", detail: "Enable Wi-Fi, connect to SwitchNest, and disable IPv6 in its network settings."},
+                                        {symbol: "⚠", heading: "5. Use at Your Own Risk!", detail: "An offline phone test does not guarantee complete network isolation."}
+                                    ]
+                                    delegate: RowLayout {
+                                        required property var modelData
+                                        Layout.fillWidth: true
+                                        spacing: 12
+                                        Rectangle {
+                                            Layout.preferredWidth: 38
+                                            Layout.preferredHeight: 38
+                                            radius: 8
+                                            color: "#253346"
+                                            Label {
+                                                anchors.centerIn: parent
+                                                text: modelData.symbol
+                                                font.pixelSize: 20
+                                                color: modelData.heading.indexOf("5.") === 0 ? "#f2bf69" : "#edf6ff"
+                                            }
+                                        }
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 2
+                                            Label { text: modelData.heading; font.pixelSize: 13; font.bold: true; color: "#edf6ff"; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                                            Label { text: modelData.heading.indexOf("2.") === 0 ? "Start the SwitchNest hotspot and make sure DNS and HTTP both show <font color=\"#43f5b0\"><b>ACTIVE</b></font>." : modelData.detail; textFormat: Text.RichText; font.pixelSize: 12; color: "#a6b9cc"; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        GridLayout {
+                            Layout.fillWidth: true
+                            columns: root.width < 1180 ? 2 : 4
+                            columnSpacing: 8
+                            rowSpacing: 8
+                            Repeater {
+                                model: [
+                                    {heading: "HOTSPOT", value: root.hotspot.state === "on" ? "ACTIVE" : root.hotspot.state === "off" ? "INACTIVE" : "UNKNOWN", ok: root.hotspot.state === "on"},
+                                    {heading: "DNS", value: String(root.dns).toUpperCase(), ok: root.dns === "active"},
+                                    {heading: "HTTP", value: String(root.http).toUpperCase(), ok: root.http === "active"}
+                                ]
+                                delegate: Rectangle {
+                                    required property var modelData
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 130
+                                    Layout.preferredHeight: 82
+                                    color: "#1d293a"
+                                    radius: 4
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 12
+                                        spacing: 8
+                                        Label { text: modelData.heading; font.pixelSize: 11; font.bold: true; color: "#a6b9cc" }
+                                        Label { text: modelData.value; font.pixelSize: 16; font.bold: true; color: modelData.ok ? "#43f5b0" : (String(modelData.value).toLowerCase() === "inactive" || String(modelData.value).toLowerCase() === "failed" ? "#ff454f" : "#f2bf69"); elide: Text.ElideRight; Layout.fillWidth: true }
+                                    }
+                                }
                             }
                         }
                         RowLayout {
+                            spacing: 8
+                            Button {
+                                text: root.hotspot.state === "on" ? "Stop hotspot" : "Start hotspot"
+                                highlighted: true
+                                enabled: !root.busy && (root.hotspot.state === "on" || root.hotspot.state === "off")
+                                onClicked: controller.action(root.hotspot.state === "on" ? "off" : "on")
+                            }
+                            Button { text: "Refresh"; enabled: !root.busy; onClicked: controller.refresh() }
+                            Button { text: "Restart Hotspot"; enabled: !root.busy && root.hotspot.state === "on"; onClicked: controller.wifi_restart() }
+                            BusyIndicator { running: root.busy; visible: running; implicitWidth: 28; implicitHeight: 28 }
+                        }
+                        Label { text: "Hotspot: " + (root.hotspot.ssid || "SSID unavailable") + "  ·  Gateway: " + (root.hotspot.ip || "Unavailable") + "  ·  Security: " + (root.hotspot.security || "Unknown"); color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                        Label { text: "Connected devices"; font.pixelSize: 20; font.bold: true; color: "#f0f5ff"; Layout.topMargin: 8 }
+                        Label { text: "Only associated Wi-Fi stations are listed; association does not prove FTP connectivity."; color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                        Rectangle {
                             Layout.fillWidth: true
-                            Panel {
-                                implicitHeight: 76
-                                ColumnLayout {
-                                    anchors.fill: parent; anchors.margins: 14
-                                    Label { text: "DNS SERVICE"; color: root.muted; font.pixelSize: 12 }
-                                    Label { text: root.dns; color: root.dns === "active" ? root.accent : root.muted; font.pixelSize: 18; elide: Text.ElideRight; Layout.fillWidth: true }
-                                }
-                            }
-                            Panel {
-                                implicitHeight: 76
-                                ColumnLayout {
-                                    anchors.fill: parent; anchors.margins: 14
-                                    Label { text: "ISOLATION"; color: root.muted; font.pixelSize: 12 }
-                                    Label { text: "Unverified"; font.pixelSize: 18; color: "#f2bf69" }
-                                }
-                            }
-                        }
-                        Panel {
-                            implicitHeight: networkInfo.implicitHeight + 28
+                            Layout.preferredHeight: stationsColumn.implicitHeight + 16
+                            color: "#1d293a"
+                            radius: 4
                             ColumnLayout {
-                                id: networkInfo
-                                anchors.fill: parent; anchors.margins: 14
-                                Label { text: "Network information"; font.bold: true }
-                                Label { text: "SSID: " + (root.hotspot.ssid || "Unavailable"); Layout.fillWidth: true; wrapMode: Text.Wrap }
-                                Label { text: "Host IPv4: " + (root.hotspot.ip || "Unavailable"); Layout.fillWidth: true; wrapMode: Text.Wrap }
-                                Label { text: "Security: " + (root.hotspot.security || "Unavailable"); Layout.fillWidth: true; wrapMode: Text.Wrap }
-                                Label { text: "HTTP service: " + root.http; color: root.http === "active" ? root.accent : root.muted }
-                                Label { text: "DNS: " + root.dns; color: root.dns === "active" ? root.accent : root.muted }
-                                Label { text: "Connection health: " + (root.hotspot.state === "on" && root.dns === "active" ? "Hotspot and DNS active (isolation unverified)" : "Requires attention"); wrapMode: Text.Wrap; Layout.fillWidth: true }
-                            }
-                        }
-                        Panel {
-                            implicitHeight: clientsInfo.implicitHeight + 28
-                            ColumnLayout {
-                                id: clientsInfo
-                                anchors.fill: parent; anchors.margins: 14
-                                Label { text: "Connected Wi-Fi stations"; font.bold: true }
-                                Label { text: Array.isArray(root.hotspot.stations) ? String(root.hotspot.stations.length) + " associated stations" : "Station count unavailable"; color: root.accent }
-                                Repeater {
-                                    model: root.clients
-                                    delegate: Label {
-                                        required property var modelData
-                                        text: modelData.mac + "  •  " + (modelData.ip || "IP unavailable") + "  •  " + modelData.status + (modelData.signal !== undefined ? "  •  " + modelData.signal + " dBm" : "") + (modelData.connected_seconds !== undefined ? "  •  " + modelData.connected_seconds + "s" : "") + (modelData.rx_bytes !== undefined ? "  •  RX " + modelData.rx_bytes + " B" : "") + (modelData.tx_bytes !== undefined ? "  •  TX " + modelData.tx_bytes + " B" : "")
-                                        color: root.muted
-                                        wrapMode: Text.Wrap
-                                        Layout.fillWidth: true
+                                id: stationsColumn
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.top: parent.top
+                                anchors.margins: 8
+                                spacing: 4
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 32
+                                    color: "#24364c"
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 10
+                                        anchors.rightMargin: 10
+                                        Label { text: "IP address"; Layout.fillWidth: true; Layout.preferredWidth: 1; font.bold: true; horizontalAlignment: Text.AlignLeft }
+                                        Label { text: "MAC address"; Layout.fillWidth: true; Layout.preferredWidth: 1; font.bold: true; horizontalAlignment: Text.AlignLeft }
+                                        Label { text: "Association"; Layout.fillWidth: true; Layout.preferredWidth: 1; font.bold: true; horizontalAlignment: Text.AlignLeft }
                                     }
                                 }
-                                Button { text: "Refresh clients"; enabled: !root.busy; onClicked: controller.refresh() }
+                                Repeater {
+                                    model: root.clients
+                                    delegate: Rectangle {
+                                        required property var modelData
+                                        required property int index
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 32
+                                        color: index % 2 === 0 ? "#1d293a" : "#223248"
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            anchors.leftMargin: 10
+                                            anchors.rightMargin: 10
+                                            Label { text: modelData.ip || "Unavailable"; Layout.fillWidth: true; Layout.preferredWidth: 1; elide: Text.ElideRight; horizontalAlignment: Text.AlignLeft }
+                                            Label { text: modelData.mac || "Unavailable"; Layout.fillWidth: true; Layout.preferredWidth: 1; elide: Text.ElideRight; horizontalAlignment: Text.AlignLeft }
+                                            Label { text: modelData.status || "Unknown"; Layout.fillWidth: true; Layout.preferredWidth: 1; elide: Text.ElideRight; horizontalAlignment: Text.AlignLeft }
+                                        }
+                                    }
+                                }
+                                Label { visible: root.clients.length === 0; text: "No associated stations reported"; color: root.muted; Layout.margins: 12 }
                             }
                         }
-                        Panel {
-                            implicitHeight: 90
-                            ColumnLayout {
-                                anchors.fill: parent; anchors.margins: 14
-                                Label { text: "Network profiles"; font.bold: true }
-                                Label { text: "Offline backend available • Filtered Internet pending"; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
-                            }
-                        }
+                        Button { text: "Refresh devices"; enabled: !root.busy; onClicked: controller.refresh() }
                     }
                 }
                 ColumnLayout {
@@ -467,6 +538,7 @@ ApplicationWindow {
                 }
                 ColumnLayout {
                     Label { text: "Sunshine / Moonlight"; font.pixelSize: 22 }
+                    Label { text: "Reminder: Sunshine and Moonlight are not included with SwitchNest. Install and configure them separately before using streaming. SwitchNest only provides controls for an existing Sunshine installation."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Label { text: !root.report.sunshine_installed ? "Checking installation" : !root.report.sunshine_installed.ok ? "Flatpak installation unavailable" : root.report.sunshine_processes && root.report.sunshine_processes.ok ? (root.report.sunshine_processes.output.indexOf("dev.lizardbyte.app.Sunshine") >= 0 ? "Sunshine running" : "Sunshine stopped") : "Process state unavailable"; color: root.accent; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     RowLayout {
                         Button { text: "Start"; enabled: !root.busy; onClicked: controller.sunshine("start") }
@@ -479,6 +551,7 @@ ApplicationWindow {
                 ColumnLayout {
                     TabBar {
                         id: fileTabs
+                        visible: false
                         Layout.fillWidth: true
                         TabButton {
                             text: "FTP File Manager"
@@ -539,8 +612,15 @@ ApplicationWindow {
                     clip: true
                     contentWidth: availableWidth
                     ColumnLayout {
-                        width: parent.width
+                        width: Math.min(parent.width, 960)
+                        spacing: 14
                         Label { text: "Settings"; font.pixelSize: 22 }
+                        Label { text: "Configure your hotspot, app preferences, and maintenance tools."; color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                    GroupBox {
+                        title: "App preferences"
+                        Layout.fillWidth: true
+                        contentItem: ColumnLayout {
+                            spacing: 9
                     CheckBox {
                         id: launchAtLogin
                         text: "Start SwitchNest on desktop login"
@@ -554,85 +634,54 @@ ApplicationWindow {
                     Label { text: "Launches the app in Desktop Mode, not the hotspot. Gaming Mode is not supported."; wrapMode: Text.Wrap; Layout.fillWidth: true; color: root.muted }
                     CheckBox { text: "Launch SwitchNest maximized"; checked: root.updatePrefs.fullscreen_on_start; onToggled: controller.set_update_preference("fullscreen_on_start", checked) }
                     Label { text: "Applies on next launch. The title bar, minimize, restore, and close controls remain available."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
-                    Label { text: "Wi-Fi configuration (existing NetworkManager AP profile)"; font.bold: true }
+                        }
+                    }
+                    GroupBox {
+                        title: "Hotspot Wi-Fi"
+                        Layout.fillWidth: true
+                        contentItem: ColumnLayout {
+                            spacing: 9
+                    Rectangle {
+                        Layout.fillWidth: true
+                        implicitHeight: wifiStopWarning.implicitHeight + 24
+                        radius: 6
+                        color: root.hotspot.state === "on" ? "#422b20" : "#203344"
+                        border.color: root.hotspot.state === "on" ? "#f59e0b" : "#436079"
+                        Label {
+                            id: wifiStopWarning
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            wrapMode: Text.Wrap
+                            font.bold: true
+                            color: root.hotspot.state === "on" ? "#fbbf24" : "#c8d7e7"
+                            text: root.hotspot.state === "on"
+                                  ? "⚠ Stop the hotspot before changing the Wi-Fi name (SSID), password, or channel. Apply is disabled while the hotspot is running."
+                                  : "Before applying Wi-Fi changes, make sure the hotspot is stopped. Restart it after applying the new settings."
+                        }
+                    }
                     Label { text: "Current SSID: " + (root.hotspot.ssid || "Unavailable"); color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
                     TextField { placeholderText: "Wi-Fi name (SSID)"; text: root.wifiName; onTextEdited: root.wifiName = text; Layout.fillWidth: true; maximumLength: 32 }
                     TextField { placeholderText: "New WPA2 password (leave blank to keep current)"; text: root.wifiPassword; echoMode: TextInput.Password; onTextEdited: root.wifiPassword = text; Layout.fillWidth: true }
                     Label { text: "2.4 GHz Wi-Fi channel"; color: root.muted }
                     ComboBox {
                         id: wifiChannelChoice
+                        Layout.preferredWidth: 190
+                        implicitWidth: 190
                         model: ["Channel 1", "Channel 6", "Channel 11"]
                         currentIndex: root.wifiChannel === 6 ? 1 : root.wifiChannel === 11 ? 2 : 0
+                        displayText: "Channel " + (root.wifiChannel === 6 || root.wifiChannel === 11 ? root.wifiChannel : 1)
                         onActivated: root.wifiChannel = [1, 6, 11][currentIndex]
                     }
+                    Button { text: "Apply Wi-Fi Settings"; highlighted: true; enabled: !root.busy && root.hotspot.state === "off" && root.wifiName.length > 0; onClicked: wifiConfirmDialog.open() }
                     Label { text: root.wifiFeedback; color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
                     Label { text: "Adapter AP support: " + (root.wifiInfo.adapter ? String(root.wifiInfo.adapter.ap_supported) : "Not checked") + " | Supported channels reported: " + (root.wifiInfo.adapter ? root.wifiInfo.adapter.channels.join(", ") : "Unknown"); Layout.fillWidth: true; wrapMode: Text.Wrap; color: root.muted }
-                    RowLayout {
-                        Button { text: "Check Compatibility"; enabled: !root.busy; onClicked: controller.wifi_status() }
-                        Button { text: "Apply Wi-Fi Settings"; highlighted: true; enabled: !root.busy && root.wifiName.length > 0; onClicked: wifiConfirmDialog.open() }
-                    }
-                    Button { text: "Restore Previous Wi-Fi Settings"; enabled: !root.busy && root.wifiInfo.backup === true; onClicked: wifiRestoreDialog.open() }
+                    Button { text: "Check Compatibility"; enabled: !root.busy; onClicked: controller.wifi_status() }
                     Label { text: "Only Wi-Fi profile fields are changed. IP, DHCP, DNS, firewall, FTP and the existing hotspot ON/OFF backend are untouched. NetworkManager authorization is required. Restart the hotspot with its existing controls after changes."; color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
-                    Label { text: "Hotspot restart and recovery"; font.bold: true }
-                    Label { text: root.wifiRestartMessage || "After changing SSID, restart the hotspot to activate it."; color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
-                    RowLayout {
-                        Button { text: "Restart Hotspot"; enabled: !root.busy; onClicked: wifiRestartDialog.open() }
-                        Button { text: "Restart SwitchNest"; enabled: !root.busy; onClicked: controller.restart_control_center() }
-                    }
-                    Label { text: "Wi-Fi presets (SSID + channel only; no passwords)"; font.bold: true }
-                    TextField { placeholderText: "Preset name"; text: root.presetName; onTextEdited: root.presetName = text; Layout.fillWidth: true }
-                    RowLayout {
-                        Button { text: "Save Preset"; onClicked: controller.wifi_save_preset(root.presetName, root.wifiName, root.wifiChannel) }
-                        Button { text: "Refresh Presets"; onClicked: controller.wifi_presets() }
-                    }
-                    ComboBox {
-                        id: presetChoice
-                        Layout.fillWidth: true
-                        model: Object.keys(root.wifiPresetMap)
-                        onActivated: controller.wifi_select_preset(currentText)
-                    }
-                    Label { text: "v8.0.9 Stability & Recovery"; font.bold: true }
-                    Label { text: "Recovery: one attempt after a failed confirmed restart; 120-second cooldown. Client disconnects do not trigger recovery."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
-                    RowLayout {
-                        Button { text: "Run Self-Test"; enabled: !root.busy; onClicked: controller.run_self_test() }
-                        Button { text: "Export Redacted Report"; enabled: !root.busy; onClicked: controller.export_diagnostics() }
-                    }
-                    Label { text: "Self-test: " + root.selfTestInfo.state; color: root.accent }
-                    Repeater {
-                        model: root.selfTestInfo.checks || []
-                        delegate: Label {
-                            required property var modelData
-                            text: modelData.label + ": " + modelData.result + (modelData.reason ? " — " + modelData.reason : "")
-                            color: root.muted
-                            Layout.fillWidth: true
-                            wrapMode: Text.Wrap
                         }
                     }
-                    RowLayout {
-                        Button { text: "Verify App"; enabled: !root.busy; onClicked: controller.verify_application() }
-                        Button { text: "Repair App Launcher"; enabled: !root.busy; onClicked: controller.repair_application() }
-                    }
-                    Label { text: "Self-test is read-only and cannot certify isolation or FTP reachability. Repair changes only the SwitchNest launcher."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
-                    Label { text: "Network event history (most recent 100 events)"; font.bold: true }
-                    Button { text: "Refresh Events"; onClicked: controller.wifi_events() }
-                    Repeater {
-                        model: root.wifiEventsList.slice(-12).reverse()
-                        delegate: Label {
-                            required property var modelData
-                            text: modelData.time + "  " + modelData.event + "  " + modelData.detail
-                            color: root.muted
-                            Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                        }
-                    }
-                    Label { text: "Advanced v7.1 manager (legacy)"; color: root.muted }
-                    Button { text: "Change Wi-Fi password"; enabled: !root.busy; onClicked: controller.wifi_settings() }
-                    Label { text: "Use the legacy manager only when the profile editor is unavailable."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
-                    Label { text: "Refresh interval: 10 seconds"; color: root.muted }
-                    Label { text: "Update notifications"; font.bold: true }
-                    CheckBox { text: "Check for updates at startup"; checked: root.updatePrefs.check_at_startup; onToggled: controller.set_update_preference("check_at_startup", checked) }
-                    CheckBox { text: "Show update available popup"; checked: root.updatePrefs.show_update_popup; onToggled: controller.set_update_preference("show_update_popup", checked) }
-                    CheckBox { text: "Stable releases only for startup checks"; checked: root.updatePrefs.stable_only; onToggled: controller.set_update_preference("stable_only", checked) }
                     Item { Layout.fillHeight: true }
                     }
                 }
@@ -649,8 +698,16 @@ ApplicationWindow {
                     Label { visible: root.updateInProgress && root.updateStage === "download"; text: root.downloadedMB.toFixed(1) + " MB" + (root.totalMB > 0 ? " / " + root.totalMB.toFixed(1) + " MB (" + root.downloadPercent.toFixed(0) + "%)" : " downloaded"); color: root.muted }
                     Button { text: "Restore Previous Version"; enabled: !root.busy && !root.updateBusy && controller && controller.rollbackAvailable; onClicked: rollbackDialog.open() }
                     Button { text: "Open GitHub releases"; onClicked: controller.open_updates(false) }
-                    Button { text: "Open development downloads"; onClicked: controller.open_updates(true) }
-                    Label { text: "Private repository: sign in using GitHub CLI for automatic lookup, or use your browser. Download & Install uses a GitHub release ZIP with a published SHA-256 digest. It installs without sudo and keeps the previous version for rollback. Restart SwitchNest after installation."; wrapMode: Text.Wrap; Layout.fillWidth: true; color: root.muted }
+                    GroupBox {
+                        title: "Update preferences"
+                        Layout.fillWidth: true
+                        contentItem: ColumnLayout {
+                            spacing: 9
+                            CheckBox { text: "Check for updates at startup"; checked: root.updatePrefs.check_at_startup; onToggled: controller.set_update_preference("check_at_startup", checked) }
+                            CheckBox { text: "Show update available popup"; checked: root.updatePrefs.show_update_popup; onToggled: controller.set_update_preference("show_update_popup", checked) }
+                            CheckBox { text: "Stable releases only for startup checks"; checked: root.updatePrefs.stable_only; onToggled: controller.set_update_preference("stable_only", checked) }
+                        }
+                    }
                     Item { Layout.fillHeight: true }
                 }
             }

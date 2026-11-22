@@ -56,32 +56,45 @@ class MonitorTests(unittest.TestCase):
         self.assertEqual(catalog_sources.normalize_category("Other", "Chromium NX"), "Tools")
         self.assertEqual(catalog_sources.normalize_category("Other", "PKForge"), "Tools")
 
-    def test_unverified_nro_requires_explicit_opt_in(self):
-        import tempfile
-        from pathlib import Path
+    def test_unverified_nro_is_rejected_even_with_explicit_opt_in(self):
         payload = b"sample unverified NRO test payload"
-        class Response:
-            def __enter__(self): return self
-            def __exit__(self, *args): return False
-            def geturl(self): return "https://release-assets.githubusercontent.com/test"
-            def read(self, count): 
-                data = self.data[:count]
-                self.data = self.data[count:]
-                return data
         def opener(request, timeout):
-            response = Response()
-            response.data = payload
-            return response
-        asset = {"name": "test.nro", "url": "https://github.com/example/repo/releases/download/v1/test.nro", "size": len(payload), "digest": ""}
+            self.fail("Unverified downloads must fail before making network requests")
+        asset = {"name": "test.nro", "url": "https://github.com/example/repo/releases/download/v1/test.nro",
+                 "size": len(payload), "digest": ""}
         with tempfile.TemporaryDirectory() as directory:
-            with self.assertRaisesRegex(ValueError, "Verified SHA-256"):
-                homebrew.download_asset(asset, directory, opener=opener)
-            path = homebrew.download_asset(asset, directory, opener=opener, allow_unverified_nro=True)
-            self.assertEqual(Path(path).read_bytes(), payload)
-            Path(path).unlink()
+            for opt_in in (False, True):
+                with self.assertRaisesRegex(ValueError, "Verified SHA-256"):
+                    homebrew.download_asset(asset, directory, opener=opener,
+                                            allow_unverified_nro=opt_in)
             asset["name"] = "test.zip"
             with self.assertRaisesRegex(ValueError, "Verified SHA-256"):
-                homebrew.download_asset(asset, directory, opener=opener, allow_unverified_nro=True)
+                homebrew.download_asset(asset, directory, opener=opener,
+                                        allow_unverified_nro=True)
+            self.assertEqual(list(Path(directory).iterdir()), [])
+
+    def test_ftp_drag_coordinates_and_folder_target_regression(self):
+        # The window overlay and page have different origins. Never use the
+        # overlay position for ListView hit testing (previous mis-target bug).
+        qml = (Path(__file__).parent / "FtpPage.qml").read_text(encoding="utf-8")
+        self.assertIn("source.mapToItem(page, point.x, point.y)", qml)
+        self.assertIn("source.mapToItem(dragOverlay, point.x, point.y)", qml)
+        self.assertIn("dropTarget = targetAt(pagePoint)", qml)
+        self.assertIn("list.mapFromItem(page, pagePoint.x, pagePoint.y)", qml)
+        self.assertIn("list.itemAt(inList.x, inList.y + list.contentY)", qml)
+        self.assertIn("page.transferFolder", qml)
+        self.assertIn("ftpBrowser.tree_batch_into", qml)
+        self.assertIn("COPY ONLY", qml)
+
+    def test_ftp_explorer_phase1_status_contract(self):
+        browser = (Path(__file__).parent / "ftp_browser.py").read_text(encoding="utf-8")
+        qml = (Path(__file__).parent / "FtpPage.qml").read_text(encoding="utf-8")
+        self.assertIn('transferItems=self.transfer_items', browser)
+        self.assertIn('self.transfer_items=[dict(name=n, status="Waiting") for n in names]', browser)
+        self.assertIn('item["status"] = "Completed"', browser)
+        self.assertIn('item["status"] = "Active"', browser)
+        self.assertIn('page.dataState.transferItems || []', qml)
+        self.assertIn('ftpBrowser.tree_batch_into', qml)
 
     def test_maximized_preference_registered(self):
         self.assertIn("fullscreen_on_start", preferences.DEFAULTS)

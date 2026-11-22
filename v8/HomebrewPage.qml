@@ -28,7 +28,7 @@ ColumnLayout {
             seen[item.repo.toLowerCase()] = true
             rows.push({name: item.name, category: item.category || "Other", repo: item.repo,
                        manual: true, community: true, source: item.sources.join(" + "),
-                       warning: "Unverified community listing. GitHub release NROs can be installed after explicit confirmation, even without a publisher digest; ZIPs are download-only."})
+                       warning: "Unverified community listing. Only GitHub release NROs with SHA-256 digests qualify for confirmed installation; verified ZIPs are download-only."})
         }
         let q = catalogQuery.toLowerCase().trim()
         let filtered = rows.filter(function(item) {
@@ -58,7 +58,7 @@ ColumnLayout {
             groups[groups.length - 1].items.push(item)
         }
         categoryGroups = groups
-        statusText = results.length + " projects shown (curated + community, deduplicated). NRO installs require confirmation; publisher checksums may be unavailable."
+        statusText = results.length + " projects shown (curated + community, deduplicated). Downloads and confirmed NRO installs require publisher SHA-256 digests."
     }
     property var categoryGroups: []
     function categoryColor(category) {
@@ -212,8 +212,8 @@ ColumnLayout {
                     let stale = Object.assign({}, home.staleRepos)
                     for (let repo in data.releases) {
                         let info = data.releases[repo]
-                        available[repo] = info.assets.some(function(a) { return a.name.toLowerCase().endsWith(".nro") })
-                        zipped[repo] = !available[repo] && info.assets.some(function(a) { return a.name.toLowerCase().endsWith(".zip") })
+                        available[repo] = info.assets.some(function(a) { return !!a.digest && a.name.toLowerCase().endsWith(".nro") })
+                        zipped[repo] = info.assets.some(function(a) { return !!a.digest && a.name.toLowerCase().endsWith(".zip") })
                         checked[repo] = true
                         stale[repo] = !!info.stale
                     }
@@ -225,7 +225,7 @@ ColumnLayout {
                 else if (data.kind === "search") { home.curatedResults = data.items; home.assets = []; home.readyZip = ""; home.activeCategory = data.category || "All"; home.updateCatalog() }
                 else if (data.kind === "assets") {
                     if (home.action === "probe" && data.repo === home.probingRepo) {
-                        let eligible = data.assets.some(function(asset) { return asset.name.toLowerCase().endsWith(".nro") })
+                        let eligible = data.assets.some(function(asset) { return !!asset.digest && asset.name.toLowerCase().endsWith(".nro") })
                         let next = Object.assign({}, home.installableRepos)
                         next[data.repo] = eligible
                         home.installableRepos = next
@@ -235,11 +235,11 @@ ColumnLayout {
                         let stale = Object.assign({}, home.staleRepos)
                         stale[data.repo] = !!data.stale
                         home.staleRepos = stale
-                        let zipOnly = !eligible && data.assets.some(function(asset) { return asset.name.toLowerCase().endsWith(".zip") })
+                        let zipOnly = data.assets.some(function(asset) { return !!asset.digest && asset.name.toLowerCase().endsWith(".zip") })
                         let zipState = Object.assign({}, home.zipOnlyRepos)
                         zipState[data.repo] = zipOnly
                         home.zipOnlyRepos = zipState
-                        home.statusText = (data.stale ? "Cached release information (may be outdated). " : "") + (eligible ? "NRO release available for " + data.repo + ". Right-click again to install." : "No NRO release for " + data.repo + "; ZIP-only projects cannot be installed automatically.")
+                        home.statusText = (data.stale ? "Cached release information (may be outdated). " : "") + (eligible ? "Verified NRO available for " + data.repo + "." : home.zipOnlyRepos[data.repo] ? "Verified ZIP available for download only." : "No SHA-256 verified NRO or ZIP release asset available.")
                         home.action = ""
                         home.probingRepo = ""
                         return
@@ -247,7 +247,7 @@ ColumnLayout {
                     if (data.repo !== home.actionRepo || !home.action) return
                     home.choices = data.assets.filter(function(asset) {
                         let name = asset.name.toLowerCase()
-                        return home.action === "install" ? name.endsWith(".nro") : (!!asset.digest && (name.endsWith(".nro") || name.endsWith(".zip")))
+                        return !!asset.digest && (home.action === "install" ? name.endsWith(".nro") : (name.endsWith(".nro") || name.endsWith(".zip")))
                     })
                     if (home.choices.length === 1) {
                         home.useAsset(home.choices[0])
@@ -293,30 +293,60 @@ ColumnLayout {
             } catch (e) { home.statusText = "Invalid homebrew response" }
         }
     }
-    Label { text: "Switch 2 Homebrew Manager"; font.pixelSize: 22; font.bold: true }
-    Label { text: "Verified NRO → FTP install  •  ZIP → manual download"; font.pixelSize: 11; color: "#aab7c6"; Layout.fillWidth: true }
+    Label { text: "Homebrew Manager"; font.pixelSize: 22; font.bold: true; color: "#f0f5ff" }
+    Label { text: "Discover Switch 2 homebrew, review release verification, and install supported NROs over FTP"; font.pixelSize: 12; color: "#aab7c6"; Layout.fillWidth: true; wrapMode: Text.Wrap }
     RowLayout {
         Layout.fillWidth: true
-        Label { text: "Switch 2 FTP"; font.bold: true }
+        Label { text: "SWITCH 2 FTP"; font.bold: true; color: "#40c9b7"; font.pixelSize: 12 }
         TextField { id: ftpHost; text: home.ftpState.host; placeholderText: "Switch 2 IP"; Layout.fillWidth: true; enabled: !home.ftpState.busy && !home.working }
-        TextField { id: ftpPort; text: home.ftpState.port; placeholderText: "Port"; Layout.preferredWidth: 80; enabled: !home.ftpState.busy && !home.working }
-        Button { text: "Connect"; enabled: !home.ftpState.busy && !home.working; onClicked: ftpBrowser.connect_to(ftpHost.text, ftpPort.text) }
-        Button { text: "Disconnect"; enabled: home.ftpState.connected && !home.ftpState.busy && !home.working; onClicked: ftpBrowser.disconnect() }
+        Label { text: "Port"; color: "#a9bfd7"; font.pixelSize: 12 }
+        TextField { id: ftpPort; text: home.ftpState.port; placeholderText: "1337"; Layout.preferredWidth: 80; enabled: !home.ftpState.busy && !home.working }
+        Label { text: home.ftpState.connected ? "● CONNECTED" : home.ftpState.busy ? "● CONNECTING…" : "● DISCONNECTED"; color: home.ftpState.connected ? "#43f5b0" : home.ftpState.busy ? "#f4bd53" : "#ff454f"; font.bold: true; font.pixelSize: 14 }
+        Button { text: home.ftpState.discoveryBusy ? "Searching..." : "Find Switch 2 IP"; enabled: !home.ftpState.discoveryBusy && !home.ftpState.busy && !home.ftpState.connected && !home.working; onClicked: ftpBrowser.find_switch_ip() }
+        Button { text: home.ftpState.busy ? "Working..." : home.ftpState.connected ? "Disconnect" : "Connect"; enabled: !home.ftpState.busy && !home.working; onClicked: { if (home.ftpState.connected) ftpBrowser.disconnect(); else ftpBrowser.connect_to(ftpHost.text, ftpPort.text) } }
     }
-    Label { text: (home.ftpState.busy ? "Connecting / FTP operation in progress" : home.ftpState.connected ? "Connected to " + home.ftpState.host + ":" + home.ftpState.port : "Not connected") + " — " + home.ftpState.status; color: home.ftpState.connected ? "#22c55e" : "#ef4444"; wrapMode: Text.Wrap; Layout.fillWidth: true }
-    RowLayout {
+    Label { text: home.ftpState.discoveryStatus || ""; visible: text.length > 0; color: "#8cb9c9"; wrapMode: Text.Wrap; Layout.fillWidth: true }
+    Label {
+        text: "⚠ FTP connection failed. Be sure to start your FTP server on the Switch 2 first, then click Connect again."
+        visible: !home.ftpState.connected && !home.ftpState.busy &&
+                 (String(home.ftpState.status || "").toLowerCase().indexOf("connection refused") >= 0 ||
+                  String(home.ftpState.status || "").toLowerCase().indexOf("could not connect to server") >= 0)
+        color: "#ff454f"
+        font.bold: true
+        font.pixelSize: 13
+        wrapMode: Text.Wrap
         Layout.fillWidth: true
-        Label { text: "Live Homebrew Updates"; font.bold: true; color: "#52e0ae" }
-        Label { text: home.monitorStatus; Layout.fillWidth: true; elide: Text.ElideRight; font.pixelSize: 11 }
-        Button { text: home.monitorChecking ? "Checking..." : "Check Now"; enabled: !home.monitorChecking; onClicked: controller.homebrew_monitor_refresh(true) }
+    }
+    ColumnLayout {
+        Layout.fillWidth: true
+        spacing: 3
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 12
+            Label { text: "RELEASE MONITOR"; font.bold: true; color: "#40c9b7"; font.pixelSize: 12 }
+            Button {
+                text: home.monitorChecking ? "Checking..." : "Check Releases"
+                enabled: !home.monitorChecking
+                onClicked: controller.homebrew_monitor_refresh(true)
+            }
+            Item { Layout.fillWidth: true }
+        }
+        Label {
+            text: home.monitorStatus
+            Layout.fillWidth: true
+            wrapMode: Text.Wrap
+            font.pixelSize: 11
+            color: "#aab7c6"
+        }
     }
     ProgressBar {
         Layout.fillWidth: true
         visible: home.monitorChecking
         indeterminate: true
     }
+    Label { text: "APP CATALOG"; font.bold: true; color: "#40c9b7"; font.pixelSize: 12; Layout.topMargin: 8 }
     RowLayout {
-        TextField { id: searchBox; placeholderText: "Search Switch 2 homebrew"; Layout.fillWidth: true; onAccepted: { home.catalogQuery = text; home.updateCatalog() } }
+        TextField { id: searchBox; placeholderText: "Search apps, repositories, categories..."; Layout.fillWidth: true; onAccepted: { home.catalogQuery = text; home.updateCatalog() } }
         ComboBox {
             id: categoryBox
             model: ["All", "Tools", "Games", "Streaming", "Emulation", "Fun", "Media", "Other"]
@@ -329,9 +359,8 @@ ColumnLayout {
         Button { text: "Show all"; enabled: !home.working; onClicked: { searchBox.text = ""; categoryBox.currentIndex = 0; home.catalogQuery = ""; home.catalogCategory = "All"; home.updateCatalog() } }
     }
     Label { text: home.statusText; wrapMode: Text.Wrap; Layout.fillWidth: true }
-    Label { text: home.selectedWarning; visible: home.selectedWarning.length > 0; color: "#f59e0b"; font.bold: true; wrapMode: Text.Wrap; Layout.fillWidth: true }
 
-    Label { text: "Three-column app catalog • Right-click an app for download options"; font.pixelSize: 11; Layout.fillWidth: true }
+    Label { text: home.results.length + " apps shown  •  Right-click an app to inspect download and install options"; font.pixelSize: 11; color: "#9fb2c9"; Layout.fillWidth: true }
     ScrollView {
         id: projectScroll
         Layout.fillWidth: true
@@ -350,19 +379,15 @@ ColumnLayout {
                     spacing: 8
                     Rectangle {
                         width: parent.width
-                        height: 42
-                        radius: 9
-                        gradient: Gradient {
-                            orientation: Gradient.Horizontal
-                            GradientStop { position: 0.0; color: "#26364d" }
-                            GradientStop { position: 1.0; color: "#172436" }
-                        }
+                        height: 36
+                        radius: 5
+                        color: "#202e40"
                         border.color: home.categoryColor(categorySection.modelData.name)
                         border.width: 1
                         Rectangle {
-                            width: 5
-                            height: parent.height - 10
-                            radius: 3
+                            width: 4
+                            height: parent.height - 8
+                            radius: 2
                             anchors.left: parent.left
                             anchors.leftMargin: 4
                             anchors.verticalCenter: parent.verticalCenter
@@ -373,10 +398,10 @@ ColumnLayout {
                             anchors.leftMargin: 17
                             anchors.rightMargin: 14
                             spacing: 10
-                            Label { text: home.categoryIcon(categorySection.modelData.name); font.pixelSize: 21 }
+                            Label { text: home.categoryIcon(categorySection.modelData.name); font.pixelSize: 17 }
                             Label {
                                 text: categorySection.modelData.name
-                                font.pixelSize: 17
+                                font.pixelSize: 15
                                 font.bold: true
                                 color: home.categoryColor(categorySection.modelData.name)
                             }
@@ -407,7 +432,7 @@ ColumnLayout {
                                 required property var modelData
                                 Layout.fillWidth: true
                                 Layout.preferredWidth: (categorySection.width - 16) / 3
-                                Layout.preferredHeight: 66
+                                Layout.preferredHeight: 62
                                 sourceComponent: homebrewCard
                                 onLoaded: item.modelData = modelData
                             }
@@ -423,12 +448,12 @@ ColumnLayout {
                 id: projectCard
                 property var modelData: ({})
                 width: parent ? parent.width : 320
-                height: 66
-                padding: 6
+                height: 62
+                padding: 5
                 highlighted: home.selectedRepo !== "" && modelData.repo === home.selectedRepo
                 background: Rectangle {
-                    radius: 7
-                    color: projectCard.highlighted ? "#1b4054" : projectCard.hovered ? "#293e55" : "#192637"
+                    radius: 5
+                    color: projectCard.highlighted ? "#1b4054" : projectCard.hovered ? "#293e55" : "#1d293a"
                     Behavior on color { ColorAnimation { duration: 160 } }
                     border.width: projectCard.highlighted ? 2 : 1
                     border.color: projectCard.highlighted ? "#5eead4" : projectCard.hovered ? home.categoryColor(modelData.category) : "#35465b"
@@ -436,16 +461,16 @@ ColumnLayout {
                 contentItem: RowLayout {
                     spacing: 8
                     Rectangle {
-                        Layout.preferredWidth: 46
-                        Layout.preferredHeight: 46
-                        radius: 7
+                        Layout.preferredWidth: 42
+                        Layout.preferredHeight: 42
+                        radius: 5
                         color: "#24384e"
                         border.color: home.categoryColor(modelData.category)
                         border.width: 2
                         Label {
                             anchors.centerIn: parent
                             text: home.categoryIcon(modelData.category)
-                            font.pixelSize: 24
+                            font.pixelSize: 22
                         }
                     }
                     ColumnLayout {
@@ -453,7 +478,7 @@ ColumnLayout {
                         spacing: 1
                         Label {
                             text: modelData.name
-                            font.pixelSize: 15
+                            font.pixelSize: 14
                             font.bold: true
                             color: "#f2f6fa"
                             elide: Text.ElideRight
@@ -503,20 +528,20 @@ ColumnLayout {
                         home.actionRepo = projectCard.modelData.repo
                         home.actionName = projectCard.modelData.name
                         contextMenu.popup()
-                        if (home.actionRepo && home.installableRepos[home.actionRepo] === undefined) home.probeRelease(home.actionRepo)
+                        if (home.actionRepo) home.probeRelease(home.actionRepo)
                     }
                 }
                 Menu {
                     id: contextMenu
                     width: Math.max(280, implicitWidth)
                     MenuItem {
-                        text: "Download Only"
+                        text: "Download ZIP / NRO"
                         width: contextMenu.width
-                        enabled: !!home.actionRepo && !home.working
+                        enabled: !!home.actionRepo && (home.installableRepos[home.actionRepo] === true || home.zipOnlyRepos[home.actionRepo] === true) && !home.working
                         onTriggered: home.requestRelease("download")
                     }
                     MenuItem {
-                        text: "Download && Install"
+                        text: "Download && Install NRO"
                         width: contextMenu.width
                         enabled: !!home.actionRepo && home.installableRepos[home.actionRepo] === true && !home.working
                         onTriggered: home.requestRelease("install")
