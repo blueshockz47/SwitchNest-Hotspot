@@ -255,6 +255,7 @@ ApplicationWindow {
         Layout.fillWidth: true
     }
     component NavButton: Button {
+        id: navEntry
         required property int page
         property int fileTab: -1
         property bool selected: pages.currentIndex === page && (fileTab < 0 || fileTabs.currentIndex === fileTab)
@@ -274,7 +275,7 @@ ApplicationWindow {
             radius: 3
             color: parent.selected ? "#23364d" : parent.hovered ? "#1d2b3e" : "transparent"
             Rectangle {
-                visible: parent.parent.selected
+                visible: navEntry.selected
                 width: 3
                 height: parent.height
                 anchors.left: parent.left
