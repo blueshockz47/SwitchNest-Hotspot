@@ -59,6 +59,21 @@ class WindowsStyleShellTests(unittest.TestCase):
                       'ZIP File — Manual Install Required'):
             self.assertIn(token, qml)
 
+    def test_phase5_responsive_layout_and_backend_separation(self):
+        shell = (ROOT / "ControlCenter.qml").read_text()
+        ftp = (ROOT / "FtpPage.qml").read_text()
+        homebrew = (ROOT / "HomebrewPage.qml").read_text()
+        self.assertIn('columns: root.width < 1180 ? 2 : 4', shell)
+        self.assertIn('rowSpacing: 8', shell)
+        self.assertIn('minimumWidth: 900', shell)
+        self.assertIn('Layout.minimumWidth: 130', shell)
+        self.assertIn('SplitView.minimumWidth: 220', ftp)
+        self.assertIn('function finishDrag(source, point)', ftp)
+        self.assertIn('function clearSelection()', ftp)
+        self.assertIn('function updateCatalog()', homebrew)
+        self.assertIn('home.choices = data.assets.filter', homebrew)
+        self.assertIn('home.ftpState.connected && !home.ftpState.busy', homebrew)
+
     def test_hotspot_and_diagnostics_controls_remain(self):
         qml = (ROOT / "ControlCenter.qml").read_text()
         for token in ('controller.action(', 'controller.refresh()', 'controller.wifi_restart()', 'controller.install_update()', 'controller.sunshine("start")'):
