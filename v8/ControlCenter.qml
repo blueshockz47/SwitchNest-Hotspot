@@ -507,7 +507,6 @@ ApplicationWindow {
                             }
                         }
                         Button { text: "Refresh devices"; enabled: !root.busy; onClicked: controller.refresh() }
-                        Label { text: "Network isolation remains unverified until separately tested. Service status alone does not confirm blocked internet access."; color: "#f2bf69"; Layout.fillWidth: true; wrapMode: Text.Wrap }
                     }
                 }
                 ColumnLayout {
