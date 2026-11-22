@@ -11,7 +11,7 @@ RELEASES="https://github.com/"+REPO+"/releases"
 DEVELOPMENT="https://github.com/"+REPO+"/tree/development/v8.0"
 
 def version_key(value):
-    m=re.fullmatch(r"v?(\d+)\.(\d+)(?:\.(\d+))?(?:-(alpha|beta|rc)\.(\d+))?",value,re.I)
+    m=re.fullmatch(r"v?(\d+)\.(\d+)(?:\.(\d+))?(?:-(alpha|beta|rc)\.(\d+)|-stable-final)?",value,re.I)
     if not m: raise ValueError("Unsupported version")
     major,minor,patch,stage,number=m.groups()
     return int(major),int(minor),int(patch or 0),{"alpha":0,"beta":1,"rc":2,None:3}[stage.lower() if stage else None],int(number or 0)
