@@ -359,6 +359,28 @@ ApplicationWindow {
                         spacing: 12
                         Label { text: "Network overview"; font.pixelSize: 20; font.bold: true; color: "#f0f5ff" }
                         Label { text: "Your local Switch 2 connection and SteamOS background services"; color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                        Rectangle {
+                            Layout.fillWidth: true
+                            implicitHeight: readFirstContent.implicitHeight + 32
+                            radius: 8
+                            color: "#253346"
+                            border.color: "#f2bf69"
+                            border.width: 2
+                            ColumnLayout {
+                                id: readFirstContent
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.top: parent.top
+                                anchors.margins: 16
+                                spacing: 9
+                                Label { text: "⚠  READ THIS BEFORE CONNECTING"; font.pixelSize: 17; font.bold: true; color: "#ffd58a"; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                                Label { text: "Quick safety checklist for your Nintendo Switch 2"; font.pixelSize: 12; color: "#cbd9e8"; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                                Label { text: "1  ENABLE AIRPLANE MODE — Turn on Airplane Mode on your Switch 2, then enable Wi-Fi to connect to SwitchNest."; font.pixelSize: 13; color: "#edf6ff"; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                                Label { text: "2  CHECK SERVICES — Start SwitchNest and confirm the hotspot, DNS and HTTP services are running."; font.pixelSize: 13; color: "#edf6ff"; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                                Label { text: "3  TEST WITH YOUR PHONE — Connect your phone to the SwitchNest hotspot first and check its network behavior before connecting your Switch 2."; font.pixelSize: 13; color: "#edf6ff"; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                                Label { text: "4  USE AT YOUR OWN RISK — Network isolation is not guaranteed. Stay cautious, and enjoy!"; font.pixelSize: 13; font.bold: true; color: "#ffd58a"; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                            }
+                        }
                         GridLayout {
                             Layout.fillWidth: true
                             columns: root.width < 1180 ? 2 : 4
@@ -448,23 +470,6 @@ ApplicationWindow {
                             }
                         }
                         Button { text: "Refresh devices"; enabled: !root.busy; onClicked: controller.refresh() }
-                        Panel {
-                            Layout.fillWidth: true
-                            implicitHeight: safetyReminder.implicitHeight + 24
-                            ColumnLayout {
-                                id: safetyReminder
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.top: parent.top
-                                anchors.margins: 12
-                                spacing: 7
-                                Label { text: "REMINDER BEFORE CONNECTING"; color: root.accent; font.bold: true; font.pixelSize: 13 }
-                                Label { text: "1. Turn on Airplane Mode on your Switch 2 before connecting to the SwitchNest hotspot."; color: "#edf6ff"; wrapMode: Text.Wrap; Layout.fillWidth: true }
-                                Label { text: "2. Make sure all SwitchNest services are running before connecting."; color: "#edf6ff"; wrapMode: Text.Wrap; Layout.fillWidth: true }
-                                Label { text: "3. Test the SwitchNest hotspot connection with your phone first."; color: "#edf6ff"; wrapMode: Text.Wrap; Layout.fillWidth: true }
-                                Label { text: "4. Use at your own risk and enjoy!"; color: "#edf6ff"; wrapMode: Text.Wrap; Layout.fillWidth: true }
-                            }
-                        }
                         Label { text: "Network isolation remains unverified until separately tested. Service status alone does not confirm blocked internet access."; color: "#f2bf69"; Layout.fillWidth: true; wrapMode: Text.Wrap }
                     }
                 }
