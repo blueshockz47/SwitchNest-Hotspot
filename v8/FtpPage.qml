@@ -15,7 +15,11 @@ ColumnLayout {
     property string deletePath: ""
     property bool selectionMode: false
     property bool showActivity: false
-    property int fileFontSize: 16
+    property bool queueExpanded: false
+    property string notification: ""
+    property string lastStatus: ""
+    property int fileFontSize: 14
+    property bool showDetails: true
     property bool dragInProgress: false
     property string dropTarget: ""
     property string dropFolder: ""
@@ -74,12 +78,58 @@ ColumnLayout {
         dragInProgress = false
         dropTarget = ""
         dropFolder = ""
-        if (target && target !== side) { transferFolder = folder; transfer(side, [name]) }
+        if (target && target !== side) {
+            let selected = side === "local" ? localSelected : remoteSelected
+            let names = selected.indexOf(name) >= 0 ? selected.slice() : [name]
+            transferFolder = folder
+            transfer(side, names)
+        }
     }
     function clearSelection() { localSelected=[]; remoteSelected=[]; entryName="" }
+    function selectRange(side, name, modifiers) {
+        let selected = side === "local" ? localSelected : remoteSelected
+        let rows = sorted(side === "local" ? dataState.localRows : dataState.remoteRows)
+        let names = rows.map(x => x.name)
+        let target = names.indexOf(name)
+        if (target < 0) return
+        let anchor = names.indexOf(entryName)
+        let result
+        if ((modifiers & Qt.ShiftModifier) && anchor >= 0) {
+            let range = names.slice(Math.min(anchor,target),Math.max(anchor,target)+1)
+            result = (modifiers & Qt.ControlModifier) ? Array.from(new Set(selected.concat(range))) : range
+        } else if ((modifiers & Qt.ControlModifier) || selectionMode) {
+            result = toggle(selected,name)
+        } else {
+            result = [name]
+        }
+        // Selection belongs to the active pane only; changing panes clears stale highlights.
+        if (side === "local") { localSelected=result; remoteSelected=[] }
+        else { remoteSelected=result; localSelected=[] }
+        activeSide=side
+        entryName=name
+    }
     function selectAll() { if (activeSide==="local") localSelected=sorted(dataState.localRows).map(x=>x.name); else remoteSelected=sorted(dataState.remoteRows).map(x=>x.name) }
     function deleteSelected() { deleteSide=activeSide; deletePath=activeSide==="local"?dataState.local:dataState.remote; deleteNames=(activeSide==="local"?localSelected:remoteSelected).slice(); if(deleteNames.length) batchDelete.open() }
     function navigate(action) { clearSelection(); ftpBrowser.navigate(activeSide,action) }
+    function switchBookmarks() {
+        return (dataState.bookmarks || []).map((item,index) => ({item:item,index:index})).filter(x => x.item.side === "remote" && x.item.host === dataState.host && String(x.item.port) === String(dataState.port))
+    }
+    function remoteSegments() {
+        let segments = (dataState.remote || "/").split("/").filter(x => x.length)
+        let result = [{name:"Root",path:"/"}]
+        let path = "/"
+        for (let segment of segments) {
+            path += segment + "/"
+            result.push({name:segment,path:path})
+        }
+        return result
+    }
+    function openDirectory(side, name) {
+        clearSelection()
+        activeSide=side
+        if (side === "local") ftpBrowser.local_open(name)
+        else ftpBrowser.remote_open(name)
+    }
     Shortcut { sequence: "Ctrl+A"; enabled: page.visible && !page.dataState.busy && !search.activeFocus && !host.activeFocus && !port.activeFocus && !editDialog.visible && !conflictDialog.visible && !batchDelete.visible; onActivated: page.selectAll() }
     Shortcut { sequence: "F5"; enabled: page.visible && !page.dataState.busy && page.dataState.connected; onActivated: { page.clearSelection(); ftpBrowser.refresh() } }
     property string transferSide: "local"
@@ -124,10 +174,19 @@ ColumnLayout {
     Shortcut { sequences: [StandardKey.Paste]; enabled: page.visible && !page.dataState.busy && !host.activeFocus && !port.activeFocus && !search.activeFocus && !editDialog.visible && !conflictDialog.visible; onActivated: page.pasteFiles() }
     function toggle(items, name) { return items.indexOf(name) < 0 ? items.concat([name]) : items.filter(x => x !== name) }
     function sorted(rows) { return rows.filter(x => (showHidden || !x.name.startsWith(".")) && x.name.toLowerCase().includes(search.text.toLowerCase())).sort((a,b) => a.directory !== b.directory ? (a.directory ? -1 : 1) : sortMode === 1 ? (b.size || 0)-(a.size || 0) || a.name.localeCompare(b.name) : a.name.localeCompare(b.name)) }
+    function typeText(row) { if (row.directory) return "Folder"; let name = row.name || ""; let dot = name.lastIndexOf("."); return dot > 0 ? name.slice(dot + 1).toUpperCase() : "File" }
+    function fileLabel(row) { return (row.directory ? "📁 " : "▧ ") + row.name + (showDetails ? "    ·    " + typeText(row) + (row.directory ? "" : "    ·    " + sizeText(row.size)) + (row.date ? "    ·    " + row.date : "") : (row.directory ? "" : "  ·  " + sizeText(row.size))) }
     function sizeText(n) { return n === null || n === undefined ? "" : n >= 1073741824 ? (n/1073741824).toFixed(2)+" GiB" : n >= 1048576 ? (n/1048576).toFixed(1)+" MiB" : n >= 1024 ? (n/1024).toFixed(1)+" KiB" : n+" B" }
     Connections {
         target: ftpBrowser
-        function onChanged() { page.dataState = JSON.parse(ftpBrowser.state) }
+        function onChanged() {
+            page.dataState = JSON.parse(ftpBrowser.state)
+            let next = page.dataState.status || ""
+            if (next !== page.lastStatus) {
+                page.lastStatus = next
+                page.notification = next
+            }
+        }
     }
     RowLayout {
         TextField { id: host; text: page.dataState.host; Layout.fillWidth: true; enabled: !page.dataState.busy && !page.dataState.connected; placeholderText: "Switch 2 FTP address" }
@@ -136,28 +195,61 @@ ColumnLayout {
         Button { text: page.dataState.connected ? "Disconnect" : "Connect"; enabled: !page.dataState.busy; onClicked: { page.remoteSelected=[]; if (page.dataState.connected) ftpBrowser.disconnect(); else ftpBrowser.connect_to(host.text, port.text) } }
     }
     RowLayout {
-        Button { text: "←"; onClicked: page.navigate("back"); enabled: !page.dataState.busy }
-        Button { text: "→"; onClicked: page.navigate("forward"); enabled: !page.dataState.busy }
-        Button { text: "Home"; onClicked: page.navigate("home"); enabled: !page.dataState.busy }
-        Button { text: "★"; onClicked: ftpBrowser.bookmark(page.activeSide); enabled: !page.dataState.busy }
-        Button { text: "Bookmarks"; onClicked: bookmarkDialog.open() }
+        ToolButton { text: "←"; onClicked: page.navigate("back"); enabled: !page.dataState.busy; ToolTip.visible: hovered; ToolTip.text: "Back" }
+        ToolButton { text: "→"; onClicked: page.navigate("forward"); enabled: !page.dataState.busy; ToolTip.visible: hovered; ToolTip.text: "Forward" }
+        ToolButton { text: "⌂ Home"; onClicked: page.navigate("home"); enabled: !page.dataState.busy }
+        ToolButton { text: "★"; onClicked: ftpBrowser.bookmark(page.activeSide); enabled: !page.dataState.busy; ToolTip.visible: hovered; ToolTip.text: "Bookmark current folder" }
+        ToolButton { text: "Bookmarks"; onClicked: bookmarkDialog.open() }
     }
     RowLayout {
         TextField { id: search; placeholderText: "Filter files and folders"; Layout.fillWidth: true; onTextChanged: page.clearSelection() }
         CheckBox { text: "Select"; checked: page.selectionMode; onToggled: { page.selectionMode=checked; page.clearSelection() } }
         CheckBox { text: "Hidden"; checked: page.showHidden; onToggled: { page.showHidden=checked; page.clearSelection() } }
     }
-    RowLayout { Label { text: "Local FTP • PASV"; color: "#98a5b5" } Item { Layout.fillWidth: true } ComboBox { model: ["Name", "Size"]; onCurrentIndexChanged: page.sortMode=currentIndex; enabled: !page.dataState.busy } }
-    RowLayout {
+    RowLayout { Label { text: "Local FTP • PASV"; color: "#98a5b5" } Item { Layout.fillWidth: true } CheckBox { text: "Details"; checked: page.showDetails; onToggled: page.showDetails = checked } ComboBox { model: ["Name", "Size"]; onCurrentIndexChanged: page.sortMode=currentIndex; enabled: !page.dataState.busy } }
+    SplitView {
+        id: fileSplit
+        orientation: Qt.Horizontal
         Layout.fillWidth: true
         Layout.fillHeight: true
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.preferredWidth: 1
+            SplitView.preferredWidth: fileSplit.width / 2
+            SplitView.minimumWidth: 220
             Label { text: "Local · " + page.sizeText(page.dataState.localFree) + " free"; font.bold: true }
-            Label { text: page.dataState.local; elide: Text.ElideMiddle; Layout.fillWidth: true }
-            Button { text: "Up"; enabled: !page.dataState.busy; onClicked: { page.activeSide="local"; page.entryName=""; page.localSelected=[]; ftpBrowser.local_open("..") } }
+            RowLayout {
+                Layout.fillWidth: true
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 34
+                    radius: 8
+                    color: "#17283a"
+                    border.color: "#30485d"
+                    Label { anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 10; verticalAlignment: Text.AlignVCenter; text: "⌂  " + page.dataState.local; elide: Text.ElideMiddle; ToolTip.visible: pathHover.hovered; ToolTip.text: page.dataState.local }
+                    HoverHandler { id: pathHover }
+                }
+                Label { text: page.localSelected.length + " selected"; visible: page.localSelected.length > 0; color: "#8cb9c9" }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                ToolButton {
+                    text: "↑  Up one level"
+                    enabled: !page.dataState.busy
+                    onClicked: page.openDirectory("local","..")
+                    ToolTip.visible: hovered; ToolTip.text: "Go to parent folder"
+                    font.pixelSize: 13
+                    padding: 8
+                    background: Rectangle {
+                        radius: 8
+                        color: parent.down ? "#28516a" : parent.hovered ? "#253c50" : parent.highlighted ? "#21445b" : "#182a3c"
+                        border.color: parent.hovered ? "#5b9ebc" : "#30485d"
+                        border.width: 1
+                        Behavior on color { ColorAnimation { duration: 120 } }
+                    }
+                }
+                Item { Layout.fillWidth: true }
+            }
             ListView {
                 id: localList
                 Layout.fillWidth: true; Layout.fillHeight: true
@@ -166,9 +258,9 @@ ColumnLayout {
                 delegate: ItemDelegate {
                     required property var modelData
                     width: ListView.view.width
-                    text: (modelData.directory ? "📁 " : "▧ ") + modelData.name + (modelData.directory ? "" : "  ·  " + page.sizeText(modelData.size))
+                    text: page.fileLabel(modelData)
                     font.pixelSize: page.fileFontSize
-                    implicitHeight: 52
+                    implicitHeight: 42
                     ToolTip.visible: hovered
                     ToolTip.text: modelData.name + "  " + (modelData.date || "")
                     highlighted: page.localSelected.indexOf(modelData.name) >= 0 || (modelData.directory && page.dropTarget === "local" && page.dropFolder === modelData.name)
@@ -176,9 +268,8 @@ ColumnLayout {
                     property string fileName: modelData.name
                     property bool isFolder: modelData.directory
                     onClicked: {
-                        page.activeSide="local"; page.entryName=modelData.name
-                        if (modelData.directory && !page.selectionMode) { page.localSelected=[]; ftpBrowser.local_open(modelData.name); page.entryName="" }
-                        else page.localSelected=page.toggle(page.localSelected, modelData.name)
+                        if (modelData.directory && !page.selectionMode && !(Qt.application.keyboardModifiers & (Qt.ControlModifier | Qt.ShiftModifier))) page.openDirectory("local",modelData.name)
+                        else page.selectRange("local",modelData.name,Qt.application.keyboardModifiers)
                     }
                     onPressAndHold: { page.activeSide="local"; page.entryName=modelData.name; entryMenu.popup() }
                     TapHandler {
@@ -200,7 +291,16 @@ ColumnLayout {
                         MenuItem { text: "Upload file / folder"; onTriggered: page.transfer("local",[page.entryName]) }
                         MenuItem { text: "Properties"; onTriggered: { ftpBrowser.properties(page.activeSide,page.entryName); propertiesDialog.open() } }
                         MenuItem { text: "Rename"; onTriggered: page.editEntry("rename") }
-                        MenuItem { text: "Delete"; onTriggered: page.editEntry("delete") }
+                        MenuItem {
+                            text: (page.activeSide === "local" ? page.localSelected : page.remoteSelected).indexOf(page.entryName) >= 0 && (page.activeSide === "local" ? page.localSelected : page.remoteSelected).length > 1 ? "Delete selected (" + (page.activeSide === "local" ? page.localSelected : page.remoteSelected).length + ")" : "Delete"
+                            onTriggered: {
+                                let selected = page.activeSide === "local" ? page.localSelected : page.remoteSelected
+                                if (selected.indexOf(page.entryName) >= 0 && selected.length > 1)
+                                    page.deleteSelected()
+                                else
+                                    page.editEntry("delete")
+                            }
+                        }
                     }
                 }
                 ScrollBar.vertical: ScrollBar {}
@@ -209,10 +309,138 @@ ColumnLayout {
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.preferredWidth: 1
-            Label { text: "Remote · capacity unavailable"; font.bold: true }
-            Label { text: page.dataState.remote; elide: Text.ElideMiddle; Layout.fillWidth: true }
-            Button { text: "Up"; enabled: !page.dataState.busy && page.dataState.connected; onClicked: { page.activeSide="remote"; page.entryName=""; page.remoteSelected=[]; ftpBrowser.remote_open("..") } }
+            SplitView.preferredWidth: fileSplit.width / 2
+            SplitView.minimumWidth: 220
+            RowLayout {
+                Layout.fillWidth: true
+                Label { text: "Switch 2 · FTP"; font.bold: true }
+                Item { Layout.fillWidth: true }
+                Label { text: page.remoteSelected.length + " selected"; visible: page.remoteSelected.length > 0; color: "#8cb9c9" }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 4
+                ToolButton {
+                    text: "⌂ /"
+                    highlighted: page.dataState.remote === "/"
+                    enabled: !page.dataState.busy && page.dataState.connected
+                    font.pixelSize: 13
+                    padding: 8
+                    background: Rectangle {
+                        radius: 8
+                        color: parent.down ? "#28516a" : parent.hovered ? "#253c50" : parent.highlighted ? "#21445b" : "#182a3c"
+                        border.color: parent.hovered ? "#5b9ebc" : "#30485d"
+                        border.width: 1
+                        Behavior on color { ColorAnimation { duration: 120 } }
+                    }
+                    onClicked: { page.clearSelection(); ftpBrowser.open_remote_path("/") }
+                    ToolTip.visible: hovered; ToolTip.text: "FTP root"
+                }
+                ToolButton {
+                    text: "📁 /switch"
+                    highlighted: page.dataState.remote === "/switch/"
+                    enabled: !page.dataState.busy && page.dataState.connected
+                    font.pixelSize: 13
+                    padding: 8
+                    background: Rectangle {
+                        radius: 8
+                        color: parent.down ? "#28516a" : parent.hovered ? "#253c50" : parent.highlighted ? "#21445b" : "#182a3c"
+                        border.color: parent.hovered ? "#5b9ebc" : "#30485d"
+                        border.width: 1
+                        Behavior on color { ColorAnimation { duration: 120 } }
+                    }
+                    onClicked: { page.clearSelection(); ftpBrowser.open_remote_path("/switch/") }
+                    ToolTip.visible: hovered; ToolTip.text: "Switch homebrew folder"
+                }
+                ScrollView {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 38
+                    contentWidth: breadcrumbRow.implicitWidth
+                    ScrollBar.vertical.policy: ScrollBar.AlwaysOff
+                    Row {
+                        id: breadcrumbRow
+                        spacing: 0
+                        Repeater {
+                            model: page.remoteSegments()
+                            delegate: ToolButton {
+                                required property var modelData
+                                visible: modelData.path !== "/"
+                                text: modelData.name + (modelData.path === page.dataState.remote ? "" : " ›")
+                                enabled: !page.dataState.busy && page.dataState.connected
+                                onClicked: { page.clearSelection(); ftpBrowser.open_remote_path(modelData.path) }
+                            }
+                        }
+                    }
+                }
+                ToolButton {
+                    text: "★"
+                    enabled: page.dataState.connected
+                    onClicked: switchQuickMenu.popup()
+                    ToolTip.visible: hovered; ToolTip.text: "Favorites and recent folders"
+                }
+                ToolButton {
+                    text: "⋯"
+                    enabled: page.dataState.connected
+                    onClicked: switchActionsMenu.popup()
+                    ToolTip.visible: hovered; ToolTip.text: "Switch 2 folder actions"
+                }
+                Menu {
+                    id: switchQuickMenu
+                    MenuItem { text: "Favorites"; enabled: false }
+                    Repeater {
+                        model: page.switchBookmarks()
+                        delegate: MenuItem {
+                            required property var modelData
+                            text: "★ " + modelData.item.path
+                            enabled: !page.dataState.busy && page.dataState.connected
+                            onTriggered: { page.clearSelection(); ftpBrowser.open_bookmark(modelData.index) }
+                        }
+                    }
+                    MenuSeparator {}
+                    MenuItem { text: "Recent folders"; enabled: false }
+                    Repeater {
+                        model: page.dataState.remoteRecent || []
+                        delegate: MenuItem {
+                            required property string modelData
+                            text: "◷ " + modelData
+                            enabled: !page.dataState.busy && page.dataState.connected
+                            onTriggered: { page.clearSelection(); ftpBrowser.open_remote_path(modelData) }
+                        }
+                    }
+                }
+                Menu {
+                    id: switchActionsMenu
+                    MenuItem {
+                        text: "Pin current folder"
+                        enabled: !page.dataState.busy && page.dataState.connected
+                        onTriggered: ftpBrowser.bookmark("remote")
+                    }
+                    MenuItem {
+                        text: "Copy current path"
+                        enabled: page.dataState.connected
+                        onTriggered: ftpBrowser.copy_remote_path()
+                    }
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                ToolButton {
+                    text: "↑  Up one level"
+                    enabled: !page.dataState.busy && page.dataState.connected
+                    onClicked: page.openDirectory("remote","..")
+                    ToolTip.visible: hovered; ToolTip.text: "Go to parent folder on Switch 2"
+                    font.pixelSize: 13
+                    padding: 8
+                    background: Rectangle {
+                        radius: 8
+                        color: parent.down ? "#28516a" : parent.hovered ? "#253c50" : parent.highlighted ? "#21445b" : "#182a3c"
+                        border.color: parent.hovered ? "#5b9ebc" : "#30485d"
+                        border.width: 1
+                        Behavior on color { ColorAnimation { duration: 120 } }
+                    }
+                }
+                Item { Layout.fillWidth: true }
+            }
             ListView {
                 id: remoteList
                 Layout.fillWidth: true; Layout.fillHeight: true
@@ -221,9 +449,9 @@ ColumnLayout {
                 delegate: ItemDelegate {
                     required property var modelData
                     width: ListView.view.width
-                    text: (modelData.directory ? "📁 " : "▧ ") + modelData.name + (modelData.directory ? "" : "  ·  " + page.sizeText(modelData.size))
+                    text: page.fileLabel(modelData)
                     font.pixelSize: page.fileFontSize
-                    implicitHeight: 52
+                    implicitHeight: 42
                     ToolTip.visible: hovered
                     ToolTip.text: modelData.name + "  " + (modelData.date || "")
                     highlighted: page.remoteSelected.indexOf(modelData.name) >= 0 || (modelData.directory && page.dropTarget === "remote" && page.dropFolder === modelData.name)
@@ -231,9 +459,8 @@ ColumnLayout {
                     property string fileName: modelData.name
                     property bool isFolder: modelData.directory
                     onClicked: {
-                        page.activeSide="remote"; page.entryName=modelData.name
-                        if (modelData.directory && !page.selectionMode) { page.remoteSelected=[]; ftpBrowser.remote_open(modelData.name); page.entryName="" }
-                        else page.remoteSelected=page.toggle(page.remoteSelected, modelData.name)
+                        if (modelData.directory && !page.selectionMode && !(Qt.application.keyboardModifiers & (Qt.ControlModifier | Qt.ShiftModifier))) page.openDirectory("remote",modelData.name)
+                        else page.selectRange("remote",modelData.name,Qt.application.keyboardModifiers)
                     }
                     onPressAndHold: { page.activeSide="remote"; page.entryName=modelData.name; entryMenu.popup() }
                     TapHandler {
@@ -255,7 +482,16 @@ ColumnLayout {
                         MenuItem { text: "Download file / folder"; onTriggered: page.transfer("remote",[page.entryName]) }
                         MenuItem { text: "Properties"; onTriggered: { ftpBrowser.properties(page.activeSide,page.entryName); propertiesDialog.open() } }
                         MenuItem { text: "Rename"; onTriggered: page.editEntry("rename") }
-                        MenuItem { text: "Delete"; onTriggered: page.editEntry("delete") }
+                        MenuItem {
+                            text: (page.activeSide === "local" ? page.localSelected : page.remoteSelected).indexOf(page.entryName) >= 0 && (page.activeSide === "local" ? page.localSelected : page.remoteSelected).length > 1 ? "Delete selected (" + (page.activeSide === "local" ? page.localSelected : page.remoteSelected).length + ")" : "Delete"
+                            onTriggered: {
+                                let selected = page.activeSide === "local" ? page.localSelected : page.remoteSelected
+                                if (selected.indexOf(page.entryName) >= 0 && selected.length > 1)
+                                    page.deleteSelected()
+                                else
+                                    page.editEntry("delete")
+                            }
+                        }
                     }
                 }
                 ScrollBar.vertical: ScrollBar {}
@@ -276,23 +512,81 @@ ColumnLayout {
         }
         Label { text: "COPY ONLY · Originals kept"; color: "#8cb9c9"; font.pixelSize: 12 }
     }
-    RowLayout {
-        Button { text: "Upload (" + page.localSelected.length + ")"; enabled: !page.dataState.busy && page.dataState.connected && page.localSelected.length > 0; onClicked: page.transfer("local",page.localSelected) }
-        Button { text: "Download (" + page.remoteSelected.length + ")"; enabled: !page.dataState.busy && page.dataState.connected && page.remoteSelected.length > 0; onClicked: page.transfer("remote",page.remoteSelected) }
-        Button { text: "Reload"; enabled: !page.dataState.busy && page.dataState.connected; onClicked: { page.localSelected=[]; page.remoteSelected=[]; ftpBrowser.refresh() } }
-        Button { text: "Cancel"; enabled: page.dataState.busy; onClicked: ftpBrowser.cancel() }
-    }
-    RowLayout {
-        Button { text: "Copy"; enabled: !page.dataState.busy; onClicked: page.copyFiles() }
-        Button { text: "Paste"; enabled: !page.dataState.busy && page.clipboard.length > 0 && page.clipSide !== page.activeSide; onClicked: page.pasteFiles() }
-        Button { text: "+ Folder"; enabled: !page.dataState.busy && (page.activeSide === "local" || page.dataState.connected); onClicked: page.editEntry("mkdir") }
-        Button { text: "History"; onClicked: historyDialog.open() }
-        Button { text: "Queue"; onClicked: queueDialog.open() }
-        Label { text: page.activeSide; color: "#52e0ae" }
+    // Phase 3a: Dolphin-inspired compact action toolbar; existing backend calls are unchanged.
+    ToolBar {
+        Layout.fillWidth: true
+        RowLayout {
+            anchors.fill: parent
+            spacing: 4
+            ToolButton {
+                text: "↑ Upload (" + page.localSelected.length + ")"
+                enabled: !page.dataState.busy && page.dataState.connected && page.localSelected.length > 0
+                onClicked: page.transfer("local",page.localSelected)
+                ToolTip.visible: hovered; ToolTip.text: "Copy selected SteamOS files to Switch 2"
+            }
+            ToolButton {
+                text: "↓ Download (" + page.remoteSelected.length + ")"
+                enabled: !page.dataState.busy && page.dataState.connected && page.remoteSelected.length > 0
+                onClicked: page.transfer("remote",page.remoteSelected)
+                ToolTip.visible: hovered; ToolTip.text: "Copy selected Switch 2 files to SteamOS"
+            }
+            ToolSeparator {}
+            ToolButton {
+                text: "⟳"
+                enabled: !page.dataState.busy && page.dataState.connected
+                onClicked: { page.localSelected=[]; page.remoteSelected=[]; ftpBrowser.refresh() }
+                ToolTip.visible: hovered; ToolTip.text: "Refresh both panels (F5)"
+            }
+            ToolButton {
+                text: "+ Folder"
+                enabled: !page.dataState.busy && (page.activeSide === "local" || page.dataState.connected)
+                onClicked: page.editEntry("mkdir")
+            }
+            ToolButton {
+                text: "Delete"
+                enabled: !page.dataState.busy && (page.activeSide==="local"?page.localSelected.length:page.remoteSelected.length)>0
+                onClicked: page.deleteSelected()
+                ToolTip.visible: hovered; ToolTip.text: "Permanently delete selected entries after confirmation"
+            }
+            Item { Layout.fillWidth: true }
+            Label {
+                text: (page.activeSide === "local" ? "SteamOS" : "Switch 2") + " · " + (page.activeSide === "local" ? page.localSelected.length : page.remoteSelected.length) + " selected"
+                elide: Text.ElideRight
+                Layout.maximumWidth: 150
+                color: "#8cb9c9"
+            }
+            ToolButton {
+                text: "Cancel"
+                visible: page.dataState.busy
+                enabled: page.dataState.busy
+                onClicked: ftpBrowser.cancel()
+            }
+            ToolButton {
+                text: page.queueExpanded ? "Hide queue" : "Show queue"
+                onClicked: page.queueExpanded = !page.queueExpanded
+            }
+            ToolButton {
+                text: "More ▾"
+                onClicked: ftpActions.popup()
+                Menu {
+                    id: ftpActions
+                    MenuItem { text: "Copy"; enabled: !page.dataState.busy; onTriggered: page.copyFiles() }
+                    MenuItem { text: "Paste"; enabled: !page.dataState.busy && page.clipboard.length > 0 && page.clipSide !== page.activeSide; onTriggered: page.pasteFiles() }
+                    MenuSeparator {}
+                    MenuItem { text: "Select all"; enabled: !page.dataState.busy; onTriggered: page.selectAll() }
+                    MenuItem { text: "Clear selection"; onTriggered: page.clearSelection() }
+                    MenuSeparator {}
+                    MenuItem { text: "Transfer queue"; onTriggered: queueDialog.open() }
+                    MenuItem { text: "Transfer history"; onTriggered: historyDialog.open() }
+                    MenuItem { text: "Retry remaining entries"; enabled: !page.dataState.busy && page.dataState.retryAvailable; onTriggered: retryDialog.open() }
+                }
+            }
+        }
     }
     RowLayout {
         visible: page.dataState.busy
         Label { text: "Transfer " + Math.round(page.dataState.progress || 0) + "%"; font.pixelSize: 14; font.bold: true }
+        Label { text: page.dataState.current || ""; elide: Text.ElideMiddle; Layout.maximumWidth: 240 }
         Label { text: page.dataState.pending && page.dataState.pending.length ? page.dataState.pending.length + " pending" : ""; color: "#8cb9c9" }
         Item { Layout.fillWidth: true }
         Button { text: "View Queue"; onClicked: queueDialog.open() }
@@ -300,11 +594,40 @@ ColumnLayout {
     Label { visible: page.dataState.busy && page.dataState.transferSize > 0; text: page.sizeText(page.dataState.bytesDone) + " / " + page.sizeText(page.dataState.transferSize) + " · " + page.sizeText(page.dataState.speed) + "/s" + (page.dataState.speed > 0 ? " · ETA " + Math.max(0,Math.ceil((page.dataState.transferSize-page.dataState.bytesDone)/page.dataState.speed)) + " s" : ""); Layout.fillWidth: true }
     ProgressBar { indeterminate: page.dataState.busy && page.dataState.transferSize === 0 && page.dataState.total === 0; Layout.fillWidth: true; from: 0; to: 100; value: page.dataState.total > 0 && page.dataState.busy && page.dataState.current !== "" ? Math.min(100, (page.dataState.completed + page.dataState.progress/100)*100/page.dataState.total) : page.dataState.progress }
     Label { text: page.dataState.status + (page.dataState.total > 0 ? " · " + page.dataState.completed + "/" + page.dataState.total + " files · " + page.dataState.current : page.dataState.completed > 0 ? " · " + page.dataState.completed + " entries" : ""); wrapMode: Text.Wrap; Layout.fillWidth: true; maximumLineCount: 4 }
-    RowLayout {
-        Button { text: "All"; enabled: !page.dataState.busy; onClicked: page.selectAll() }
-        Button { text: "Clear"; onClicked: page.clearSelection() }
-        Button { text: "Delete selected"; enabled: !page.dataState.busy && (page.activeSide==="local"?page.localSelected.length:page.remoteSelected.length)>0; onClicked: page.deleteSelected() }
-        Button { text: "Retry"; enabled: !page.dataState.busy && page.dataState.retryAvailable; onClicked: retryDialog.open() }
+    Frame {
+        Layout.fillWidth: true
+        Layout.preferredHeight: page.queueExpanded ? 165 : 0
+        visible: page.queueExpanded
+        ColumnLayout {
+            anchors.fill: parent
+            RowLayout {
+                Label { text: "Transfer queue"; font.bold: true }
+                Item { Layout.fillWidth: true }
+                Label { text: "Completed: " + ((page.dataState.queueSummary || {}).completed || 0) + " · Waiting: " + ((page.dataState.queueSummary || {}).waiting || 0) }
+                ToolButton { text: "Details"; onClicked: queueDialog.open() }
+            }
+            ProgressBar { Layout.fillWidth: true; from: 0; to: 100; value: page.dataState.progress || 0 }
+            ListView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                model: page.dataState.transferItems || []
+                delegate: Label {
+                    required property var modelData
+                    width: ListView.view.width
+                    text: modelData.status + "  ·  " + modelData.name
+                    elide: Text.ElideMiddle
+                }
+            }
+        }
+    }
+    Label {
+        visible: page.notification.length > 0
+        text: page.notification
+        Layout.fillWidth: true
+        elide: Text.ElideRight
+        color: "#8cb9c9"
+        font.pixelSize: 12
     }
     Dialog {
         id: retryDialog
@@ -329,8 +652,28 @@ ColumnLayout {
         standardButtons: Dialog.Close
         ColumnLayout {
             Label { text: page.dataState.status; wrapMode: Text.Wrap; Layout.preferredWidth: 300 }
-            Label { text: "Pending / active: "+page.dataState.pending.length }
-            ScrollView { Layout.preferredWidth: 300; Layout.preferredHeight: 160; TextArea { readOnly: true; text: page.dataState.pending.join("\n") } }
+            Label { text: "Transfer entries: " + (page.dataState.transferItems || []).length }
+            Label { text: "Waiting: " + ((page.dataState.queueSummary || {}).waiting || 0) + "  ·  Active: " + ((page.dataState.queueSummary || {}).active || 0) + "  ·  Completed: " + ((page.dataState.queueSummary || {}).completed || 0); color: "#8cb9c9" }
+            Label { text: "Overall transfer progress: " + Math.round(page.dataState.progress || 0) + "%"; color: "#8cb9c9" }
+            ProgressBar { Layout.preferredWidth: 370; from: 0; to: 100; value: page.dataState.progress || 0 }
+            Label { text: "Queue statuses track top-level entries. Folder byte totals are reported for the overall batch."; wrapMode: Text.Wrap; Layout.preferredWidth: 370; color: "#8cb9c9" }
+            ScrollView {
+                Layout.preferredWidth: 390
+                Layout.preferredHeight: 230
+                ColumnLayout {
+                    width: 370
+                    Repeater {
+                        model: page.dataState.transferItems || []
+                        delegate: RowLayout {
+                            required property var modelData
+                            width: 360
+                            Label { text: modelData.status === "Completed" ? "✓" : modelData.status === "Active" ? "●" : "○"; color: modelData.status === "Completed" ? "#52e0ae" : "#98a5b5" }
+                            Label { text: modelData.name; elide: Text.ElideMiddle; Layout.fillWidth: true }
+                            Label { text: modelData.status; color: "#8cb9c9" }
+                        }
+                    }
+                }
+            }
             Button { text: "Cancel transfer"; enabled: page.dataState.busy; onClicked: ftpBrowser.cancel() }
         }
     }

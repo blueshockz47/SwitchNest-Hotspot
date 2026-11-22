@@ -5,6 +5,7 @@ import datetime
 import time
 import threading
 from v8.ftp_tree import Tree, delete_local
+from v8.transfer_queue import TransferQueue, Status
 import os
 from pathlib import Path
 import re
@@ -12,6 +13,7 @@ import shutil
 import tempfile
 from urllib.parse import quote
 from PySide6.QtCore import QObject, Signal, Slot, Property, QProcess, QSettings
+from PySide6.QtGui import QGuiApplication
 
 class Browser(QObject):
     changed = Signal()
@@ -27,6 +29,7 @@ class Browser(QObject):
         if not self.local.is_dir():
             self.local = Path.home()
         self.remote = "/"
+        self.remote_recent = []
         self.local_rows = []
         self.remote_rows = []
         self.status = "Connect to a local FTP server."
@@ -51,6 +54,8 @@ class Browser(QObject):
         self.reconnect = False
         self.after_list_status = ""
         self.pending = []
+        self.transfer_items = []
+        self.smart_queue = TransferQueue()
         self.last_failed = None
         self.last_request = None
         self.details = ""
@@ -79,7 +84,14 @@ class Browser(QObject):
     def state(self):
         return json.dumps(dict(host=self.host, port=self.port, local=str(self.local),
             remote=self.remote, localRows=self.local_rows, remoteRows=self.remote_rows,
-            status=self.status, progress=self.progress, busy=self.busy, connected=self.connected, total=self.total, completed=self.completed, current=self.current_name, history=self.history, speed=self.speed, bytesDone=self.bytes_done, transferSize=self.transfer_size, localFree=self.local_free, pending=self.pending, retryAvailable=self.last_failed is not None, details=self.details, bookmarks=self.bookmarks))
+            status=self.status, progress=self.progress, busy=self.busy, connected=self.connected, total=self.total, completed=self.completed, current=self.current_name, history=self.history, speed=self.speed, bytesDone=self.bytes_done, transferSize=self.transfer_size, localFree=self.local_free, pending=self.pending, transferItems=self.transfer_items, queueSummary=self.queue_summary(), retryAvailable=self.last_failed is not None, details=self.details, bookmarks=self.bookmarks, remoteRecent=self.remote_recent))
+
+    def queue_summary(self):
+        items = self.smart_queue.snapshot()
+        return dict(total=len(items), waiting=sum(x['status']=='Waiting' for x in items),
+                    active=sum(x['status']=='Active' for x in items),
+                    completed=sum(x['status']=='Completed' for x in items),
+                    interrupted=sum(x['status'] in ('Interrupted','Failed','Cancelled') for x in items))
 
     def refresh_local(self):
         try:
@@ -202,7 +214,38 @@ class Browser(QObject):
             return
         self.navigation["remote"].append(previous)
         self.forward_paths["remote"].clear()
+        self._remember_remote(previous)
         self.list_remote()
+
+    def _remember_remote(self, path):
+        if path.startswith("/") and path.endswith("/"):
+            self.remote_recent = ([path] + [p for p in self.remote_recent if p != path])[:12]
+
+    @Slot(str)
+    def open_remote_path(self, path):
+        """Navigate only to normalized FTP paths, never outside the current connection."""
+        if self.busy or not self.connected or not isinstance(path, str):
+            return
+        if not path.startswith("/") or not path.endswith("/") or "\\x00" in path:
+            return
+        segments = path.split("/")
+        if any(part in (".", "..") or not self.valid_name(part) for part in segments if part):
+            return
+        if path == self.remote:
+            return
+        previous = self.remote
+        self.navigation["remote"].append(previous)
+        self.forward_paths["remote"].clear()
+        self._remember_remote(previous)
+        self.remote = path
+        self.list_remote()
+
+    @Slot()
+    def copy_remote_path(self):
+        if self.connected:
+            QGuiApplication.clipboard().setText(self.remote)
+            self.status = "Copied Switch 2 path to clipboard."
+            self.changed.emit()
 
     @Slot()
     def refresh(self):
@@ -305,6 +348,7 @@ class Browser(QObject):
             p=Path(target)
             if p.is_dir() and not p.is_symlink(): self.local=p; self.refresh_local()
         else:
+            self._remember_remote(self.remote)
             self.remote=target
             self.list_remote()
 
@@ -331,6 +375,7 @@ class Browser(QObject):
             path=item["path"]
             if path.startswith("/") and path.endswith("/") and all(self.valid_name(n) for n in path.split("/") if n):
                 self.navigation["remote"].append(self.remote)
+                self._remember_remote(self.remote)
                 self.remote=path
                 self.list_remote()
 
@@ -490,6 +535,8 @@ class Browser(QObject):
             self.tree_kind="transfer"
             self.last_request=(direction,raw,policy,str(self.local),self.remote,self.host,self.port,folder)
             self.pending=names.copy()
+            self.smart_queue.load(names)
+            self.transfer_items=[dict(name=n, status="Waiting") for n in names]
             self.last_failed=None
             tree.metric=self.tree_metric.emit
             self.root_total=len(names)
@@ -529,15 +576,29 @@ class Browser(QObject):
     def on_tree_event(self,name,result):
         self.current_name=name
         if result=="Active":
+            if self.tree_kind == 'transfer' and name in self.pending and self.smart_queue.active is None:
+                next_name = self.smart_queue.start_next()
+                if next_name != name:
+                    self.status = 'Queue order mismatch; transfer worker remains authoritative'
+            for item in self.transfer_items:
+                if item["name"] == name: item["status"] = "Active"
             self.status="Active: "+name
             self.changed.emit()
             return
         if result=="Entry finished":
+            if self.tree_kind == 'transfer' and self.smart_queue.active is not None:
+                active_name = self.smart_queue.entries[self.smart_queue.active].name
+                if active_name == name:
+                    self.smart_queue.finish(Status.COMPLETED)
+            for item in self.transfer_items:
+                if item["name"] == name: item["status"] = "Completed"
             if name in self.pending: self.pending.remove(name)
             if not self.transfer_size:
                 self.progress=100*(self.root_total-len(self.pending))/self.root_total
             self.changed.emit()
             return
+        for item in self.transfer_items:
+            if item["name"] == name: item["status"] = result
         self.completed+=1
         self.history=([dict(name=name,direction=getattr(self,"tree_kind","transfer"),result=result,date=datetime.datetime.now().isoformat(timespec="seconds"))]+self.history)[:100]
         self.settings.setValue("history",json.dumps(self.history))
@@ -554,6 +615,14 @@ class Browser(QObject):
             return
         if getattr(self,"tree_kind","")=="transfer" and status!="Transfer complete" and self.last_request:
             self.last_failed=self.last_request[:1]+(json.dumps(self.pending),)+self.last_request[2:]
+        if getattr(self, 'tree_kind', '') == 'transfer' and status != 'Transfer complete':
+            if self.smart_queue.active is not None:
+                self.smart_queue.finish(Status.CANCELLED if self.tree_cancel.is_set() else Status.INTERRUPTED, status)
+            self.smart_queue.cancel_waiting()
+        if status!="Transfer complete":
+            for item in self.transfer_items:
+                if item["status"] in ("Waiting", "Active"):
+                    item["status"] = "Cancelled" if self.tree_cancel.is_set() else "Interrupted"
         self.pending=[]
         if status=="Transfer complete": self.progress=100
         if status not in ("Transfer complete","Deletion complete"):
