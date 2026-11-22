@@ -242,22 +242,14 @@ ColumnLayout {
             }
             RowLayout {
                 Layout.fillWidth: true
-                ToolButton {
-                    text: "Up"
-                    enabled: !page.dataState.busy
-                    onClicked: page.openDirectory("local","..")
-                    ToolTip.visible: hovered; ToolTip.text: "Go to parent folder"
-                    font.pixelSize: 13
-                    padding: 8
-                    background: Rectangle {
-                        radius: 8
-                        color: parent.down ? "#28516a" : parent.hovered ? "#253c50" : parent.highlighted ? "#21445b" : "#182a3c"
-                        border.color: parent.hovered ? "#5b9ebc" : "#30485d"
-                        border.width: 1
-                        Behavior on color { ColorAnimation { duration: 120 } }
-                    }
-                }
-                Item { Layout.fillWidth: true }
+                spacing: 3
+                Button { text: "◀ Back"; Layout.fillWidth: true; enabled: !page.dataState.busy; onClicked: { page.clearSelection(); ftpBrowser.navigate("local", "back") }; background: Rectangle { color: parent.down ? "#314761" : parent.hovered ? "#30445d" : "#263449"; border.color: "#1e2a3b"; border.width: 1 } }
+                Button { text: "Forward ▶"; Layout.fillWidth: true; enabled: !page.dataState.busy; onClicked: { page.clearSelection(); ftpBrowser.navigate("local", "forward") }; background: Rectangle { color: parent.down ? "#314761" : parent.hovered ? "#30445d" : "#263449"; border.color: "#1e2a3b"; border.width: 1 } }
+                Button { text: "Up"; Layout.fillWidth: true; enabled: !page.dataState.busy; onClicked: { page.clearSelection(); ftpBrowser.local_open("..") }; background: Rectangle { color: parent.down ? "#314761" : parent.hovered ? "#30445d" : "#263449"; border.color: "#1e2a3b"; border.width: 1 } }
+                Button { text: "Downloads"; Layout.fillWidth: true; enabled: !page.dataState.busy; onClicked: { page.clearSelection(); ftpBrowser.open_local_shortcut("Downloads") }; background: Rectangle { color: parent.down ? "#314761" : parent.hovered ? "#30445d" : "#263449"; border.color: "#1e2a3b"; border.width: 1 } }
+                Button { text: "Browse..."; Layout.fillWidth: true; enabled: !page.dataState.busy; onClicked: { page.clearSelection(); ftpBrowser.navigate("local", "home") }; background: Rectangle { color: parent.down ? "#314761" : parent.hovered ? "#30445d" : "#263449"; border.color: "#1e2a3b"; border.width: 1 } }
+                Button { text: "Desktop"; Layout.fillWidth: true; enabled: !page.dataState.busy; onClicked: { page.clearSelection(); ftpBrowser.open_local_shortcut("Desktop") }; background: Rectangle { color: parent.down ? "#314761" : parent.hovered ? "#30445d" : "#263449"; border.color: "#1e2a3b"; border.width: 1 } }
+                Button { text: "Documents"; Layout.fillWidth: true; enabled: !page.dataState.busy; onClicked: { page.clearSelection(); ftpBrowser.open_local_shortcut("Documents") }; background: Rectangle { color: parent.down ? "#314761" : parent.hovered ? "#30445d" : "#263449"; border.color: "#1e2a3b"; border.width: 1 } }
             }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 34; color: "#263449"; RowLayout { anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 10; Label { text: "Name"; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter; font.bold: true } Label { text: "Size"; Layout.preferredWidth: 75; font.bold: true } Label { text: "Type"; Layout.preferredWidth: 75; font.bold: true } Label { text: "Modified"; Layout.preferredWidth: 85; font.bold: true } } }
             ListView {
@@ -332,71 +324,14 @@ ColumnLayout {
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 34; color: "#202938"; border.color: "#8190a4"; Label { anchors.fill: parent; anchors.leftMargin: 8; verticalAlignment: Text.AlignVCenter; text: page.dataState.remote || "/"; color: "#e4edf8"; elide: Text.ElideMiddle } }
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 4
-                ToolButton {
-                    text: "⌂ /"
-                    highlighted: page.dataState.remote === "/"
-                    enabled: !page.dataState.busy && page.dataState.connected
-                    font.pixelSize: 13
-                    padding: 8
-                    background: Rectangle {
-                        radius: 8
-                        color: parent.down ? "#28516a" : parent.hovered ? "#253c50" : parent.highlighted ? "#21445b" : "#182a3c"
-                        border.color: parent.hovered ? "#5b9ebc" : "#30485d"
-                        border.width: 1
-                        Behavior on color { ColorAnimation { duration: 120 } }
-                    }
-                    onClicked: { page.clearSelection(); ftpBrowser.open_remote_path("/") }
-                    ToolTip.visible: hovered; ToolTip.text: "FTP root"
-                }
-                ToolButton {
-                    text: "📁 /switch"
-                    highlighted: page.dataState.remote === "/switch/"
-                    enabled: !page.dataState.busy && page.dataState.connected
-                    font.pixelSize: 13
-                    padding: 8
-                    background: Rectangle {
-                        radius: 8
-                        color: parent.down ? "#28516a" : parent.hovered ? "#253c50" : parent.highlighted ? "#21445b" : "#182a3c"
-                        border.color: parent.hovered ? "#5b9ebc" : "#30485d"
-                        border.width: 1
-                        Behavior on color { ColorAnimation { duration: 120 } }
-                    }
-                    onClicked: { page.clearSelection(); ftpBrowser.open_remote_path("/switch/") }
-                    ToolTip.visible: hovered; ToolTip.text: "Switch homebrew folder"
-                }
-                ScrollView {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 38
-                    contentWidth: breadcrumbRow.implicitWidth
-                    ScrollBar.vertical.policy: ScrollBar.AlwaysOff
-                    Row {
-                        id: breadcrumbRow
-                        spacing: 0
-                        Repeater {
-                            model: page.remoteSegments()
-                            delegate: ToolButton {
-                                required property var modelData
-                                visible: modelData.path !== "/"
-                                text: modelData.name + (modelData.path === page.dataState.remote ? "" : " ›")
-                                enabled: !page.dataState.busy && page.dataState.connected
-                                onClicked: { page.clearSelection(); ftpBrowser.open_remote_path(modelData.path) }
-                            }
-                        }
-                    }
-                }
-                ToolButton {
-                    text: "★"
-                    enabled: page.dataState.connected
-                    onClicked: switchQuickMenu.popup()
-                    ToolTip.visible: hovered; ToolTip.text: "Favorites and recent folders"
-                }
-                ToolButton {
-                    text: "⋯"
-                    enabled: page.dataState.connected
-                    onClicked: switchActionsMenu.popup()
-                    ToolTip.visible: hovered; ToolTip.text: "Switch 2 folder actions"
-                }
+                spacing: 3
+                Button { text: "◀ Back"; Layout.fillWidth: true; enabled: !page.dataState.busy && page.dataState.connected; onClicked: { page.clearSelection(); ftpBrowser.navigate("remote", "back") }; background: Rectangle { color: parent.down ? "#314761" : parent.hovered ? "#30445d" : "#263449"; border.color: "#1e2a3b"; border.width: 1 } }
+                Button { text: "Forward ▶"; Layout.fillWidth: true; enabled: !page.dataState.busy && page.dataState.connected; onClicked: { page.clearSelection(); ftpBrowser.navigate("remote", "forward") }; background: Rectangle { color: parent.down ? "#314761" : parent.hovered ? "#30445d" : "#263449"; border.color: "#1e2a3b"; border.width: 1 } }
+                Button { text: "Home"; Layout.fillWidth: true; enabled: !page.dataState.busy && page.dataState.connected; onClicked: { page.clearSelection(); ftpBrowser.open_remote_path("/") }; background: Rectangle { color: parent.down ? "#314761" : parent.hovered ? "#30445d" : "#263449"; border.color: "#1e2a3b"; border.width: 1 } }
+                Button { text: "Up"; Layout.fillWidth: true; enabled: !page.dataState.busy && page.dataState.connected; onClicked: { page.clearSelection(); ftpBrowser.remote_open("..") }; background: Rectangle { color: parent.down ? "#314761" : parent.hovered ? "#30445d" : "#263449"; border.color: "#1e2a3b"; border.width: 1 } }
+                Button { text: "Refresh"; Layout.fillWidth: true; enabled: !page.dataState.busy && page.dataState.connected; onClicked: { page.clearSelection(); ftpBrowser.refresh() }; background: Rectangle { color: parent.down ? "#314761" : parent.hovered ? "#30445d" : "#263449"; border.color: "#1e2a3b"; border.width: 1 } }
+                Button { text: "/switch"; Layout.fillWidth: true; enabled: !page.dataState.busy && page.dataState.connected; onClicked: { page.clearSelection(); ftpBrowser.open_remote_path("/switch/") }; background: Rectangle { color: parent.down ? "#314761" : parent.hovered ? "#30445d" : "#263449"; border.color: "#1e2a3b"; border.width: 1 } }
+            }
                 Menu {
                     id: switchQuickMenu
                     MenuItem { text: "Favorites"; enabled: false }
@@ -434,26 +369,6 @@ ColumnLayout {
                         onTriggered: ftpBrowser.copy_remote_path()
                     }
                 }
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                ToolButton {
-                    text: "Up"
-                    enabled: !page.dataState.busy && page.dataState.connected
-                    onClicked: page.openDirectory("remote","..")
-                    ToolTip.visible: hovered; ToolTip.text: "Go to parent folder on Switch 2"
-                    font.pixelSize: 13
-                    padding: 8
-                    background: Rectangle {
-                        radius: 8
-                        color: parent.down ? "#28516a" : parent.hovered ? "#253c50" : parent.highlighted ? "#21445b" : "#182a3c"
-                        border.color: parent.hovered ? "#5b9ebc" : "#30485d"
-                        border.width: 1
-                        Behavior on color { ColorAnimation { duration: 120 } }
-                    }
-                }
-                Item { Layout.fillWidth: true }
-            }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 34; color: "#263449"; RowLayout { anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 10; Label { text: "Name"; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter; font.bold: true } Label { text: "Size"; Layout.preferredWidth: 75; font.bold: true } Label { text: "Type"; Layout.preferredWidth: 75; font.bold: true } Label { text: "Modified"; Layout.preferredWidth: 85; font.bold: true } } }
             ListView {
                 id: remoteList
