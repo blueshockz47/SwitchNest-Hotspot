@@ -330,7 +330,7 @@ ApplicationWindow {
                     }
                     Label { text: "SwitchNest"; font.pixelSize: 22; font.bold: true; color: root.accent }
                 }
-                Label { text: "LINUX CONTROL CENTER"; font.pixelSize: 10; font.bold: true; color: "#93aac5"; Layout.bottomMargin: 14 }
+                Label { text: "CONTROL CENTER"; font.pixelSize: 10; font.bold: true; color: "#93aac5"; Layout.bottomMargin: 14 }
                 NavButton { text: "Overview"; navIcon: "⌂"; page: 0 }
                 NavButton { text: "Homebrew"; navIcon: "◆"; page: 3; fileTab: 1 }
                 NavButton { text: "FTP Manager"; navIcon: "▣"; page: 3; fileTab: 0 }
