@@ -18,7 +18,7 @@ ColumnLayout {
     property bool queueExpanded: false
     property string notification: ""
     property string lastStatus: ""
-    property int fileFontSize: 14
+    property int fileFontSize: 17
     property bool showDetails: true
     property color paneColor: "#202938"
     property color paneBorder: "#33465c"
@@ -110,7 +110,7 @@ ColumnLayout {
         activeSide=side
         entryName=name
     }
-    function selectAll() { if (activeSide==="local") localSelected=sorted(dataState.localRows).map(x=>x.name); else remoteSelected=sorted(dataState.remoteRows).map(x=>x.name) }
+    function selectAll() { if (activeSide==="local") localSelected=sorted(dataState.localRows, "local").map(x=>x.name); else remoteSelected=sorted(dataState.remoteRows, "remote").map(x=>x.name) }
     function deleteSelected() { deleteSide=activeSide; deletePath=activeSide==="local"?dataState.local:dataState.remote; deleteNames=(activeSide==="local"?localSelected:remoteSelected).slice(); if(deleteNames.length) batchDelete.open() }
     function navigate(action) { clearSelection(); ftpBrowser.navigate(activeSide,action) }
     function switchBookmarks() {
@@ -132,7 +132,7 @@ ColumnLayout {
         if (side === "local") ftpBrowser.local_open(name)
         else ftpBrowser.remote_open(name)
     }
-    Shortcut { sequence: "Ctrl+A"; enabled: page.visible && !page.dataState.busy && !search.activeFocus && !host.activeFocus && !port.activeFocus && !editDialog.visible && !conflictDialog.visible && !batchDelete.visible; onActivated: page.selectAll() }
+    Shortcut { sequence: "Ctrl+A"; enabled: page.visible && !page.dataState.busy && !localSearch.activeFocus && !remoteSearch.activeFocus && !host.activeFocus && !port.activeFocus && !editDialog.visible && !conflictDialog.visible && !batchDelete.visible; onActivated: page.selectAll() }
     Shortcut { sequence: "F5"; enabled: page.visible && !page.dataState.busy && page.dataState.connected; onActivated: { page.clearSelection(); ftpBrowser.refresh() } }
     property string transferSide: "local"
     property var transferNames: []
@@ -172,10 +172,10 @@ ColumnLayout {
         newName.text= action === "rename" ? entryName : ""
         editDialog.open()
     }
-    Shortcut { sequences: [StandardKey.Copy]; enabled: page.visible && !page.dataState.busy && !host.activeFocus && !port.activeFocus && !search.activeFocus && !editDialog.visible && !conflictDialog.visible; onActivated: page.copyFiles() }
-    Shortcut { sequences: [StandardKey.Paste]; enabled: page.visible && !page.dataState.busy && !host.activeFocus && !port.activeFocus && !search.activeFocus && !editDialog.visible && !conflictDialog.visible; onActivated: page.pasteFiles() }
+    Shortcut { sequences: [StandardKey.Copy]; enabled: page.visible && !page.dataState.busy && !host.activeFocus && !port.activeFocus && !localSearch.activeFocus && !remoteSearch.activeFocus && !editDialog.visible && !conflictDialog.visible; onActivated: page.copyFiles() }
+    Shortcut { sequences: [StandardKey.Paste]; enabled: page.visible && !page.dataState.busy && !host.activeFocus && !port.activeFocus && !localSearch.activeFocus && !remoteSearch.activeFocus && !editDialog.visible && !conflictDialog.visible; onActivated: page.pasteFiles() }
     function toggle(items, name) { return items.indexOf(name) < 0 ? items.concat([name]) : items.filter(x => x !== name) }
-    function sorted(rows) { return rows.filter(x => (showHidden || !x.name.startsWith(".")) && x.name.toLowerCase().includes(search.text.toLowerCase())).sort((a,b) => a.directory !== b.directory ? (a.directory ? -1 : 1) : sortMode === 1 ? (b.size || 0)-(a.size || 0) || a.name.localeCompare(b.name) : a.name.localeCompare(b.name)) }
+    function sorted(rows, side) { let query = (side === "remote" ? remoteSearch.text : localSearch.text).toLowerCase(); return rows.filter(x => (showHidden || !x.name.startsWith(".")) && x.name.toLowerCase().includes(query)).sort((a,b) => a.directory !== b.directory ? (a.directory ? -1 : 1) : sortMode === 1 ? (b.size || 0)-(a.size || 0) || a.name.localeCompare(b.name) : a.name.localeCompare(b.name)) }
     function typeText(row) { if (row.directory) return "Folder"; let name = row.name || ""; let dot = name.lastIndexOf("."); return dot > 0 ? name.slice(dot + 1).toUpperCase() : "File" }
     function fileLabel(row) { return (row.directory ? "📁 " : "▧ ") + row.name + (showDetails ? "    ·    " + typeText(row) + (row.directory ? "" : "    ·    " + sizeText(row.size)) + (row.date ? "    ·    " + row.date : "") : (row.directory ? "" : "  ·  " + sizeText(row.size))) }
     function sizeText(n) { return n === null || n === undefined ? "" : n >= 1073741824 ? (n/1073741824).toFixed(2)+" GiB" : n >= 1048576 ? (n/1048576).toFixed(1)+" MiB" : n >= 1024 ? (n/1024).toFixed(1)+" KiB" : n+" B" }
@@ -202,7 +202,6 @@ ColumnLayout {
     }
     Label { text: "Switch 2 FTP connection  ·  " + (page.dataState.connected ? "Ready to transfer" : "Connect to browse Switch 2 files"); color: page.dataState.connected ? "#40c9b7" : "#9cb3cd"; font.pixelSize: 12 }
     RowLayout {
-        TextField { id: search; placeholderText: "Filter files and folders"; Layout.fillWidth: true; onTextChanged: page.clearSelection() }
         CheckBox { text: "Select"; checked: page.selectionMode; onToggled: { page.selectionMode=checked; page.clearSelection() } }
         CheckBox { text: "Hidden"; checked: page.showHidden; onToggled: { page.showHidden=checked; page.clearSelection() } }
     }
@@ -244,18 +243,31 @@ ColumnLayout {
                 Button { text: "Desktop"; Layout.fillWidth: true; enabled: !page.dataState.busy; onClicked: { page.clearSelection(); ftpBrowser.open_local_shortcut("Desktop") } background: Rectangle { color: parent.down ? "#314761" : parent.hovered ? "#30445d" : "#263449"; border.color: "#1e2a3b"; border.width: 1 } }
                 Button { text: "Documents"; Layout.fillWidth: true; enabled: !page.dataState.busy; onClicked: { page.clearSelection(); ftpBrowser.open_local_shortcut("Documents") } background: Rectangle { color: parent.down ? "#314761" : parent.hovered ? "#30445d" : "#263449"; border.color: "#1e2a3b"; border.width: 1 } }
             }
-            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 34; color: "#263449"; RowLayout { anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 10; Label { text: "Name"; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter; font.bold: true } Label { text: "Size"; Layout.preferredWidth: 75; font.bold: true } Label { text: "Type"; Layout.preferredWidth: 75; font.bold: true } Label { text: "Modified"; Layout.preferredWidth: 85; font.bold: true } } }
+            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 38; color: "#263449"; RowLayout { anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 10; spacing: 8; Label { text: "Name"; Layout.fillWidth: true; font.bold: true; font.pixelSize: 14 } Label { text: "Size"; Layout.preferredWidth: 90; font.bold: true; font.pixelSize: 14 } Label { text: "Type"; Layout.preferredWidth: 85; font.bold: true; font.pixelSize: 14 } Label { text: "Modified"; Layout.preferredWidth: 112; font.bold: true; font.pixelSize: 14 } } }
+            RowLayout { Layout.fillWidth: true; TextField { id: localSearch; Layout.fillWidth: true; placeholderText: "Filter PC filenames · Ctrl+F to search"; onTextChanged: page.clearSelection() } Button { text: "Clear"; onClicked: localSearch.clear() } }
             ListView {
                 id: localList
                 Layout.fillWidth: true; Layout.fillHeight: true
                 clip: true
-                model: page.sorted(page.dataState.localRows)
+                model: page.sorted(page.dataState.localRows, "local")
                 delegate: ItemDelegate {
                     required property var modelData
                     width: ListView.view.width
-                    text: page.fileLabel(modelData)
-                    font.pixelSize: page.fileFontSize
-                    implicitHeight: 34
+                    contentItem: RowLayout {
+                        spacing: 8
+                        Label {
+                            text: (modelData.directory ? "📁  " : "▧  ") + modelData.name
+                            Layout.fillWidth: true
+                            font.pixelSize: page.fileFontSize
+                            color: "#e4edf8"
+                            elide: Text.ElideRight
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        Label { text: modelData.directory ? "—" : page.sizeText(modelData.size); Layout.preferredWidth: 90; font.pixelSize: 14; color: "#b6c8dd"; elide: Text.ElideRight }
+                        Label { text: page.typeText(modelData); Layout.preferredWidth: 85; font.pixelSize: 14; color: "#b6c8dd"; elide: Text.ElideRight }
+                        Label { text: modelData.date || ""; Layout.preferredWidth: 112; font.pixelSize: 14; color: "#b6c8dd"; elide: Text.ElideRight }
+                    }
+                    implicitHeight: 44
                     ToolTip.visible: hovered
                     ToolTip.text: modelData.name + "  " + (modelData.date || "")
                     background: Rectangle {
@@ -362,18 +374,31 @@ ColumnLayout {
                         onTriggered: ftpBrowser.copy_remote_path()
                     }
                 }
-            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 34; color: "#263449"; RowLayout { anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 10; Label { text: "Name"; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter; font.bold: true } Label { text: "Size"; Layout.preferredWidth: 75; font.bold: true } Label { text: "Type"; Layout.preferredWidth: 75; font.bold: true } Label { text: "Modified"; Layout.preferredWidth: 85; font.bold: true } } }
+            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 38; color: "#263449"; RowLayout { anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 10; spacing: 8; Label { text: "Name"; Layout.fillWidth: true; font.bold: true; font.pixelSize: 14 } Label { text: "Size"; Layout.preferredWidth: 90; font.bold: true; font.pixelSize: 14 } Label { text: "Type"; Layout.preferredWidth: 85; font.bold: true; font.pixelSize: 14 } Label { text: "Modified"; Layout.preferredWidth: 112; font.bold: true; font.pixelSize: 14 } } }
+            RowLayout { Layout.fillWidth: true; TextField { id: remoteSearch; Layout.fillWidth: true; placeholderText: "Filter Switch filenames"; onTextChanged: page.clearSelection() } Button { text: "Clear"; onClicked: remoteSearch.clear() } }
             ListView {
                 id: remoteList
                 Layout.fillWidth: true; Layout.fillHeight: true
                 clip: true
-                model: page.sorted(page.dataState.remoteRows)
+                model: page.sorted(page.dataState.remoteRows, "remote")
                 delegate: ItemDelegate {
                     required property var modelData
                     width: ListView.view.width
-                    text: page.fileLabel(modelData)
-                    font.pixelSize: page.fileFontSize
-                    implicitHeight: 34
+                    contentItem: RowLayout {
+                        spacing: 8
+                        Label {
+                            text: (modelData.directory ? "📁  " : "▧  ") + modelData.name
+                            Layout.fillWidth: true
+                            font.pixelSize: page.fileFontSize
+                            color: "#e4edf8"
+                            elide: Text.ElideRight
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        Label { text: modelData.directory ? "—" : page.sizeText(modelData.size); Layout.preferredWidth: 90; font.pixelSize: 14; color: "#b6c8dd"; elide: Text.ElideRight }
+                        Label { text: page.typeText(modelData); Layout.preferredWidth: 85; font.pixelSize: 14; color: "#b6c8dd"; elide: Text.ElideRight }
+                        Label { text: modelData.date || ""; Layout.preferredWidth: 112; font.pixelSize: 14; color: "#b6c8dd"; elide: Text.ElideRight }
+                    }
+                    implicitHeight: 44
                     ToolTip.visible: hovered
                     ToolTip.text: modelData.name + "  " + (modelData.date || "")
                     background: Rectangle {
