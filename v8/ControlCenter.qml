@@ -319,10 +319,10 @@ ApplicationWindow {
                 NavButton { text: "⌂    Overview"; page: 0 }
                 NavButton { text: "◆    Homebrew"; page: 3; fileTab: 1 }
                 NavButton { text: "▣    FTP Manager"; page: 3; fileTab: 0 }
-                NavButton { text: "◉    Network"; page: 1 }
                 NavButton { text: "◈    Streaming"; page: 2 }
-                NavButton { text: "⚙    Settings"; page: 5 }
+                NavButton { text: "◉    Network"; page: 1 }
                 NavButton { text: "☷    Diagnostics"; page: 4 }
+                NavButton { text: "⚙    Settings"; page: 5 }
                 NavButton { text: "↻    Updates"; page: 6 }
                 Item { Layout.fillHeight: true }
                 Label { text: "● SwitchNest Linux v" + controller.version; font.pixelSize: 11; color: root.accent; wrapMode: Text.Wrap; Layout.fillWidth: true }
