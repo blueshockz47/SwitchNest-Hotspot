@@ -258,18 +258,33 @@ ApplicationWindow {
         id: navEntry
         required property int page
         property int fileTab: -1
+        property string navIcon: ""
         property bool selected: pages.currentIndex === page && (fileTab < 0 || fileTabs.currentIndex === fileTab)
         Layout.fillWidth: true
-        Layout.preferredHeight: 38
+        Layout.preferredHeight: 42
         flat: true
-        leftPadding: 12
-        contentItem: Label {
-            text: parent.text
-            color: parent.selected ? "#40c9b7" : "#d5e1f0"
-            font.pixelSize: 14
-            font.bold: parent.selected
-            verticalAlignment: Text.AlignVCenter
-            leftPadding: 8
+        leftPadding: 0
+        rightPadding: 0
+        contentItem: RowLayout {
+            spacing: 12
+            anchors.leftMargin: 14
+            Label {
+                text: navEntry.navIcon
+                Layout.preferredWidth: 24
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                color: navEntry.selected ? "#40c9b7" : "#d5e1f0"
+                font.pixelSize: 16
+            }
+            Label {
+                text: navEntry.text
+                Layout.fillWidth: true
+                verticalAlignment: Text.AlignVCenter
+                color: navEntry.selected ? "#40c9b7" : "#d5e1f0"
+                font.pixelSize: 14
+                font.bold: navEntry.selected
+                elide: Text.ElideRight
+            }
         }
         background: Rectangle {
             radius: 3
@@ -316,14 +331,14 @@ ApplicationWindow {
                     Label { text: "SwitchNest"; font.pixelSize: 22; font.bold: true; color: root.accent }
                 }
                 Label { text: "LINUX CONTROL CENTER"; font.pixelSize: 10; font.bold: true; color: "#93aac5"; Layout.bottomMargin: 14 }
-                NavButton { text: "⌂    Overview"; page: 0 }
-                NavButton { text: "◆    Homebrew"; page: 3; fileTab: 1 }
-                NavButton { text: "▣    FTP Manager"; page: 3; fileTab: 0 }
-                NavButton { text: "◈    Streaming"; page: 2 }
-                NavButton { text: "◉    Network"; page: 1 }
-                NavButton { text: "☷    Diagnostics"; page: 4 }
-                NavButton { text: "⚙    Settings"; page: 5 }
-                NavButton { text: "↻    Updates"; page: 6 }
+                NavButton { text: "Overview"; navIcon: "⌂"; page: 0 }
+                NavButton { text: "Homebrew"; navIcon: "◆"; page: 3; fileTab: 1 }
+                NavButton { text: "FTP Manager"; navIcon: "▣"; page: 3; fileTab: 0 }
+                NavButton { text: "Streaming"; navIcon: "◈"; page: 2 }
+                NavButton { text: "Network"; navIcon: "◉"; page: 1 }
+                NavButton { text: "Diagnostics"; navIcon: "☷"; page: 4 }
+                NavButton { text: "Settings"; navIcon: "⚙"; page: 5 }
+                NavButton { text: "Updates"; navIcon: "↻"; page: 6 }
                 Item { Layout.fillHeight: true }
                 Label { text: "● SwitchNest Linux v" + controller.version; font.pixelSize: 11; color: root.accent; wrapMode: Text.Wrap; Layout.fillWidth: true }
             }
