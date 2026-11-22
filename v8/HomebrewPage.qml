@@ -293,7 +293,6 @@ ColumnLayout {
             } catch (e) { home.statusText = "Invalid homebrew response" }
         }
     }
-    Label { text: "Homebrew Manager"; font.pixelSize: 22; font.bold: true; color: "#f0f5ff" }
     Label { text: "Discover Switch 2 homebrew, review release verification, and install supported NROs over FTP"; font.pixelSize: 12; color: "#aab7c6"; Layout.fillWidth: true; wrapMode: Text.Wrap }
     RowLayout {
         Layout.fillWidth: true
