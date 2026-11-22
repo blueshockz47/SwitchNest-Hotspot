@@ -14,6 +14,19 @@ class WindowsStyleShellTests(unittest.TestCase):
         self.assertIn('HomebrewPage {}', qml)
         self.assertIn('currentIndex: fileTabs.currentIndex', qml)
 
+    def test_overview_status_tiles_and_station_table(self):
+        qml = (ROOT / "ControlCenter.qml").read_text()
+        for token in ('text: "Network overview"', 'heading: "HOTSPOT"',
+                      'heading: "DNS"', 'heading: "HTTP"',
+                      'heading: "ISOLATION"', 'text: "Connected devices"',
+                      'model: root.clients', 'modelData.mac || "Unavailable"',
+                      'modelData.ip || "Unavailable"',
+                      'text: "Refresh devices"',
+                      'association does not prove FTP connectivity',
+                      'Network isolation remains unverified'):
+            self.assertIn(token, qml)
+        self.assertIn('controller.action(root.hotspot.state === "on" ? "off" : "on")', qml)
+
     def test_hotspot_and_diagnostics_controls_remain(self):
         qml = (ROOT / "ControlCenter.qml").read_text()
         for token in ('controller.action(', 'controller.refresh()', 'controller.wifi_restart()', 'controller.install_update()', 'controller.sunshine("start")'):
