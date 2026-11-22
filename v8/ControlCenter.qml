@@ -340,44 +340,6 @@ ApplicationWindow {
                 NavButton { text: "Settings"; navIcon: "⚙"; page: 5 }
                 NavButton { text: "Updates"; navIcon: "↻"; page: 6 }
                 Item { Layout.fillHeight: true }
-                Rectangle {
-                    Layout.fillWidth: true
-                    implicitHeight: routerTipContent.implicitHeight + 20
-                    radius: 7
-                    color: "#1c2d40"
-                    border.color: "#33546a"
-                    border.width: 1
-                    ColumnLayout {
-                        id: routerTipContent
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.top: parent.top
-                        anchors.margins: 10
-                        spacing: 6
-                        Label {
-                            text: "TIP · Router Wi-Fi + 90DNS"
-                            color: "#5eead4"
-                            font.pixelSize: 11
-                            font.bold: true
-                            Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                        }
-                        Label {
-                            text: "Prefer your home router's Wi-Fi with 90DNS on your Switch 2? You can still use FTP Manager and Homebrew Manager without starting the SwitchNest hotspot."
-                            color: "#d6e5f3"
-                            font.pixelSize: 11
-                            Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                        }
-                        Label {
-                            text: "Both devices must be on the same network, and the Switch 2 FTP server must be running."
-                            color: "#9eb4c9"
-                            font.pixelSize: 10
-                            Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                        }
-                    }
-                }
                 Label { text: "● SwitchNest Linux v" + controller.version; font.pixelSize: 11; color: root.accent; wrapMode: Text.Wrap; Layout.fillWidth: true }
             }
         }
@@ -467,6 +429,45 @@ ApplicationWindow {
                                             spacing: 2
                                             Label { text: modelData.heading; font.pixelSize: 13; font.bold: true; color: "#edf6ff"; Layout.fillWidth: true; wrapMode: Text.Wrap }
                                             Label { text: modelData.heading.indexOf("2.") === 0 ? "Start the SwitchNest hotspot and make sure DNS and HTTP both show <font color=\"#43f5b0\"><b>ACTIVE</b></font>." : modelData.detail; textFormat: Text.RichText; font.pixelSize: 12; color: "#a6b9cc"; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                                        }
+                                    }
+                                }
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.maximumWidth: 630
+                                    implicitHeight: overviewRouterTip.implicitHeight + 20
+                                    radius: 8
+                                    color: "#183747"
+                                    border.color: "#38798a"
+                                    border.width: 1
+                                    ColumnLayout {
+                                        id: overviewRouterTip
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
+                                        anchors.top: parent.top
+                                        anchors.margins: 10
+                                        spacing: 5
+                                        Label {
+                                            text: "TIP · Using Router Wi-Fi + 90DNS?"
+                                            font.pixelSize: 13
+                                            font.bold: true
+                                            color: "#5eead4"
+                                            Layout.fillWidth: true
+                                            wrapMode: Text.Wrap
+                                        }
+                                        Label {
+                                            text: "You can still use FTP Manager and Homebrew Manager without starting the SwitchNest hotspot."
+                                            font.pixelSize: 12
+                                            color: "#edf6ff"
+                                            Layout.fillWidth: true
+                                            wrapMode: Text.Wrap
+                                        }
+                                        Label {
+                                            text: "Connect your PC and Switch 2 to the same router network, then start the FTP server on your Switch 2."
+                                            font.pixelSize: 11
+                                            color: "#a6b9cc"
+                                            Layout.fillWidth: true
+                                            wrapMode: Text.Wrap
                                         }
                                     }
                                 }
