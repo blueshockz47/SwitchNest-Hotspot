@@ -300,6 +300,7 @@ ColumnLayout {
         Label { text: "SWITCH 2 FTP"; font.bold: true; color: "#40c9b7"; font.pixelSize: 12 }
         TextField { id: ftpHost; text: home.ftpState.host; placeholderText: "Switch 2 IP"; Layout.fillWidth: true; enabled: !home.ftpState.busy && !home.working }
         TextField { id: ftpPort; text: home.ftpState.port; placeholderText: "Port"; Layout.preferredWidth: 80; enabled: !home.ftpState.busy && !home.working }
+        Label { text: home.ftpState.connected ? "● CONNECTED" : home.ftpState.busy ? "● CONNECTING…" : "● DISCONNECTED"; color: home.ftpState.connected ? "#43f5b0" : home.ftpState.busy ? "#f4bd53" : "#ff454f"; font.bold: true; font.pixelSize: 14 }
         Button { text: home.ftpState.discoveryBusy ? "Searching..." : "Find Switch 2 IP"; enabled: !home.ftpState.discoveryBusy && !home.ftpState.busy && !home.ftpState.connected && !home.working; onClicked: ftpBrowser.find_switch_ip() }
         Button { text: home.ftpState.busy ? "Working..." : home.ftpState.connected ? "Disconnect" : "Connect"; enabled: !home.ftpState.busy && !home.working; onClicked: { if (home.ftpState.connected) ftpBrowser.disconnect(); else ftpBrowser.connect_to(ftpHost.text, ftpPort.text) } }
     }
