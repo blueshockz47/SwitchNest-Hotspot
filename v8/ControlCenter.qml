@@ -36,7 +36,7 @@ ApplicationWindow {
     property string activityLog: "Waiting for activity...\n"
     property bool updateInProgress: false
     property string availableVersion: ""
-    property var updatePrefs: controller ? JSON.parse(controller.updatePreferences) : ({fullscreen_on_start: false})
+    property var updatePrefs: controller ? JSON.parse(controller.updatePreferences) : ({fullscreen_on_start: false, check_at_startup: false, show_update_popup: false, stable_only: true})
     property var wifiInfo: ({})
     property string wifiName: ""
     property string wifiPassword: ""
@@ -340,7 +340,7 @@ ApplicationWindow {
                 NavButton { text: "Settings"; navIcon: "⚙"; page: 5 }
                 NavButton { text: "Updates"; navIcon: "↻"; page: 6 }
                 Item { Layout.fillHeight: true }
-                Label { text: "● SwitchNest Linux v" + controller.version; font.pixelSize: 11; color: root.accent; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                Label { text: "● SwitchNest Linux v" + (controller ? controller.version : "8.1.7"); font.pixelSize: 11; color: root.accent; wrapMode: Text.Wrap; Layout.fillWidth: true }
             }
         }
         ColumnLayout {
@@ -670,7 +670,7 @@ ApplicationWindow {
                         }
                     }
                     Label { text: "Launches the app in Desktop Mode, not the hotspot. Gaming Mode is not supported."; wrapMode: Text.Wrap; Layout.fillWidth: true; color: root.muted }
-                    CheckBox { text: "Launch SwitchNest maximized"; checked: root.updatePrefs.fullscreen_on_start; onToggled: controller.set_update_preference("fullscreen_on_start", checked) }
+                    CheckBox { text: "Launch SwitchNest maximized"; checked: !!root.updatePrefs.fullscreen_on_start; onToggled: controller.set_update_preference("fullscreen_on_start", checked) }
                     Label { text: "Applies on next launch. The title bar, minimize, restore, and close controls remain available."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
                         }
                     }
@@ -725,7 +725,7 @@ ApplicationWindow {
                 }
                 ColumnLayout {
                     Label { text: "Software updates"; font.pixelSize: 22 }
-                    Label { text: "Installed: v" + controller.version; color: root.accent }
+                    Label { text: "Installed: v" + (controller ? controller.version : "8.1.7"); color: root.accent }
                     ComboBox { id: channel; model: ["Stable", "Development"]; enabled: !root.updateBusy }
                     Label { text: root.updateStatus; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Button { text: root.updateBusy ? "Checking..." : "Check for Updates"; enabled: !root.updateBusy; onClicked: controller.check_updates(channel.currentIndex===0?"stable":"development") }
@@ -741,9 +741,9 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         contentItem: ColumnLayout {
                             spacing: 9
-                            CheckBox { text: "Check for updates at startup"; checked: root.updatePrefs.check_at_startup; onToggled: controller.set_update_preference("check_at_startup", checked) }
-                            CheckBox { text: "Show update available popup"; checked: root.updatePrefs.show_update_popup; onToggled: controller.set_update_preference("show_update_popup", checked) }
-                            CheckBox { text: "Stable releases only for startup checks"; checked: root.updatePrefs.stable_only; onToggled: controller.set_update_preference("stable_only", checked) }
+                            CheckBox { text: "Check for updates at startup"; checked: !!root.updatePrefs.check_at_startup; onToggled: controller.set_update_preference("check_at_startup", checked) }
+                            CheckBox { text: "Show update available popup"; checked: !!root.updatePrefs.show_update_popup; onToggled: controller.set_update_preference("show_update_popup", checked) }
+                            CheckBox { text: "Stable releases only for startup checks"; checked: !!root.updatePrefs.stable_only; onToggled: controller.set_update_preference("stable_only", checked) }
                         }
                     }
                     Item { Layout.fillHeight: true }
