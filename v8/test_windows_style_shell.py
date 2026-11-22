@@ -92,7 +92,8 @@ class WindowsStyleShellTests(unittest.TestCase):
         self.assertIn('function clearSelection()', ftp)
         self.assertIn('function updateCatalog()', homebrew)
         self.assertIn('home.choices = data.assets.filter', homebrew)
-        self.assertIn('home.ftpState.connected && !home.ftpState.busy', homebrew)
+        self.assertIn('home.ftpState.connected ? "Disconnect" : "Connect"', homebrew)
+        self.assertIn('if (home.ftpState.connected) ftpBrowser.disconnect()', homebrew)
 
     def test_hotspot_and_diagnostics_controls_remain(self):
         qml = (ROOT / "ControlCenter.qml").read_text()
