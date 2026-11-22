@@ -28,7 +28,7 @@ ColumnLayout {
             seen[item.repo.toLowerCase()] = true
             rows.push({name: item.name, category: item.category || "Other", repo: item.repo,
                        manual: true, community: true, source: item.sources.join(" + "),
-                       warning: "Unverified community listing. GitHub release NROs can be installed after explicit confirmation, even without a publisher digest; ZIPs are download-only."})
+                       warning: "Unverified community listing. Only GitHub release NROs with SHA-256 digests qualify for confirmed installation; verified ZIPs are download-only."})
         }
         let q = catalogQuery.toLowerCase().trim()
         let filtered = rows.filter(function(item) {
@@ -58,7 +58,7 @@ ColumnLayout {
             groups[groups.length - 1].items.push(item)
         }
         categoryGroups = groups
-        statusText = results.length + " projects shown (curated + community, deduplicated). NRO installs require confirmation; publisher checksums may be unavailable."
+        statusText = results.length + " projects shown (curated + community, deduplicated). Downloads and confirmed NRO installs require publisher SHA-256 digests."
     }
     property var categoryGroups: []
     function categoryColor(category) {
@@ -212,8 +212,8 @@ ColumnLayout {
                     let stale = Object.assign({}, home.staleRepos)
                     for (let repo in data.releases) {
                         let info = data.releases[repo]
-                        available[repo] = info.assets.some(function(a) { return a.name.toLowerCase().endsWith(".nro") })
-                        zipped[repo] = !available[repo] && info.assets.some(function(a) { return a.name.toLowerCase().endsWith(".zip") })
+                        available[repo] = info.assets.some(function(a) { return !!a.digest && a.name.toLowerCase().endsWith(".nro") })
+                        zipped[repo] = info.assets.some(function(a) { return !!a.digest && a.name.toLowerCase().endsWith(".zip") })
                         checked[repo] = true
                         stale[repo] = !!info.stale
                     }
@@ -225,7 +225,7 @@ ColumnLayout {
                 else if (data.kind === "search") { home.curatedResults = data.items; home.assets = []; home.readyZip = ""; home.activeCategory = data.category || "All"; home.updateCatalog() }
                 else if (data.kind === "assets") {
                     if (home.action === "probe" && data.repo === home.probingRepo) {
-                        let eligible = data.assets.some(function(asset) { return asset.name.toLowerCase().endsWith(".nro") })
+                        let eligible = data.assets.some(function(asset) { return !!asset.digest && asset.name.toLowerCase().endsWith(".nro") })
                         let next = Object.assign({}, home.installableRepos)
                         next[data.repo] = eligible
                         home.installableRepos = next
@@ -235,11 +235,11 @@ ColumnLayout {
                         let stale = Object.assign({}, home.staleRepos)
                         stale[data.repo] = !!data.stale
                         home.staleRepos = stale
-                        let zipOnly = !eligible && data.assets.some(function(asset) { return asset.name.toLowerCase().endsWith(".zip") })
+                        let zipOnly = data.assets.some(function(asset) { return !!asset.digest && asset.name.toLowerCase().endsWith(".zip") })
                         let zipState = Object.assign({}, home.zipOnlyRepos)
                         zipState[data.repo] = zipOnly
                         home.zipOnlyRepos = zipState
-                        home.statusText = (data.stale ? "Cached release information (may be outdated). " : "") + (eligible ? "NRO release available for " + data.repo + ". Right-click again to install." : "No NRO release for " + data.repo + "; ZIP-only projects cannot be installed automatically.")
+                        home.statusText = (data.stale ? "Cached release information (may be outdated). " : "") + (eligible ? "Verified NRO available for " + data.repo + "." : home.zipOnlyRepos[data.repo] ? "Verified ZIP available for download only." : "No SHA-256 verified NRO or ZIP release asset available.")
                         home.action = ""
                         home.probingRepo = ""
                         return
@@ -247,7 +247,7 @@ ColumnLayout {
                     if (data.repo !== home.actionRepo || !home.action) return
                     home.choices = data.assets.filter(function(asset) {
                         let name = asset.name.toLowerCase()
-                        return home.action === "install" ? name.endsWith(".nro") : (!!asset.digest && (name.endsWith(".nro") || name.endsWith(".zip")))
+                        return !!asset.digest && (home.action === "install" ? name.endsWith(".nro") : (name.endsWith(".nro") || name.endsWith(".zip")))
                     })
                     if (home.choices.length === 1) {
                         home.useAsset(home.choices[0])
@@ -500,20 +500,20 @@ ColumnLayout {
                         home.actionRepo = projectCard.modelData.repo
                         home.actionName = projectCard.modelData.name
                         contextMenu.popup()
-                        if (home.actionRepo && home.installableRepos[home.actionRepo] === undefined) home.probeRelease(home.actionRepo)
+                        if (home.actionRepo) home.probeRelease(home.actionRepo)
                     }
                 }
                 Menu {
                     id: contextMenu
                     width: Math.max(280, implicitWidth)
                     MenuItem {
-                        text: "Download Only"
+                        text: "Download ZIP / NRO"
                         width: contextMenu.width
-                        enabled: !!home.actionRepo && !home.working
+                        enabled: !!home.actionRepo && (home.installableRepos[home.actionRepo] === true || home.zipOnlyRepos[home.actionRepo] === true) && !home.working
                         onTriggered: home.requestRelease("download")
                     }
                     MenuItem {
-                        text: "Download && Install"
+                        text: "Download && Install NRO"
                         width: contextMenu.width
                         enabled: !!home.actionRepo && home.installableRepos[home.actionRepo] === true && !home.working
                         onTriggered: home.requestRelease("install")
