@@ -1,9 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
-<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#1b3651"/><stop offset="1" stop-color="#0b1525"/></linearGradient><linearGradient id="wave" x2="1" y2="1"><stop stop-color="#5eead4"/><stop offset="1" stop-color="#38bdf8"/></linearGradient></defs>
-<rect x="8" y="8" width="240" height="240" rx="54" fill="url(#bg)" stroke="#35667b" stroke-width="3"/>
-<path d="M54 102 Q128 29 202 102" fill="none" stroke="url(#wave)" stroke-width="16" stroke-linecap="round"/>
-<path d="M81 131 Q128 88 175 131" fill="none" stroke="url(#wave)" stroke-width="14" stroke-linecap="round"/>
-<circle cx="128" cy="154" r="11" fill="#5eead4"/>
-<path d="M53 176 Q128 243 203 176" fill="none" stroke="#38bdf8" stroke-width="15" stroke-linecap="round"/>
-<path d="M84 194 Q128 217 172 194" fill="none" stroke="#5eead4" stroke-width="8" stroke-linecap="round"/>
+<defs>
+  <linearGradient id="ribbon" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#08f4f0"/><stop offset=".52" stop-color="#00c9e9"/><stop offset="1" stop-color="#008ebc"/></linearGradient>
+</defs>
+<rect width="256" height="256" rx="54" fill="#061a2e"/>
+<rect x="5" y="5" width="246" height="246" rx="50" fill="none" stroke="#05dce8" stroke-width="5"/>
+<!-- The Infinity S: two flowing opposing connection paths with terminal nodes -->
+<path d="M184 57 H104 C67 57 46 79 46 110 C46 137 67 150 100 150 H154 C190 150 210 170 210 193 C210 214 193 226 163 226 H70" fill="none" stroke="url(#ribbon)" stroke-width="17" stroke-linecap="round"/>
+<path d="M72 200 H152 C185 200 204 179 204 151 C204 125 184 112 151 112 H101 C67 112 49 93 49 70" fill="none" stroke="url(#ribbon)" stroke-width="13" stroke-linecap="round" opacity=".85"/>
+<circle cx="184" cy="57" r="16" fill="#04e7eb"/>
+<circle cx="70" cy="226" r="16" fill="#04e7eb"/>
+<!-- Wireless signal is the center of the Infinity S -->
+<path d="M95 102 Q128 73 161 102" fill="none" stroke="#12f0ed" stroke-width="10" stroke-linecap="round"/>
+<path d="M108 117 Q128 101 148 117" fill="none" stroke="#12f0ed" stroke-width="9" stroke-linecap="round"/>
+<circle cx="128" cy="133" r="8" fill="#12f0ed"/>
+<path d="M105 157 Q128 177 151 157" fill="none" stroke="#12f0ed" stroke-width="9" stroke-linecap="round"/>
 </svg>
