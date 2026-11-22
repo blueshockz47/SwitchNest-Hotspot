@@ -428,7 +428,7 @@ ApplicationWindow {
                                             Layout.fillWidth: true
                                             spacing: 2
                                             Label { text: modelData.heading; font.pixelSize: 13; font.bold: true; color: "#edf6ff"; Layout.fillWidth: true; wrapMode: Text.Wrap }
-                                            Label { text: modelData.detail; font.pixelSize: 12; color: "#a6b9cc"; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                                            Label { text: modelData.heading.indexOf("2.") === 0 ? "Start the SwitchNest hotspot and make sure DNS and HTTP both show <font color=\"#43f5b0\"><b>ACTIVE</b></font>." : modelData.detail; textFormat: Text.RichText; font.pixelSize: 12; color: "#a6b9cc"; Layout.fillWidth: true; wrapMode: Text.Wrap }
                                         }
                                     }
                                 }
