@@ -8,7 +8,10 @@ class WindowsStyleShellTests(unittest.TestCase):
     def test_native_window_uses_switchnest_icon(self):
         source = (ROOT / "control_center.py").read_text()
         self.assertIn("QIcon", source)
-        self.assertIn('app.setWindowIcon(QIcon(str(official_icon if official_icon.is_file() else icon_path)))', source)
+        self.assertIn('app.setWindowIcon(QIcon(str(active_icon)))', source)
+        self.assertIn('switchNestBrandIcon', source)
+        self.assertIn('switchnest-infinity-icon.png', source)
+        self.assertIn('source: switchNestBrandIcon', (ROOT / 'ControlCenter.qml').read_text())
         self.assertIn('icons/switchnest.svg', source)
 
     def test_dedicated_sidebar_routes_to_existing_file_tabs(self):
