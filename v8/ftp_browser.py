@@ -274,28 +274,55 @@ class Browser(QObject):
 
     @Slot(result="QVariantList")
     def removable_mounts(self):
-        """Enumerate mounted volumes under SteamOS removable media locations."""
+        """Find accessible SteamOS removable media, including user-mounted volumes."""
         import subprocess
-        result = []
+
+        home_user = Path.home().name
+        roots = (Path("/run/media") / home_user, Path("/media") / home_user,
+                 Path("/run/media"), Path("/media"), Path("/mnt"))
+        found = {}
+
+        def add(path):
+            try:
+                if not path.is_dir() or not os.access(path, os.R_OK | os.X_OK):
+                    return
+                actual = str(path.resolve())
+                if actual not in found:
+                    found[actual] = {"name": path.name, "path": str(path)}
+            except (OSError, PermissionError):
+                return
+
+        # Dolphin/udisks typically mounts drives under /run/media/<user>/<label>.
+        # Directory discovery also handles FUSE and bind-mounted devices.
+        for root in roots:
+            if not root.is_dir():
+                continue
+            try:
+                for child in root.iterdir():
+                    if not child.is_dir():
+                        continue
+                    if root in (Path("/run/media"), Path("/media")) and child.name == home_user:
+                        for volume in child.iterdir():
+                            add(volume)
+                    else:
+                        add(child)
+            except (OSError, PermissionError):
+                continue
+
+        # Include other mount points reported by findmnt, even if their source
+        # is not a /dev block device (e.g. FUSE, gvfs, or bind mounts).
         try:
-            output = subprocess.run(
-                ["findmnt", "-rn", "-o", "TARGET,SOURCE,FSTYPE"],
+            process = subprocess.run(
+                ["findmnt", "-rn", "-o", "TARGET", "--raw"],
                 capture_output=True, text=True, timeout=3, check=False
-            ).stdout
-            for line in output.splitlines():
-                parts = line.split(maxsplit=2)
-                if len(parts) != 3:
-                    continue
-                target, source, fstype = parts
-                if not (target.startswith("/run/media/") or target.startswith("/media/") or
-                        (target.startswith("/mnt/") and source.startswith("/dev/"))):
-                    continue
-                if fstype in ("tmpfs", "overlay", "squashfs") or not Path(target).is_dir():
-                    continue
-                result.append({"name": Path(target).name, "path": target})
+            )
+            for line in process.stdout.splitlines():
+                target = line.strip()
+                if any(target.startswith(str(root) + "/") for root in roots):
+                    add(Path(target))
         except (OSError, subprocess.TimeoutExpired):
             pass
-        return result
+        return sorted(found.values(), key=lambda entry: entry["name"].casefold())
 
     @Slot(str)
     def open_removable_mount(self, path):
