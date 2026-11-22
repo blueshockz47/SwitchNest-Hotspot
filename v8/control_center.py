@@ -831,24 +831,10 @@ def main():
         sys.exit("Run the control center as your normal desktop user, not root.")
     app = QGuiApplication(sys.argv)
     app.setApplicationName("SwitchNest Control Center")
-    # Set the native window icon before loading QML so KDE shows SwitchNest
-    # in the title bar, task manager, and Alt+Tab instead of Qt's default W.
-    icon_path = Path.home() / ".local/share/icons/switchnest.svg"
-    if not icon_path.is_file():
-        icon_path.parent.mkdir(parents=True, exist_ok=True)
-        icon_path.write_text(
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
-            '<rect width="64" height="64" rx="14" fill="#161c25"/>'
-            '<g fill="none" stroke="#52e0ae" stroke-width="5" stroke-linecap="round">'
-            '<path d="M10 24 Q32 5 54 24 M18 33 Q32 20 46 33 M26 42 Q32 36 38 42"/>'
-            '</g><circle cx="32" cy="49" r="3" fill="#52e0ae"/></svg>'
-        )
-    # Prefer the official SwitchNest artwork when installed locally.
-    # The SVG remains a compatibility fallback for older installations.
-    official_icon = Path.home() / ".local/share/icons/switchnest.png"
-    infinity_icon = Path.home() / ".local/share/icons/switchnest-infinity-icon.png"
-    active_icon = infinity_icon if infinity_icon.is_file() else (official_icon if official_icon.is_file() else icon_path)
-    app.setWindowIcon(QIcon(str(active_icon)))
+    # Use the same bundled Infinity artwork as the QML sidebar, regardless
+    # of stale icons left by previous installs in ~/.local/share/icons.
+    bundled_icon = Path(__file__).with_name("assets") / "switchnest-logo.svg"
+    app.setWindowIcon(QIcon(str(bundled_icon)))
     runtime=Path(QStandardPaths.writableLocation(QStandardPaths.RuntimeLocation))
     lock=QLockFile(str(runtime/"switchnest-control-center.lock"))
     if not lock.tryLock(0):
