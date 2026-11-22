@@ -301,11 +301,9 @@ ColumnLayout {
         TextField { id: ftpHost; text: home.ftpState.host; placeholderText: "Switch 2 IP"; Layout.fillWidth: true; enabled: !home.ftpState.busy && !home.working }
         TextField { id: ftpPort; text: home.ftpState.port; placeholderText: "Port"; Layout.preferredWidth: 80; enabled: !home.ftpState.busy && !home.working }
         Button { text: home.ftpState.discoveryBusy ? "Searching..." : "Find Switch 2 IP"; enabled: !home.ftpState.discoveryBusy && !home.ftpState.busy && !home.ftpState.connected && !home.working; onClicked: ftpBrowser.find_switch_ip() }
-        Button { text: "Connect"; enabled: !home.ftpState.busy && !home.working; onClicked: ftpBrowser.connect_to(ftpHost.text, ftpPort.text) }
-        Button { text: "Disconnect"; enabled: home.ftpState.connected && !home.ftpState.busy && !home.working; onClicked: ftpBrowser.disconnect() }
+        Button { text: home.ftpState.busy ? "Working..." : home.ftpState.connected ? "Disconnect" : "Connect"; enabled: !home.ftpState.busy && !home.working; onClicked: { if (home.ftpState.connected) ftpBrowser.disconnect(); else ftpBrowser.connect_to(ftpHost.text, ftpPort.text) } }
     }
     Label { text: home.ftpState.discoveryStatus || ""; visible: text.length > 0; color: "#8cb9c9"; wrapMode: Text.Wrap; Layout.fillWidth: true }
-    Label { text: (home.ftpState.busy ? "Connecting / FTP operation in progress" : home.ftpState.connected ? "Connected to " + home.ftpState.host + ":" + home.ftpState.port : "Not connected") + " — " + home.ftpState.status; color: home.ftpState.connected ? "#22c55e" : "#ef4444"; wrapMode: Text.Wrap; Layout.fillWidth: true }
     RowLayout {
         Layout.fillWidth: true
         Label { text: "RELEASE MONITOR"; font.bold: true; color: "#40c9b7"; font.pixelSize: 12 }
