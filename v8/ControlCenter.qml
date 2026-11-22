@@ -448,7 +448,7 @@ ApplicationWindow {
                                         anchors.margins: 10
                                         spacing: 5
                                         Label {
-                                            text: "TIP · Using Router Wi-Fi + 90DNS?"
+                                            text: "TIP! · Using Router Wi-Fi + 90DNS?"
                                             font.pixelSize: 13
                                             font.bold: true
                                             color: "#5eead4"
