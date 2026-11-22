@@ -20,6 +20,8 @@ ColumnLayout {
     property string lastStatus: ""
     property int fileFontSize: 14
     property bool showDetails: true
+    property color paneColor: "#1d293a"
+    property color paneBorder: "#33465c"
     property bool dragInProgress: false
     property string dropTarget: ""
     property string dropFolder: ""
@@ -188,12 +190,17 @@ ColumnLayout {
             }
         }
     }
+    Label { text: "FTP File Manager"; font.pixelSize: 20; font.bold: true; color: "#eef5ff" }
+    Label { text: "Manage files on your Switch 2 without leaving SwitchNest"; font.pixelSize: 12; color: "#9cb3cd" }
     RowLayout {
+        Label { text: "Host"; color: "#a9bfd7" }
         TextField { id: host; text: page.dataState.host; Layout.fillWidth: true; enabled: !page.dataState.busy && !page.dataState.connected; placeholderText: "Switch 2 FTP address" }
+        Label { text: "Port"; color: "#a9bfd7" }
         TextField { id: port; text: page.dataState.port; Layout.preferredWidth: 85; enabled: !page.dataState.busy && !page.dataState.connected }
         Label { text: page.dataState.connected ? "● Connected" : (page.dataState.busy ? "● Working…" : "● Disconnected"); color: page.dataState.connected ? "#52e0ae" : (page.dataState.busy ? "#f4bd53" : "#98a5b5"); font.bold: true; font.pixelSize: 14 }
         Button { text: page.dataState.connected ? "Disconnect" : "Connect"; enabled: !page.dataState.busy; onClicked: { page.remoteSelected=[]; if (page.dataState.connected) ftpBrowser.disconnect(); else ftpBrowser.connect_to(host.text, port.text) } }
     }
+    Label { text: "Switch 2 FTP connection  ·  " + (page.dataState.connected ? "Ready to transfer" : "Connect to browse Switch 2 files"); color: page.dataState.connected ? "#40c9b7" : "#9cb3cd"; font.pixelSize: 12 }
     RowLayout {
         ToolButton { text: "←"; onClicked: page.navigate("back"); enabled: !page.dataState.busy; ToolTip.visible: hovered; ToolTip.text: "Back" }
         ToolButton { text: "→"; onClicked: page.navigate("forward"); enabled: !page.dataState.busy; ToolTip.visible: hovered; ToolTip.text: "Forward" }
@@ -206,7 +213,7 @@ ColumnLayout {
         CheckBox { text: "Select"; checked: page.selectionMode; onToggled: { page.selectionMode=checked; page.clearSelection() } }
         CheckBox { text: "Hidden"; checked: page.showHidden; onToggled: { page.showHidden=checked; page.clearSelection() } }
     }
-    RowLayout { Label { text: "Local FTP • PASV"; color: "#98a5b5" } Item { Layout.fillWidth: true } CheckBox { text: "Details"; checked: page.showDetails; onToggled: page.showDetails = checked } ComboBox { model: ["Name", "Size"]; onCurrentIndexChanged: page.sortMode=currentIndex; enabled: !page.dataState.busy } }
+    RowLayout { Label { text: "FILE VIEW  •  Local FTP / PASV"; color: "#98a5b5" } Item { Layout.fillWidth: true } CheckBox { text: "Details"; checked: page.showDetails; onToggled: page.showDetails = checked } ComboBox { model: ["Name", "Size"]; onCurrentIndexChanged: page.sortMode=currentIndex; enabled: !page.dataState.busy } }
     SplitView {
         id: fileSplit
         orientation: Qt.Horizontal
@@ -217,6 +224,8 @@ ColumnLayout {
             Layout.fillHeight: true
             SplitView.preferredWidth: fileSplit.width / 2
             SplitView.minimumWidth: 220
+            spacing: 6
+            Label { text: "THIS PC  /  FILE EXPLORER"; color: "#40c9b7"; font.bold: true; font.pixelSize: 13 }
             Label { text: "Local · " + page.sizeText(page.dataState.localFree) + " free"; font.bold: true }
             RowLayout {
                 Layout.fillWidth: true
@@ -260,9 +269,14 @@ ColumnLayout {
                     width: ListView.view.width
                     text: page.fileLabel(modelData)
                     font.pixelSize: page.fileFontSize
-                    implicitHeight: 42
+                    implicitHeight: 34
                     ToolTip.visible: hovered
                     ToolTip.text: modelData.name + "  " + (modelData.date || "")
+                    background: Rectangle {
+                        color: parent.highlighted ? "#28516a" : parent.hovered ? "#26374d" : "#1d293a"
+                        radius: 3
+                        Behavior on color { ColorAnimation { duration: 100 } }
+                    }
                     highlighted: page.localSelected.indexOf(modelData.name) >= 0 || (modelData.directory && page.dropTarget === "local" && page.dropFolder === modelData.name)
                     enabled: !page.dataState.busy
                     property string fileName: modelData.name
@@ -311,6 +325,8 @@ ColumnLayout {
             Layout.fillHeight: true
             SplitView.preferredWidth: fileSplit.width / 2
             SplitView.minimumWidth: 220
+            spacing: 6
+            Label { text: "NINTENDO SWITCH 2  /  FTP"; color: "#40c9b7"; font.bold: true; font.pixelSize: 13 }
             RowLayout {
                 Layout.fillWidth: true
                 Label { text: "Switch 2 · FTP"; font.bold: true }
@@ -451,9 +467,14 @@ ColumnLayout {
                     width: ListView.view.width
                     text: page.fileLabel(modelData)
                     font.pixelSize: page.fileFontSize
-                    implicitHeight: 42
+                    implicitHeight: 34
                     ToolTip.visible: hovered
                     ToolTip.text: modelData.name + "  " + (modelData.date || "")
+                    background: Rectangle {
+                        color: parent.highlighted ? "#28516a" : parent.hovered ? "#26374d" : "#1d293a"
+                        radius: 3
+                        Behavior on color { ColorAnimation { duration: 100 } }
+                    }
                     highlighted: page.remoteSelected.indexOf(modelData.name) >= 0 || (modelData.directory && page.dropTarget === "remote" && page.dropFolder === modelData.name)
                     enabled: !page.dataState.busy
                     property string fileName: modelData.name
