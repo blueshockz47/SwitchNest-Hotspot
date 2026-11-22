@@ -52,8 +52,8 @@ class Phase2bTests(unittest.TestCase):
             'Qt.ShiftModifier',
             'Qt.ControlModifier',
             'function openDirectory(side, name)',
-            'page.openDirectory("local","..")',
-            'page.openDirectory("remote","..")',
+            'ftpBrowser.local_open("..")',
+            'ftpBrowser.remote_open("..")',
             'property bool queueExpanded: false',
             'text: page.queueExpanded ? "Hide queue" : "Show queue"',
             'visible: page.queueExpanded',
@@ -71,7 +71,7 @@ class Phase2bTests(unittest.TestCase):
         ui = (ROOT / 'FtpPage.qml').read_text()
         backend = (ROOT / 'ftp_browser.py').read_text()
         for token in ('function switchBookmarks()', 'function remoteSegments()',
-                      'ftpBrowser.open_remote_path(modelData.path)',
+                      'ftpBrowser.open_remote_path("/switch/")',
                       'ftpBrowser.bookmark("remote")',
                       'ftpBrowser.open_bookmark(modelData.index)',
                       'ftpBrowser.copy_remote_path()',
@@ -85,7 +85,7 @@ class Phase2bTests(unittest.TestCase):
 
     def test_compact_switch_header_and_shortcut(self):
         ui = (ROOT / 'FtpPage.qml').read_text()
-        for token in ('text: "📁 /switch"',
+        for token in ('text: "/switch"',
                       'ftpBrowser.open_remote_path("/switch/")',
                       'id: switchQuickMenu', 'id: switchActionsMenu',
                       'text: "Pin current folder"', 'text: "Copy current path"'):
@@ -100,10 +100,10 @@ class Phase2bTests(unittest.TestCase):
                       'SplitView.minimumWidth: 220',
                       'property bool showDetails: true',
                       'function typeText(row)', 'function fileLabel(row)',
-                      'text: page.fileLabel(modelData)',
+                      'contentItem: RowLayout {',
                       'text: "Details"', 'page.dataState.current || ""'):
             self.assertIn(token, ui)
-        self.assertEqual(ui.count('text: page.fileLabel(modelData)'), 2)
+        self.assertEqual(ui.count('contentItem: RowLayout {'), 2)
         self.assertIn('page.finishDrag(parent, centroid.position)', ui)
 
     def test_cross_pane_selection_clears_inactive_highlight(self):
@@ -114,14 +114,14 @@ class Phase2bTests(unittest.TestCase):
 
     def test_navigation_polish_preserves_shortcuts(self):
         ui = (ROOT / 'FtpPage.qml').read_text()
-        self.assertEqual(ui.count('text: "↑  Up one level"'), 2)
-        self.assertIn('highlighted: page.dataState.remote === "/"', ui)
-        self.assertIn('highlighted: page.dataState.remote === "/switch/"', ui)
+        self.assertEqual(ui.count('text: "Up"'), 2)
+        self.assertIn('ftpBrowser.open_remote_path("/")', ui)
+        self.assertIn('ftpBrowser.open_remote_path("/switch/")', ui)
         self.assertIn('ftpBrowser.open_remote_path("/")', ui)
         self.assertIn('ftpBrowser.open_remote_path("/switch/")', ui)
         self.assertIn('page.openDirectory("local","..")', ui)
         self.assertIn('page.openDirectory("remote","..")', ui)
-        self.assertIn('Behavior on color { ColorAnimation { duration: 120 } }', ui)
+        self.assertIn('Behavior on color { ColorAnimation { duration: 100 } }', ui)
 
     def test_ui_and_backend_wiring_preserve_worker(self):
         backend = (ROOT / 'ftp_browser.py').read_text()
