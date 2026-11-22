@@ -586,7 +586,7 @@ ColumnLayout {
                     MenuSeparator {}
                     MenuItem { text: "Transfer queue"; onTriggered: queueDialog.open() }
                     MenuItem { text: "Transfer history"; onTriggered: historyDialog.open() }
-                    MenuItem { text: "Retry remaining entries"; enabled: !page.dataState.busy && page.dataState.retryAvailable; onTriggered: retryDialog.open() }
+                    MenuItem { text: "Retry remaining entries"; enabled: !page.dataState.busy && !!page.dataState.retryAvailable; onTriggered: retryDialog.open() }
                 }
             }
         }
@@ -600,8 +600,8 @@ ColumnLayout {
         Button { text: "View Queue"; onClicked: queueDialog.open() }
     }
     Label { visible: page.dataState.busy && page.dataState.transferSize > 0; text: page.sizeText(page.dataState.bytesDone) + " / " + page.sizeText(page.dataState.transferSize) + " · " + page.sizeText(page.dataState.speed) + "/s" + (page.dataState.speed > 0 ? " · ETA " + Math.max(0,Math.ceil((page.dataState.transferSize-page.dataState.bytesDone)/page.dataState.speed)) + " s" : ""); Layout.fillWidth: true }
-    ProgressBar { indeterminate: page.dataState.busy && page.dataState.transferSize === 0 && page.dataState.total === 0; Layout.fillWidth: true; from: 0; to: 100; value: page.dataState.total > 0 && page.dataState.busy && page.dataState.current !== "" ? Math.min(100, (page.dataState.completed + page.dataState.progress/100)*100/page.dataState.total) : page.dataState.progress }
-    Label { text: page.dataState.status + (page.dataState.total > 0 ? " · " + page.dataState.completed + "/" + page.dataState.total + " files · " + page.dataState.current : page.dataState.completed > 0 ? " · " + page.dataState.completed + " entries" : ""); wrapMode: Text.Wrap; Layout.fillWidth: true; maximumLineCount: 4 }
+    ProgressBar { indeterminate: !!page.dataState.busy && Number(page.dataState.transferSize || 0) === 0 && Number(page.dataState.total || 0) === 0; Layout.fillWidth: true; from: 0; to: 100; value: page.dataState.total > 0 && page.dataState.busy && page.dataState.current !== "" ? Math.min(100, (page.dataState.completed + page.dataState.progress/100)*100/page.dataState.total) : page.dataState.progress }
+    Label { text: (page.dataState.status || "") + (page.dataState.total > 0 ? " · " + page.dataState.completed + "/" + page.dataState.total + " files · " + page.dataState.current : page.dataState.completed > 0 ? " · " + page.dataState.completed + " entries" : ""); wrapMode: Text.Wrap; Layout.fillWidth: true; maximumLineCount: 4 }
     Frame {
         Layout.fillWidth: true
         Layout.preferredHeight: page.queueExpanded ? 165 : 0
@@ -700,7 +700,7 @@ ColumnLayout {
         title: "Properties"
         modal: true
         standardButtons: Dialog.Close
-        Label { text: page.dataState.details; width: 300; wrapMode: Text.Wrap }
+        Label { text: page.dataState.details || ""; width: 300; wrapMode: Text.Wrap }
     }
     Dialog {
         id: editDialog
