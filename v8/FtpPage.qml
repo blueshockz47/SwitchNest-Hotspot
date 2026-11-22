@@ -1,9 +1,15 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
 
 ColumnLayout {
     id: page
+    FolderDialog {
+        id: localFolderDialog
+        title: "Choose PC folder or mounted removable drive"
+        onAccepted: { page.clearSelection(); ftpBrowser.open_local_folder(selectedFolder) }
+    }
     property var dataState: ftpBrowser ? JSON.parse(ftpBrowser.state) : ({host: "", port: "", localRows: [], remoteRows: [], status: "Initializing FTP...", busy: false, connected: false, history: [], bookmarks: [], local: "", remote: "/", localFree: 0})
     property var localSelected: []
     property var remoteSelected: []
@@ -241,9 +247,9 @@ ColumnLayout {
                 Button { text: "Forward ▶"; Layout.fillWidth: true; enabled: !page.dataState.busy; onClicked: { page.clearSelection(); ftpBrowser.navigate("local", "forward") } background: Rectangle { color: parent.down ? "#314761" : parent.hovered ? "#30445d" : "#263449"; border.color: "#1e2a3b"; border.width: 1 } }
                 Button { text: "Up"; Layout.fillWidth: true; enabled: !page.dataState.busy; onClicked: { page.clearSelection(); ftpBrowser.local_open("..") } background: Rectangle { color: parent.down ? "#314761" : parent.hovered ? "#30445d" : "#263449"; border.color: "#1e2a3b"; border.width: 1 } }
                 Button { text: "Downloads"; Layout.fillWidth: true; enabled: !page.dataState.busy; onClicked: { page.clearSelection(); ftpBrowser.open_local_shortcut("Downloads") } background: Rectangle { color: parent.down ? "#314761" : parent.hovered ? "#30445d" : "#263449"; border.color: "#1e2a3b"; border.width: 1 } }
-                Button { text: "Browse..."; Layout.fillWidth: true; enabled: !page.dataState.busy; onClicked: { page.clearSelection(); ftpBrowser.navigate("local", "home") } background: Rectangle { color: parent.down ? "#314761" : parent.hovered ? "#30445d" : "#263449"; border.color: "#1e2a3b"; border.width: 1 } }
+                Button { text: "Browse..."; Layout.fillWidth: true; enabled: !page.dataState.busy; onClicked: { localFolderDialog.open() } background: Rectangle { color: parent.down ? "#314761" : parent.hovered ? "#30445d" : "#263449"; border.color: "#1e2a3b"; border.width: 1 } }
                 Button { text: "Desktop"; Layout.fillWidth: true; enabled: !page.dataState.busy; onClicked: { page.clearSelection(); ftpBrowser.open_local_shortcut("Desktop") } background: Rectangle { color: parent.down ? "#314761" : parent.hovered ? "#30445d" : "#263449"; border.color: "#1e2a3b"; border.width: 1 } }
-                Button { text: "Documents"; Layout.fillWidth: true; enabled: !page.dataState.busy; onClicked: { page.clearSelection(); ftpBrowser.open_local_shortcut("Documents") } background: Rectangle { color: parent.down ? "#314761" : parent.hovered ? "#30445d" : "#263449"; border.color: "#1e2a3b"; border.width: 1 } }
+                Button { text: "Removable..."; Layout.fillWidth: true; enabled: !page.dataState.busy; onClicked: { localFolderDialog.currentFolder = ftpBrowser.removable_root_url(); localFolderDialog.open() } background: Rectangle { color: parent.down ? "#314761" : parent.hovered ? "#30445d" : "#263449"; border.color: "#1e2a3b"; border.width: 1 } }
             }
             Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 38; color: "#263449"; RowLayout { anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 10; spacing: 8; Label { text: "Name"; Layout.fillWidth: true; font.bold: true; font.pixelSize: 14 } Label { text: "Size"; Layout.preferredWidth: 90; font.bold: true; font.pixelSize: 14 } Label { text: "Type"; Layout.preferredWidth: 85; font.bold: true; font.pixelSize: 14 } Label { text: "Modified"; Layout.preferredWidth: 112; font.bold: true; font.pixelSize: 14 } } }
             RowLayout { Layout.fillWidth: true; TextField { id: localSearch; Layout.fillWidth: true; placeholderText: "Filter PC filenames · Ctrl+F to search"; onTextChanged: page.clearSelection() } Button { text: "Clear"; onClicked: localSearch.clear() } }
