@@ -749,6 +749,8 @@ class Browser(QObject):
         try:
             if not ok:
                 self.status = "Cancelled" if self.cancelled else "FTP failed: " + self.err[-500:]
+                if not self.cancelled and self.job == "list" and ("connection refused" in self.err.lower() or "could not connect to server" in self.err.lower()):
+                    self.status = "⚠ Connection refused. Be sure to start your FTP server on the Switch 2 first, then try Connect again. (" + self.host + ":" + self.port + ")"
                 if self.job=="list" and self.after_list_status:
                     self.status=self.after_list_status+"; refresh: "+self.status
                     self.after_list_status=""
