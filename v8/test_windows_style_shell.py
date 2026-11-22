@@ -22,16 +22,16 @@ class WindowsStyleShellTests(unittest.TestCase):
         self.assertIn("text: navEntry.text", qml)
         self.assertIn("Layout.preferredHeight: 42", qml)
 
-    def test_settings_grouped_layout_preserves_actions(self):
+    def test_settings_simplified_and_hotspot_stop_guard(self):
         qml = (ROOT / "ControlCenter.qml").read_text()
-        for title in ("App preferences", "Hotspot Wi-Fi", "Restart & recovery",
-                      "Wi-Fi presets", "Diagnostics & maintenance",
-                      "Network event history", "Advanced tools", "Update preferences"):
+        for title in ("App preferences", "Hotspot Wi-Fi", "Update preferences"):
             self.assertIn('title: "' + title + '"', qml)
-        self.assertIn('width: Math.min(parent.width, 960)', qml)
+        for title in ("Restart & recovery", "Wi-Fi presets",
+                      "Diagnostics & maintenance", "Network event history", "Advanced tools"):
+            self.assertNotIn('title: "' + title + '"', qml)
+        self.assertIn('Stop the hotspot before changing the Wi-Fi name', qml)
+        self.assertIn('enabled: !root.busy && root.hotspot.state === "off" && root.wifiName.length > 0', qml)
         for action in ("controller.wifi_status()", "wifiConfirmDialog.open()",
-                       "controller.wifi_save_preset(", "controller.run_self_test()",
-                       "controller.export_diagnostics()", "controller.wifi_events()",
                        "controller.set_update_preference("):
             self.assertIn(action, qml)
 
