@@ -639,6 +639,27 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         contentItem: ColumnLayout {
                             spacing: 9
+                    Rectangle {
+                        Layout.fillWidth: true
+                        implicitHeight: wifiStopWarning.implicitHeight + 24
+                        radius: 6
+                        color: root.hotspot.state === "on" ? "#422b20" : "#203344"
+                        border.color: root.hotspot.state === "on" ? "#f59e0b" : "#436079"
+                        Label {
+                            id: wifiStopWarning
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            wrapMode: Text.Wrap
+                            font.bold: true
+                            color: root.hotspot.state === "on" ? "#fbbf24" : "#c8d7e7"
+                            text: root.hotspot.state === "on"
+                                  ? "⚠ Stop the hotspot before changing the Wi-Fi name (SSID), password, or channel. Apply is disabled while the hotspot is running."
+                                  : "Before applying Wi-Fi changes, make sure the hotspot is stopped. Restart it after applying the new settings."
+                        }
+                    }
                     Label { text: "Current SSID: " + (root.hotspot.ssid || "Unavailable"); color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
                     TextField { placeholderText: "Wi-Fi name (SSID)"; text: root.wifiName; onTextEdited: root.wifiName = text; Layout.fillWidth: true; maximumLength: 32 }
                     TextField { placeholderText: "New WPA2 password (leave blank to keep current)"; text: root.wifiPassword; echoMode: TextInput.Password; onTextEdited: root.wifiPassword = text; Layout.fillWidth: true }
@@ -653,96 +674,10 @@ ApplicationWindow {
                     Label { text: "Adapter AP support: " + (root.wifiInfo.adapter ? String(root.wifiInfo.adapter.ap_supported) : "Not checked") + " | Supported channels reported: " + (root.wifiInfo.adapter ? root.wifiInfo.adapter.channels.join(", ") : "Unknown"); Layout.fillWidth: true; wrapMode: Text.Wrap; color: root.muted }
                     RowLayout {
                         Button { text: "Check Compatibility"; enabled: !root.busy; onClicked: controller.wifi_status() }
-                        Button { text: "Apply Wi-Fi Settings"; highlighted: true; enabled: !root.busy && root.wifiName.length > 0; onClicked: wifiConfirmDialog.open() }
+                        Button { text: "Apply Wi-Fi Settings"; highlighted: true; enabled: !root.busy && root.hotspot.state === "off" && root.wifiName.length > 0; onClicked: wifiConfirmDialog.open() }
                     }
                     Button { text: "Restore Previous Wi-Fi Settings"; enabled: !root.busy && root.wifiInfo.backup === true; onClicked: wifiRestoreDialog.open() }
                     Label { text: "Only Wi-Fi profile fields are changed. IP, DHCP, DNS, firewall, FTP and the existing hotspot ON/OFF backend are untouched. NetworkManager authorization is required. Restart the hotspot with its existing controls after changes."; color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
-                        }
-                    }
-                    GroupBox {
-                        title: "Restart & recovery"
-                        Layout.fillWidth: true
-                        contentItem: ColumnLayout {
-                            spacing: 9
-                    Label { text: root.wifiRestartMessage || "After changing SSID, restart the hotspot to activate it."; color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
-                    RowLayout {
-                        Button { text: "Restart Hotspot"; enabled: !root.busy; onClicked: wifiRestartDialog.open() }
-                        Button { text: "Restart SwitchNest"; enabled: !root.busy; onClicked: controller.restart_control_center() }
-                    }
-                        }
-                    }
-                    GroupBox {
-                        title: "Wi-Fi presets"
-                        Layout.fillWidth: true
-                        contentItem: ColumnLayout {
-                            spacing: 9
-                    TextField { placeholderText: "Preset name"; text: root.presetName; onTextEdited: root.presetName = text; Layout.fillWidth: true }
-                    RowLayout {
-                        Button { text: "Save Preset"; onClicked: controller.wifi_save_preset(root.presetName, root.wifiName, root.wifiChannel) }
-                        Button { text: "Refresh Presets"; onClicked: controller.wifi_presets() }
-                    }
-                    ComboBox {
-                        id: presetChoice
-                        Layout.fillWidth: true
-                        model: Object.keys(root.wifiPresetMap)
-                        onActivated: controller.wifi_select_preset(currentText)
-                    }
-                        }
-                    }
-                    GroupBox {
-                        title: "Diagnostics & maintenance"
-                        Layout.fillWidth: true
-                        contentItem: ColumnLayout {
-                            spacing: 9
-                    Label { text: "Recovery: one attempt after a failed confirmed restart; 120-second cooldown. Client disconnects do not trigger recovery."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
-                    RowLayout {
-                        Button { text: "Run Self-Test"; enabled: !root.busy; onClicked: controller.run_self_test() }
-                        Button { text: "Export Redacted Report"; enabled: !root.busy; onClicked: controller.export_diagnostics() }
-                    }
-                    Label { text: "Self-test: " + root.selfTestInfo.state; color: root.accent }
-                    Repeater {
-                        model: root.selfTestInfo.checks || []
-                        delegate: Label {
-                            required property var modelData
-                            text: modelData.label + ": " + modelData.result + (modelData.reason ? " — " + modelData.reason : "")
-                            color: root.muted
-                            Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                        }
-                    }
-                    RowLayout {
-                        Button { text: "Verify App"; enabled: !root.busy; onClicked: controller.verify_application() }
-                        Button { text: "Repair App Launcher"; enabled: !root.busy; onClicked: controller.repair_application() }
-                    }
-                    Label { text: "Self-test is read-only and cannot certify isolation or FTP reachability. Repair changes only the SwitchNest launcher."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
-                        }
-                    }
-                    GroupBox {
-                        title: "Network event history"
-                        Layout.fillWidth: true
-                        contentItem: ColumnLayout {
-                            spacing: 9
-                    Button { text: "Refresh Events"; onClicked: controller.wifi_events() }
-                    Repeater {
-                        model: root.wifiEventsList.slice(-12).reverse()
-                        delegate: Label {
-                            required property var modelData
-                            text: modelData.time + "  " + modelData.event + "  " + modelData.detail
-                            color: root.muted
-                            Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                        }
-                    }
-                        }
-                    }
-                    GroupBox {
-                        title: "Advanced tools"
-                        Layout.fillWidth: true
-                        contentItem: ColumnLayout {
-                            spacing: 9
-                    Button { text: "Change Wi-Fi password"; enabled: !root.busy; onClicked: controller.wifi_settings() }
-                    Label { text: "Use the legacy manager only when the profile editor is unavailable."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
-                    Label { text: "Refresh interval: 10 seconds"; color: root.muted }
                         }
                     }
                     GroupBox {
