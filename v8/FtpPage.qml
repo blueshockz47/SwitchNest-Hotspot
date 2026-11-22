@@ -20,7 +20,7 @@ ColumnLayout {
     property string lastStatus: ""
     property int fileFontSize: 14
     property bool showDetails: true
-    property color paneColor: "#1d293a"
+    property color paneColor: "#202938"
     property color paneBorder: "#33465c"
     property bool dragInProgress: false
     property string dropTarget: ""
@@ -224,18 +224,18 @@ ColumnLayout {
             Layout.fillHeight: true
             SplitView.preferredWidth: fileSplit.width / 2
             SplitView.minimumWidth: 220
-            spacing: 6
+            spacing: 4
             Label { text: "THIS PC  /  FILE EXPLORER"; color: "#40c9b7"; font.bold: true; font.pixelSize: 13 }
-            Label { text: "Local · " + page.sizeText(page.dataState.localFree) + " free"; font.bold: true }
+
             RowLayout {
                 Layout.fillWidth: true
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 34
-                    radius: 8
-                    color: "#17283a"
-                    border.color: "#30485d"
-                    Label { anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 10; verticalAlignment: Text.AlignVCenter; text: "⌂  " + page.dataState.local; elide: Text.ElideMiddle; ToolTip.visible: pathHover.hovered; ToolTip.text: page.dataState.local }
+                    radius: 0
+                    color: "#202938"
+                    border.color: "#8190a4"
+                    Label { anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 10; verticalAlignment: Text.AlignVCenter; text: page.dataState.local; elide: Text.ElideMiddle; ToolTip.visible: pathHover.hovered; ToolTip.text: page.dataState.local }
                     HoverHandler { id: pathHover }
                 }
                 Label { text: page.localSelected.length + " selected"; visible: page.localSelected.length > 0; color: "#8cb9c9" }
@@ -243,7 +243,7 @@ ColumnLayout {
             RowLayout {
                 Layout.fillWidth: true
                 ToolButton {
-                    text: "↑  Up one level"
+                    text: "Up"
                     enabled: !page.dataState.busy
                     onClicked: page.openDirectory("local","..")
                     ToolTip.visible: hovered; ToolTip.text: "Go to parent folder"
@@ -259,6 +259,7 @@ ColumnLayout {
                 }
                 Item { Layout.fillWidth: true }
             }
+            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 34; color: "#263449"; RowLayout { anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 10; Label { text: "Name"; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter; font.bold: true } Label { text: "Size"; Layout.preferredWidth: 75; font.bold: true } Label { text: "Type"; Layout.preferredWidth: 75; font.bold: true } Label { text: "Modified"; Layout.preferredWidth: 85; font.bold: true } } }
             ListView {
                 id: localList
                 Layout.fillWidth: true; Layout.fillHeight: true
@@ -319,20 +320,16 @@ ColumnLayout {
                 }
                 ScrollBar.vertical: ScrollBar {}
             }
+            RowLayout { Layout.fillWidth: true; Button { text: "Upload to Switch 2  →"; enabled: page.dataState.connected && !page.dataState.busy && page.localSelected.length > 0; onClicked: page.transfer("local", page.localSelected) } Button { text: "Refresh PC"; enabled: !page.dataState.busy; onClicked: ftpBrowser.refresh() } Item { Layout.fillWidth: true } Label { text: page.dataState.localRows.length + " items · " + page.localSelected.length + " selected"; color: "#9fb2c9" } }
         }
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             SplitView.preferredWidth: fileSplit.width / 2
             SplitView.minimumWidth: 220
-            spacing: 6
+            spacing: 4
             Label { text: "NINTENDO SWITCH 2  /  FTP"; color: "#40c9b7"; font.bold: true; font.pixelSize: 13 }
-            RowLayout {
-                Layout.fillWidth: true
-                Label { text: "Switch 2 · FTP"; font.bold: true }
-                Item { Layout.fillWidth: true }
-                Label { text: page.remoteSelected.length + " selected"; visible: page.remoteSelected.length > 0; color: "#8cb9c9" }
-            }
+            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 34; color: "#202938"; border.color: "#8190a4"; Label { anchors.fill: parent; anchors.leftMargin: 8; verticalAlignment: Text.AlignVCenter; text: page.dataState.remote || "/"; color: "#e4edf8"; elide: Text.ElideMiddle } }
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 4
@@ -441,7 +438,7 @@ ColumnLayout {
             RowLayout {
                 Layout.fillWidth: true
                 ToolButton {
-                    text: "↑  Up one level"
+                    text: "Up"
                     enabled: !page.dataState.busy && page.dataState.connected
                     onClicked: page.openDirectory("remote","..")
                     ToolTip.visible: hovered; ToolTip.text: "Go to parent folder on Switch 2"
@@ -457,6 +454,7 @@ ColumnLayout {
                 }
                 Item { Layout.fillWidth: true }
             }
+            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 34; color: "#263449"; RowLayout { anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 10; Label { text: "Name"; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter; font.bold: true } Label { text: "Size"; Layout.preferredWidth: 75; font.bold: true } Label { text: "Type"; Layout.preferredWidth: 75; font.bold: true } Label { text: "Modified"; Layout.preferredWidth: 85; font.bold: true } } }
             ListView {
                 id: remoteList
                 Layout.fillWidth: true; Layout.fillHeight: true
@@ -517,6 +515,7 @@ ColumnLayout {
                 }
                 ScrollBar.vertical: ScrollBar {}
             }
+            RowLayout { Layout.fillWidth: true; Button { text: "←  Download to PC"; enabled: page.dataState.connected && !page.dataState.busy && page.remoteSelected.length > 0; onClicked: page.transfer("remote", page.remoteSelected) } Button { text: "New folder"; enabled: page.dataState.connected && !page.dataState.busy; onClicked: { page.activeSide = "remote"; page.editEntry("mkdir") } } Item { Layout.fillWidth: true } Label { text: page.dataState.remoteRows.length + " items · " + page.remoteSelected.length + " selected"; color: "#9fb2c9" } }
         }
     }
     RowLayout {
