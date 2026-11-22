@@ -1,4 +1,4 @@
-# SwitchNest Hotspot Linux v8.1.7 — release candidate
+# SwitchNest Hotspot Linux 8.1.7-Stable-Final
 
 ## Highlights
 - Redesigned Linux Control Center with Overview, Network, Streaming, Homebrew Manager, FTP Manager, Diagnostics, Settings, and Updates.
@@ -20,5 +20,5 @@
 - [ ] Verify hotspot start/stop/restart, DNS/HTTP status, and firewall isolation.
 - [ ] Verify update ZIP workflow and release asset naming.
 - [ ] Merge the release PR after checks pass.
-- [ ] Create GitHub tag and release v8.1.7 with `SwitchNest-Hotspot-Linux-v8.1.7.zip`.
+- [ ] Create GitHub tag and release `8.1.7-Stable-Final` with `SwitchNest-Hotspot-Linux-v8.1.7.zip`.
 - [ ] Verify the published ZIP is downloadable and the README link resolves.
