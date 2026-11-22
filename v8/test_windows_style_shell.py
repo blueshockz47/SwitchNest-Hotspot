@@ -34,6 +34,8 @@ class WindowsStyleShellTests(unittest.TestCase):
         self.assertNotIn('title: "Update preferences"', settings)
         self.assertIn('title: "Update preferences"', updates)
         self.assertEqual(qml.count('title: "Update preferences"'), 1)
+        self.assertLess(updates.index('text: "Open GitHub releases"'), updates.index('title: "Update preferences"'))
+        self.assertNotIn('text: "Open development downloads"', updates)
         self.assertIn('Stop the hotspot before changing the Wi-Fi name', qml)
         self.assertIn('enabled: !root.busy && root.hotspot.state === "off" && root.wifiName.length > 0', qml)
         for action in ("controller.wifi_status()", "wifiConfirmDialog.open()",
