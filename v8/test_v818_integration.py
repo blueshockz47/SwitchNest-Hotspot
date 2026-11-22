@@ -119,8 +119,8 @@ class Phase2bTests(unittest.TestCase):
         self.assertIn('ftpBrowser.open_remote_path("/switch/")', ui)
         self.assertIn('ftpBrowser.open_remote_path("/")', ui)
         self.assertIn('ftpBrowser.open_remote_path("/switch/")', ui)
-        self.assertIn('page.openDirectory("local","..")', ui)
-        self.assertIn('page.openDirectory("remote","..")', ui)
+        self.assertIn('ftpBrowser.local_open("..")', ui)
+        self.assertIn('ftpBrowser.remote_open("..")', ui)
         self.assertIn('Behavior on color { ColorAnimation { duration: 100 } }', ui)
 
     def test_ui_and_backend_wiring_preserve_worker(self):
