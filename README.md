@@ -4,9 +4,9 @@
 
 *Connect locally. Play freely.*
 
-[![Stable v8.1.6](https://img.shields.io/badge/stable-v8.1.6-blue)](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/tag/v8.1.6) ![SteamOS / Linux](https://img.shields.io/badge/platform-SteamOS%20%7C%20Linux-informational) [![GPL-2.0](https://img.shields.io/badge/license-GPL--2.0-green)](LICENSE)
+[![Stable v8.1.7](https://img.shields.io/badge/stable-v8.1.7-blue)](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/tag/v8.1.7) ![SteamOS / Linux](https://img.shields.io/badge/platform-SteamOS%20%7C%20Linux-informational) [![GPL-2.0](https://img.shields.io/badge/license-GPL--2.0-green)](LICENSE)
 
-### [Download SwitchNest v8.1.6 (Linux ZIP)](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/download/v8.1.6/SwitchNest-Hotspot-Linux-v8.1.6.zip)
+### [Download SwitchNest v8.1.7 (Linux ZIP)](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/download/v8.1.7/SwitchNest-Hotspot-Linux-v8.1.7.zip)
 
 [**Install in 3 steps**](#install-on-steamos) · [Features](#what-can-switchnest-do) · [Screenshots](#screenshots--v815) · [Use without hotspot](#use-ftp-and-homebrew-manager-on-your-home-network) · [Troubleshooting](#troubleshooting)
 
@@ -54,7 +54,7 @@ SwitchNest includes an **offline Wi-Fi hotspot**, **FTP File Manager**, **Homebr
 
 ### Step 1 — Download and extract
 
-1. **[Download the stable v8.1.6 Linux ZIP](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/download/v8.1.6/SwitchNest-Hotspot-Linux-v8.1.6.zip)** — use the stable release package rather than a development branch ZIP.
+1. **[Download the stable v8.1.7 Linux ZIP](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/download/v8.1.7/SwitchNest-Hotspot-Linux-v8.1.7.zip)** — use the stable release package rather than a development branch ZIP.
 2. Open **Downloads** and extract the ZIP.
 3. Open the extracted folder. Find the folder containing `install-switchnest-v8.sh` and `install-switchnest-pico-connectivity-v7.1-password.sh`.
 4. Right-click inside that folder and choose **Open Terminal Here** (Konsole). **Run all commands below from this folder.**
@@ -135,7 +135,7 @@ You can leave the SwitchNest offline hotspot **OFF** and use your existing home 
 
 **Example FTP connection:** `10.42.60.99` on port `1337` (from the maintainer's setup). Your console's IP and FTP port may be different.
 
-> **Homebrew discovery in v8.1.6:** Check Now discovers GitHub/Reddit listings, groups apps by category, and caches release metadata. NRO installation requires explicit user confirmation and a compatible FTP connection; ZIP releases remain manual downloads.
+> **Homebrew discovery in v8.1.7:** Check Now discovers GitHub/Reddit listings, groups apps by category, and caches release metadata. NRO installation requires explicit user confirmation and a compatible FTP connection; ZIP releases remain manual downloads.
 
 ## FTP File Manager and streaming
 
@@ -154,7 +154,7 @@ You can leave the SwitchNest offline hotspot **OFF** and use your existing home 
 | **Using 90DNS with FTP** | DNS filtering does not inherently block local FTP, but router isolation, firewall rules, or network settings might. |
 | **Homebrew install unavailable** | Some apps are manual-only or do not offer an eligible SHA-256-verified NRO release. |
 | **Sunshine unavailable** | Install and configure Sunshine separately; it is not bundled. |
-| **Maximized startup preference error** | Fixed in v8.1.6. |
+| **Maximized startup preference error** | Fixed in v8.1.7. |
 | **Isolation: Unverified** | Verify firewall and forwarding rules independently. |
 
 **Updating:** Use the Control Center **Updates** page for supported updates. For a managed installation, you can inspect status or roll back from the extracted project folder:
@@ -170,7 +170,7 @@ More help: [Troubleshooting](docs/TROUBLESHOOTING.md) · [Security](docs/SECURIT
 
 ## Development status
 
-- **v8.1.6 — stable:** New SwitchNest Pulse logo and refreshed interface, categorized Homebrew Manager, cached release metadata, GitHub/Reddit discovery, and startup layout fixes. [Download v8.1.6](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/tag/v8.1.6).
+- **v8.1.7 — stable:** New SwitchNest Pulse logo and refreshed interface, categorized Homebrew Manager, cached release metadata, GitHub/Reddit discovery, and startup layout fixes. [Download v8.1.7](https://github.com/blueshockz47/SwitchNest-Hotspot/releases/tag/v8.1.7).
 - **v8.1.5 — previous:** Hotspot Control Center, FTP, Homebrew Manager, streaming controls, and settings.
 
 ## SwitchNest Offline Hotspot vs. a normal hotspot
