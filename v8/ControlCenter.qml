@@ -610,8 +610,15 @@ ApplicationWindow {
                     clip: true
                     contentWidth: availableWidth
                     ColumnLayout {
-                        width: parent.width
+                        width: Math.min(parent.width, 960)
+                        spacing: 14
                         Label { text: "Settings"; font.pixelSize: 22 }
+                        Label { text: "Configure your hotspot, app preferences, and maintenance tools."; color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
+                    GroupBox {
+                        title: "App preferences"
+                        Layout.fillWidth: true
+                        contentItem: ColumnLayout {
+                            spacing: 9
                     CheckBox {
                         id: launchAtLogin
                         text: "Start SwitchNest on desktop login"
@@ -625,7 +632,13 @@ ApplicationWindow {
                     Label { text: "Launches the app in Desktop Mode, not the hotspot. Gaming Mode is not supported."; wrapMode: Text.Wrap; Layout.fillWidth: true; color: root.muted }
                     CheckBox { text: "Launch SwitchNest maximized"; checked: root.updatePrefs.fullscreen_on_start; onToggled: controller.set_update_preference("fullscreen_on_start", checked) }
                     Label { text: "Applies on next launch. The title bar, minimize, restore, and close controls remain available."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
-                    Label { text: "Wi-Fi configuration (existing NetworkManager AP profile)"; font.bold: true }
+                        }
+                    }
+                    GroupBox {
+                        title: "Hotspot Wi-Fi"
+                        Layout.fillWidth: true
+                        contentItem: ColumnLayout {
+                            spacing: 9
                     Label { text: "Current SSID: " + (root.hotspot.ssid || "Unavailable"); color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
                     TextField { placeholderText: "Wi-Fi name (SSID)"; text: root.wifiName; onTextEdited: root.wifiName = text; Layout.fillWidth: true; maximumLength: 32 }
                     TextField { placeholderText: "New WPA2 password (leave blank to keep current)"; text: root.wifiPassword; echoMode: TextInput.Password; onTextEdited: root.wifiPassword = text; Layout.fillWidth: true }
@@ -644,13 +657,25 @@ ApplicationWindow {
                     }
                     Button { text: "Restore Previous Wi-Fi Settings"; enabled: !root.busy && root.wifiInfo.backup === true; onClicked: wifiRestoreDialog.open() }
                     Label { text: "Only Wi-Fi profile fields are changed. IP, DHCP, DNS, firewall, FTP and the existing hotspot ON/OFF backend are untouched. NetworkManager authorization is required. Restart the hotspot with its existing controls after changes."; color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
-                    Label { text: "Hotspot restart and recovery"; font.bold: true }
+                        }
+                    }
+                    GroupBox {
+                        title: "Restart & recovery"
+                        Layout.fillWidth: true
+                        contentItem: ColumnLayout {
+                            spacing: 9
                     Label { text: root.wifiRestartMessage || "After changing SSID, restart the hotspot to activate it."; color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
                     RowLayout {
                         Button { text: "Restart Hotspot"; enabled: !root.busy; onClicked: wifiRestartDialog.open() }
                         Button { text: "Restart SwitchNest"; enabled: !root.busy; onClicked: controller.restart_control_center() }
                     }
-                    Label { text: "Wi-Fi presets (SSID + channel only; no passwords)"; font.bold: true }
+                        }
+                    }
+                    GroupBox {
+                        title: "Wi-Fi presets"
+                        Layout.fillWidth: true
+                        contentItem: ColumnLayout {
+                            spacing: 9
                     TextField { placeholderText: "Preset name"; text: root.presetName; onTextEdited: root.presetName = text; Layout.fillWidth: true }
                     RowLayout {
                         Button { text: "Save Preset"; onClicked: controller.wifi_save_preset(root.presetName, root.wifiName, root.wifiChannel) }
@@ -662,7 +687,13 @@ ApplicationWindow {
                         model: Object.keys(root.wifiPresetMap)
                         onActivated: controller.wifi_select_preset(currentText)
                     }
-                    Label { text: "v8.0.9 Stability & Recovery"; font.bold: true }
+                        }
+                    }
+                    GroupBox {
+                        title: "Diagnostics & maintenance"
+                        Layout.fillWidth: true
+                        contentItem: ColumnLayout {
+                            spacing: 9
                     Label { text: "Recovery: one attempt after a failed confirmed restart; 120-second cooldown. Client disconnects do not trigger recovery."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     RowLayout {
                         Button { text: "Run Self-Test"; enabled: !root.busy; onClicked: controller.run_self_test() }
@@ -684,7 +715,13 @@ ApplicationWindow {
                         Button { text: "Repair App Launcher"; enabled: !root.busy; onClicked: controller.repair_application() }
                     }
                     Label { text: "Self-test is read-only and cannot certify isolation or FTP reachability. Repair changes only the SwitchNest launcher."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
-                    Label { text: "Network event history (most recent 100 events)"; font.bold: true }
+                        }
+                    }
+                    GroupBox {
+                        title: "Network event history"
+                        Layout.fillWidth: true
+                        contentItem: ColumnLayout {
+                            spacing: 9
                     Button { text: "Refresh Events"; onClicked: controller.wifi_events() }
                     Repeater {
                         model: root.wifiEventsList.slice(-12).reverse()
@@ -696,14 +733,28 @@ ApplicationWindow {
                             wrapMode: Text.Wrap
                         }
                     }
-                    Label { text: "Advanced v7.1 manager (legacy)"; color: root.muted }
+                        }
+                    }
+                    GroupBox {
+                        title: "Advanced tools"
+                        Layout.fillWidth: true
+                        contentItem: ColumnLayout {
+                            spacing: 9
                     Button { text: "Change Wi-Fi password"; enabled: !root.busy; onClicked: controller.wifi_settings() }
                     Label { text: "Use the legacy manager only when the profile editor is unavailable."; color: root.muted; wrapMode: Text.Wrap; Layout.fillWidth: true }
                     Label { text: "Refresh interval: 10 seconds"; color: root.muted }
-                    Label { text: "Update notifications"; font.bold: true }
+                        }
+                    }
+                    GroupBox {
+                        title: "Update preferences"
+                        Layout.fillWidth: true
+                        contentItem: ColumnLayout {
+                            spacing: 9
                     CheckBox { text: "Check for updates at startup"; checked: root.updatePrefs.check_at_startup; onToggled: controller.set_update_preference("check_at_startup", checked) }
                     CheckBox { text: "Show update available popup"; checked: root.updatePrefs.show_update_popup; onToggled: controller.set_update_preference("show_update_popup", checked) }
                     CheckBox { text: "Stable releases only for startup checks"; checked: root.updatePrefs.stable_only; onToggled: controller.set_update_preference("stable_only", checked) }
+                        }
+                    }
                     Item { Layout.fillHeight: true }
                     }
                 }
