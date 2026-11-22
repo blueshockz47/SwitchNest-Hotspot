@@ -653,7 +653,6 @@ ApplicationWindow {
                     ColumnLayout {
                         width: Math.min(parent.width, 960)
                         spacing: 14
-                        Label { text: "Settings"; font.pixelSize: 22 }
                         Label { text: "Configure your hotspot, app preferences, and maintenance tools."; color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
                     GroupBox {
                         title: "App preferences"
