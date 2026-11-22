@@ -56,32 +56,22 @@ class MonitorTests(unittest.TestCase):
         self.assertEqual(catalog_sources.normalize_category("Other", "Chromium NX"), "Tools")
         self.assertEqual(catalog_sources.normalize_category("Other", "PKForge"), "Tools")
 
-    def test_unverified_nro_requires_explicit_opt_in(self):
-        import tempfile
-        from pathlib import Path
+    def test_unverified_nro_is_rejected_even_with_explicit_opt_in(self):
         payload = b"sample unverified NRO test payload"
-        class Response:
-            def __enter__(self): return self
-            def __exit__(self, *args): return False
-            def geturl(self): return "https://release-assets.githubusercontent.com/test"
-            def read(self, count): 
-                data = self.data[:count]
-                self.data = self.data[count:]
-                return data
         def opener(request, timeout):
-            response = Response()
-            response.data = payload
-            return response
-        asset = {"name": "test.nro", "url": "https://github.com/example/repo/releases/download/v1/test.nro", "size": len(payload), "digest": ""}
+            self.fail("Unverified downloads must fail before making network requests")
+        asset = {"name": "test.nro", "url": "https://github.com/example/repo/releases/download/v1/test.nro",
+                 "size": len(payload), "digest": ""}
         with tempfile.TemporaryDirectory() as directory:
-            with self.assertRaisesRegex(ValueError, "Verified SHA-256"):
-                homebrew.download_asset(asset, directory, opener=opener)
-            path = homebrew.download_asset(asset, directory, opener=opener, allow_unverified_nro=True)
-            self.assertEqual(Path(path).read_bytes(), payload)
-            Path(path).unlink()
+            for opt_in in (False, True):
+                with self.assertRaisesRegex(ValueError, "Verified SHA-256"):
+                    homebrew.download_asset(asset, directory, opener=opener,
+                                            allow_unverified_nro=opt_in)
             asset["name"] = "test.zip"
             with self.assertRaisesRegex(ValueError, "Verified SHA-256"):
-                homebrew.download_asset(asset, directory, opener=opener, allow_unverified_nro=True)
+                homebrew.download_asset(asset, directory, opener=opener,
+                                        allow_unverified_nro=True)
+            self.assertEqual(list(Path(directory).iterdir()), [])
 
     def test_ftp_drag_coordinates_and_folder_target_regression(self):
         # The window overlay and page have different origins. Never use the
