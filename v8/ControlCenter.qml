@@ -317,8 +317,8 @@ ApplicationWindow {
                 }
                 Label { text: "LINUX CONTROL CENTER"; font.pixelSize: 10; font.bold: true; color: "#93aac5"; Layout.bottomMargin: 14 }
                 NavButton { text: "⌂    Overview"; page: 0 }
-                NavButton { text: "▣    FTP Manager"; page: 3; fileTab: 0 }
                 NavButton { text: "◆    Homebrew"; page: 3; fileTab: 1 }
+                NavButton { text: "▣    FTP Manager"; page: 3; fileTab: 0 }
                 NavButton { text: "◉    Network"; page: 1 }
                 NavButton { text: "◈    Streaming"; page: 2 }
                 NavButton { text: "⚙    Settings"; page: 5 }
