@@ -358,7 +358,7 @@ ApplicationWindow {
                            pages.currentIndex === 4 ? "#fb7185" : pages.currentIndex === 5 ? "#34d399" : "#a78bfa"
                     Behavior on color { ColorAnimation { duration: 180 } }
                 }
-                Label { text: pages.currentIndex === 3 ? (fileTabs.currentIndex === 0 ? "FTP Manager" : "Homebrew") : ["Overview","Network","Streaming","Files","Diagnostics","Settings","Updates"][pages.currentIndex]; font.pixelSize: 28; font.bold: true; color: "#edf6ff" }
+                Label { text: pages.currentIndex === 3 ? (fileTabs.currentIndex === 0 ? "FTP Manager" : "Homebrew Manager") : ["Overview","Network","Streaming","Files","Diagnostics","Settings","Updates"][pages.currentIndex]; font.pixelSize: 28; font.bold: true; color: "#edf6ff" }
                 Item { Layout.fillWidth: true }
                 Button { text: "⟳ Refresh"; enabled: !root.busy; onClicked: controller.refresh() }
             }
