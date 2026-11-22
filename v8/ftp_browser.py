@@ -191,6 +191,21 @@ class Browser(QObject):
         self.start("list", ["--", self.url(directory=True)])
 
     @Slot(str)
+    def open_local_shortcut(self, folder):
+        """Navigate to a conventional folder beneath the current user's home."""
+        if self.busy or folder not in ("Downloads", "Desktop", "Documents"):
+            return
+        target = Path.home() / folder
+        if not target.is_dir() or target.is_symlink():
+            self.status = f"{folder} folder not found"
+            self.changed.emit()
+            return
+        self.navigation["local"].append(str(self.local))
+        self.forward_paths["local"].clear()
+        self.local = target
+        self.refresh_local()
+
+    @Slot(str)
     def local_open(self, name):
         if self.busy:
             return
