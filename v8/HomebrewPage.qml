@@ -293,11 +293,11 @@ ColumnLayout {
             } catch (e) { home.statusText = "Invalid homebrew response" }
         }
     }
-    Label { text: "Switch 2 Homebrew Manager"; font.pixelSize: 22; font.bold: true }
-    Label { text: "Verified NRO → FTP install  •  ZIP → manual download"; font.pixelSize: 11; color: "#aab7c6"; Layout.fillWidth: true }
+    Label { text: "Homebrew Manager"; font.pixelSize: 22; font.bold: true; color: "#f0f5ff" }
+    Label { text: "Discover Switch 2 homebrew, review release verification, and install supported NROs over FTP"; font.pixelSize: 12; color: "#aab7c6"; Layout.fillWidth: true; wrapMode: Text.Wrap }
     RowLayout {
         Layout.fillWidth: true
-        Label { text: "Switch 2 FTP"; font.bold: true }
+        Label { text: "SWITCH 2 FTP"; font.bold: true; color: "#40c9b7"; font.pixelSize: 12 }
         TextField { id: ftpHost; text: home.ftpState.host; placeholderText: "Switch 2 IP"; Layout.fillWidth: true; enabled: !home.ftpState.busy && !home.working }
         TextField { id: ftpPort; text: home.ftpState.port; placeholderText: "Port"; Layout.preferredWidth: 80; enabled: !home.ftpState.busy && !home.working }
         Button { text: "Connect"; enabled: !home.ftpState.busy && !home.working; onClicked: ftpBrowser.connect_to(ftpHost.text, ftpPort.text) }
@@ -306,7 +306,7 @@ ColumnLayout {
     Label { text: (home.ftpState.busy ? "Connecting / FTP operation in progress" : home.ftpState.connected ? "Connected to " + home.ftpState.host + ":" + home.ftpState.port : "Not connected") + " — " + home.ftpState.status; color: home.ftpState.connected ? "#22c55e" : "#ef4444"; wrapMode: Text.Wrap; Layout.fillWidth: true }
     RowLayout {
         Layout.fillWidth: true
-        Label { text: "Live Homebrew Updates"; font.bold: true; color: "#52e0ae" }
+        Label { text: "RELEASE MONITOR"; font.bold: true; color: "#40c9b7"; font.pixelSize: 12 }
         Label { text: home.monitorStatus; Layout.fillWidth: true; elide: Text.ElideRight; font.pixelSize: 11 }
         Button { text: home.monitorChecking ? "Checking..." : "Check Now"; enabled: !home.monitorChecking; onClicked: controller.homebrew_monitor_refresh(true) }
     }
@@ -315,8 +315,9 @@ ColumnLayout {
         visible: home.monitorChecking
         indeterminate: true
     }
+    Label { text: "APP CATALOG"; font.bold: true; color: "#40c9b7"; font.pixelSize: 12; Layout.topMargin: 8 }
     RowLayout {
-        TextField { id: searchBox; placeholderText: "Search Switch 2 homebrew"; Layout.fillWidth: true; onAccepted: { home.catalogQuery = text; home.updateCatalog() } }
+        TextField { id: searchBox; placeholderText: "Search apps, repositories, categories..."; Layout.fillWidth: true; onAccepted: { home.catalogQuery = text; home.updateCatalog() } }
         ComboBox {
             id: categoryBox
             model: ["All", "Tools", "Games", "Streaming", "Emulation", "Fun", "Media", "Other"]
@@ -331,7 +332,7 @@ ColumnLayout {
     Label { text: home.statusText; wrapMode: Text.Wrap; Layout.fillWidth: true }
     Label { text: home.selectedWarning; visible: home.selectedWarning.length > 0; color: "#f59e0b"; font.bold: true; wrapMode: Text.Wrap; Layout.fillWidth: true }
 
-    Label { text: "Three-column app catalog • Right-click an app for download options"; font.pixelSize: 11; Layout.fillWidth: true }
+    Label { text: home.results.length + " apps shown  •  Right-click an app to inspect download and install options"; font.pixelSize: 11; color: "#9fb2c9"; Layout.fillWidth: true }
     ScrollView {
         id: projectScroll
         Layout.fillWidth: true
@@ -350,19 +351,15 @@ ColumnLayout {
                     spacing: 8
                     Rectangle {
                         width: parent.width
-                        height: 42
-                        radius: 9
-                        gradient: Gradient {
-                            orientation: Gradient.Horizontal
-                            GradientStop { position: 0.0; color: "#26364d" }
-                            GradientStop { position: 1.0; color: "#172436" }
-                        }
+                        height: 36
+                        radius: 5
+                        color: "#202e40"
                         border.color: home.categoryColor(categorySection.modelData.name)
                         border.width: 1
                         Rectangle {
-                            width: 5
-                            height: parent.height - 10
-                            radius: 3
+                            width: 4
+                            height: parent.height - 8
+                            radius: 2
                             anchors.left: parent.left
                             anchors.leftMargin: 4
                             anchors.verticalCenter: parent.verticalCenter
@@ -373,10 +370,10 @@ ColumnLayout {
                             anchors.leftMargin: 17
                             anchors.rightMargin: 14
                             spacing: 10
-                            Label { text: home.categoryIcon(categorySection.modelData.name); font.pixelSize: 21 }
+                            Label { text: home.categoryIcon(categorySection.modelData.name); font.pixelSize: 17 }
                             Label {
                                 text: categorySection.modelData.name
-                                font.pixelSize: 17
+                                font.pixelSize: 15
                                 font.bold: true
                                 color: home.categoryColor(categorySection.modelData.name)
                             }
@@ -407,7 +404,7 @@ ColumnLayout {
                                 required property var modelData
                                 Layout.fillWidth: true
                                 Layout.preferredWidth: (categorySection.width - 16) / 3
-                                Layout.preferredHeight: 66
+                                Layout.preferredHeight: 62
                                 sourceComponent: homebrewCard
                                 onLoaded: item.modelData = modelData
                             }
@@ -423,12 +420,12 @@ ColumnLayout {
                 id: projectCard
                 property var modelData: ({})
                 width: parent ? parent.width : 320
-                height: 66
-                padding: 6
+                height: 62
+                padding: 5
                 highlighted: home.selectedRepo !== "" && modelData.repo === home.selectedRepo
                 background: Rectangle {
-                    radius: 7
-                    color: projectCard.highlighted ? "#1b4054" : projectCard.hovered ? "#293e55" : "#192637"
+                    radius: 5
+                    color: projectCard.highlighted ? "#1b4054" : projectCard.hovered ? "#293e55" : "#1d293a"
                     Behavior on color { ColorAnimation { duration: 160 } }
                     border.width: projectCard.highlighted ? 2 : 1
                     border.color: projectCard.highlighted ? "#5eead4" : projectCard.hovered ? home.categoryColor(modelData.category) : "#35465b"
@@ -436,16 +433,16 @@ ColumnLayout {
                 contentItem: RowLayout {
                     spacing: 8
                     Rectangle {
-                        Layout.preferredWidth: 46
-                        Layout.preferredHeight: 46
-                        radius: 7
+                        Layout.preferredWidth: 42
+                        Layout.preferredHeight: 42
+                        radius: 5
                         color: "#24384e"
                         border.color: home.categoryColor(modelData.category)
                         border.width: 2
                         Label {
                             anchors.centerIn: parent
                             text: home.categoryIcon(modelData.category)
-                            font.pixelSize: 24
+                            font.pixelSize: 22
                         }
                     }
                     ColumnLayout {
@@ -453,7 +450,7 @@ ColumnLayout {
                         spacing: 1
                         Label {
                             text: modelData.name
-                            font.pixelSize: 15
+                            font.pixelSize: 14
                             font.bold: true
                             color: "#f2f6fa"
                             elide: Text.ElideRight
