@@ -264,13 +264,48 @@ class Browser(QObject):
         self.local = target
         self.refresh_local()
 
-    @Slot(result=str)
+    @Slot(result=QUrl)
     def removable_root_url(self):
         """Best available mount-point root; the picker still allows other locations."""
         for candidate in (Path("/run/media") / Path.home().name, Path("/run/media"), Path("/media"), Path("/mnt")):
             if candidate.is_dir():
-                return QUrl.fromLocalFile(str(candidate)).toString()
-        return QUrl.fromLocalFile(str(Path.home())).toString()
+                return QUrl.fromLocalFile(str(candidate))
+        return QUrl.fromLocalFile(str(Path.home()))
+
+    @Slot(result="QVariantList")
+    def removable_mounts(self):
+        """Enumerate mounted volumes under SteamOS removable media locations."""
+        import subprocess
+        result = []
+        try:
+            output = subprocess.run(
+                ["findmnt", "-rn", "-o", "TARGET,SOURCE,FSTYPE"],
+                capture_output=True, text=True, timeout=3, check=False
+            ).stdout
+            for line in output.splitlines():
+                parts = line.split(maxsplit=2)
+                if len(parts) != 3:
+                    continue
+                target, source, fstype = parts
+                if not (target.startswith("/run/media/") or target.startswith("/media/") or
+                        (target.startswith("/mnt/") and source.startswith("/dev/"))):
+                    continue
+                if fstype in ("tmpfs", "overlay", "squashfs") or not Path(target).is_dir():
+                    continue
+                result.append({"name": Path(target).name, "path": target})
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+        return result
+
+    @Slot(str)
+    def open_removable_mount(self, path):
+        if self.busy:
+            return
+        if path not in {entry["path"] for entry in self.removable_mounts()}:
+            self.status = "No mounted removable drive found. Mount the device in SteamOS first."
+            self.changed.emit()
+            return
+        self.open_local_folder(QUrl.fromLocalFile(path))
 
     @Slot(str)
     def open_local_shortcut(self, folder):
