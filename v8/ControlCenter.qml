@@ -388,7 +388,7 @@ ApplicationWindow {
                                 Repeater {
                                     model: [
                                         {symbol: "✈", heading: "1. Airplane Mode", detail: "Turn on Airplane Mode on your Switch 2."},
-                                        {symbol: "▣", heading: "2. Start Services", detail: "Make sure all SwitchNest services are running."},
+                                        {symbol: "▣", heading: "2. Start Services", detail: "Start the SwitchNest hotspot and make sure DNS and HTTP both show Active."},
                                         {symbol: "▤", heading: "3. Test With Your Phone", detail: "Connect to SwitchNest Wi-Fi and confirm you're offline."},
                                         {symbol: "◈", heading: "4. Connect Your Switch 2", detail: "Enable Wi-Fi, connect to SwitchNest, and disable IPv6 in its network settings."},
                                         {symbol: "⚠", heading: "5. Use at Your Own Risk!", detail: "An offline phone test does not guarantee complete network isolation."}
