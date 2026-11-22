@@ -670,13 +670,10 @@ ApplicationWindow {
                         currentIndex: root.wifiChannel === 6 ? 1 : root.wifiChannel === 11 ? 2 : 0
                         onActivated: root.wifiChannel = [1, 6, 11][currentIndex]
                     }
+                    Button { text: "Apply Wi-Fi Settings"; highlighted: true; enabled: !root.busy && root.hotspot.state === "off" && root.wifiName.length > 0; onClicked: wifiConfirmDialog.open() }
                     Label { text: root.wifiFeedback; color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
                     Label { text: "Adapter AP support: " + (root.wifiInfo.adapter ? String(root.wifiInfo.adapter.ap_supported) : "Not checked") + " | Supported channels reported: " + (root.wifiInfo.adapter ? root.wifiInfo.adapter.channels.join(", ") : "Unknown"); Layout.fillWidth: true; wrapMode: Text.Wrap; color: root.muted }
-                    RowLayout {
-                        Button { text: "Check Compatibility"; enabled: !root.busy; onClicked: controller.wifi_status() }
-                        Button { text: "Apply Wi-Fi Settings"; highlighted: true; enabled: !root.busy && root.hotspot.state === "off" && root.wifiName.length > 0; onClicked: wifiConfirmDialog.open() }
-                    }
-                    Button { text: "Restore Previous Wi-Fi Settings"; enabled: !root.busy && root.wifiInfo.backup === true; onClicked: wifiRestoreDialog.open() }
+                    Button { text: "Check Compatibility"; enabled: !root.busy; onClicked: controller.wifi_status() }
                     Label { text: "Only Wi-Fi profile fields are changed. IP, DHCP, DNS, firewall, FTP and the existing hotspot ON/OFF backend are untouched. NetworkManager authorization is required. Restart the hotspot with its existing controls after changes."; color: root.muted; Layout.fillWidth: true; wrapMode: Text.Wrap }
                         }
                     }
