@@ -846,7 +846,9 @@ def main():
     # Prefer the official SwitchNest artwork when installed locally.
     # The SVG remains a compatibility fallback for older installations.
     official_icon = Path.home() / ".local/share/icons/switchnest.png"
-    app.setWindowIcon(QIcon(str(official_icon if official_icon.is_file() else icon_path)))
+    infinity_icon = Path.home() / ".local/share/icons/switchnest-infinity-icon.png"
+    active_icon = infinity_icon if infinity_icon.is_file() else (official_icon if official_icon.is_file() else icon_path)
+    app.setWindowIcon(QIcon(str(active_icon)))
     runtime=Path(QStandardPaths.writableLocation(QStandardPaths.RuntimeLocation))
     lock=QLockFile(str(runtime/"switchnest-control-center.lock"))
     if not lock.tryLock(0):
@@ -855,6 +857,7 @@ def main():
     engine = QQmlApplicationEngine()
     controller = Controller()
     engine.rootContext().setContextProperty("controller", controller)
+    engine.rootContext().setContextProperty("switchNestBrandIcon", QUrl.fromLocalFile(str(active_icon)))
     browser = Browser()
     controller._homebrew_browser = browser
     engine.rootContext().setContextProperty("ftpBrowser", browser)
