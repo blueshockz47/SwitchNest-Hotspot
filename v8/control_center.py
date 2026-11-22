@@ -843,7 +843,7 @@ def main():
     engine = QQmlApplicationEngine()
     controller = Controller()
     engine.rootContext().setContextProperty("controller", controller)
-    engine.rootContext().setContextProperty("switchNestBrandIcon", QUrl.fromLocalFile(str(active_icon)))
+    engine.rootContext().setContextProperty("switchNestBrandIcon", QUrl.fromLocalFile(str(bundled_icon)))
     browser = Browser()
     controller._homebrew_browser = browser
     engine.rootContext().setContextProperty("ftpBrowser", browser)
